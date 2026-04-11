@@ -1,0 +1,437 @@
+input.d-phone[type="number"] {
+    /* Ẩn nút tăng giảm trên Chrome, Safari, Edge */
+    -webkit-appearance: none;
+    -moz-appearance: textfield;
+}
+input.d-phone[type="number"]::-webkit-outer-spin-button,
+input.d-phone[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+input.d-phone[type="number"]::-ms-input-spin-button {
+    display: none;
+}
+#testPost {
+    background: #07835c;
+    padding: 30px;
+    color: #fff;
+    margin: 15px 0;
+    border-radius: 10px;
+}
+
+#testPost-head {
+    font-size: 28px;
+    font-family: "UTM HelvetIns", "HelvetIns";
+    text-align: center;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+}
+
+#testPost-ct {
+    color: #000;
+    position: relative;
+    background-image: linear-gradient(140deg, #bbffe7 0%, #dcfff3 50%, #eff 75%);
+    border: 1px dashed #cb0008;
+    padding: 25px 0;
+    border-radius: 25px;
+    padding: 15px 20px 0;
+}
+
+.testPost-ch {
+    padding-bottom: 15px;
+}
+
+.testPost-tit {
+    font-weight: 700;
+}
+
+.testPost-ct {
+    padding-top: 5px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+}
+
+.testPost-ct label {
+    width: calc(50% - 7px);
+    margin: 3px 0;
+    font-weight: 400;
+    cursor: pointer;
+}
+
+.testPost-ct input {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    -ms-appearance: none;
+    -o-appearance: none;
+    appearance: none;
+    position: relative;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 13px;
+    width: 13px;
+    -webkit-transition: all 0.15s ease-out 0;
+    -moz-transition: all 0.15s ease-out 0;
+    transition: all 0.15s ease-out 0;
+    background: transparent;
+    border: 1px solid #07835c;
+    cursor: pointer;
+    display: inline-block;
+    margin: 0;
+    outline: none;
+    position: relative;
+    z-index: 8;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+.testPost-ct input:checked {
+    background: #07835c;
+}
+
+#testPost-frm {
+    text-align: center;
+    font-size: 14px;
+    padding-top: 15px;
+}
+
+.testPost-frm input {
+    width: 100%;
+    border: 1px solid #07835c;
+    box-shadow: inset 0px 2px 5px rgba(0, 0, 0, 0.2);
+    padding: 13px 10px;
+    max-width: 500px;
+    border-radius: 30px;
+    margin: 10px 0;
+    height: 40px;
+    text-align: center;
+}
+
+.testPost-gbt {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 10px;
+}
+
+.testPost-gbt a {
+    border-radius: 20px;
+    margin: 0 5px;
+    padding: 8px 20px 7px;
+    font-weight: 700;
+    text-transform: uppercase;
+    text-decoration: none;
+    line-height: 1.42857143;
+}
+.testPost-gbt a,
+.testPost-gbt a:hover,
+.testPost-gbt a:active {
+    color: #fff;
+}
+.testPost-gbt a:hover {
+    box-shadow: rgba(0, 0, 0, .4) 0 2px 4px;
+}
+#testPost-send,
+#testPost-live.active {
+    background: #07835c;
+    border: medium none;
+}
+
+#testPost-live,
+#testPost-send.active {
+    background: #cb0008;
+    border-color: #cb0008;
+}
+
+.testPost-text2 b {
+    color: #ffc258;
+    font-size: 18px;
+}
+
+#testPost-ct br {
+    display: none;
+}
+
+@media screen and (max-width: 991.98px) {
+    #testPost {
+        padding: 15px 10px;
+    }
+
+    #testPost-head {
+        font-size: 22px;
+    }
+
+    .testPost-ct label {
+        width: 100%;
+    }
+
+    .testPost-gbt a {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .testPost-text2 b,
+    #pstCntn {
+        font-size: 16px;
+    }
+}
+/*
+* sendphone-v2
+*-----------------------------------------*/
+.d_contact .sendphone-v2 {
+    background-color: #fff;
+	height: 50px;
+	margin: 15px;
+	padding: 5px;
+	border: 1px solid #d4d4d4;
+	border-radius: 99px;
+	box-shadow: inset 0 2px 4px rgba(0, 0, 0, .4);
+}
+.d_contact .sendphone-v2 input {
+  border: none;
+  background: transparent;
+  width: calc(100% - 70px);
+  height: 40px;
+  padding: 0 10px;
+
+}
+.d_contact .sendphone-v2 input:focus, .d_contact .sendphone-v2 input:focus-visible {
+    box-shadow: none;
+    outline: none;
+    border: medium none;
+}
+.d_contact .sendphone-v2 button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 83px;
+    height: 40px;
+    border-radius: 20px;
+    background: #932dc2;
+    font-size: 18px;
+    font-weight: 500;
+    border: none;
+    box-shadow: 0 0 5px rgba(125, 114, 96, .8);
+    color: #fff;
+    gap: 5px;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+.d_contact .sendphone-v2 button svg>path {
+    fill: #fff;
+}
+/*
+* Quiz
+*-----------------------------------------*/
+.vs-quiz-custom {
+    display: flex;
+    justify-content: center;
+    margin: 1.5rem 0;
+}
+.vs-quiz-custom .vs-quiz-body {
+    background: #d5fff8;
+    border: 3px solid var(--wpmini-primary-color, #0c835d);
+    border-radius: 17px;
+    overflow: hidden;
+    padding: 30px;
+    max-width: 600px;
+}
+.vs-quiz-custom .vs-quiz-title {
+    color: #216358;
+    margin-top: 0;
+    margin-bottom: 0;
+    text-align: center;
+}
+.vs-quiz-custom .vs-quiz-title, .vs-quiz-custom .vs-quiz-title strong, .vs-quiz-custom .vs-quiz-title b {
+    font-family: "UTM HelvetIns", "HelvetIns";
+    font-weight: normal !important;
+    font-size: 19px;
+}
+.vs-quiz-custom .vs-quiz-questions {
+    display: flex;
+    justify-content: center;
+    padding: 19px 0 0 0;
+}
+.vs-quiz-custom .vs-quiz-questions .wpmini-slickjs,
+.vs-quiz-custom .vs-quiz-questions .slickjs {
+    max-width: 100%;
+    padding: 0 50px 30px  50px;
+}
+.vs-quiz-custom .vs-quiz-questions .slickjs {
+    margin-bottom: 0;
+}
+.vs-quiz-custom .vs-quiz-question {
+    background: #ffffff;
+    border-radius: 17px;
+    overflow: hidden;
+    padding: 25px;
+}
+.vs-quiz-custom .vs-quiz-question-title {
+    font-weight: 700;
+    padding-bottom: 10px;
+}
+.vs-quiz-custom .vs-quiz-question-answers {
+    display: flex;
+    flex-wrap: wrap;
+}
+.vs-quiz-custom .vs-quiz-question-answers label {
+    display: flex;
+    align-items: center;
+    width: 50%;
+    gap: 8px;
+    padding: 5px 0;
+}
+.vs-quiz-custom .vs-quiz-question-answers input[type="checkbox"], .vs-quiz-custom .vs-quiz-question-answers input[type="radio"] {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    width: 14px;
+    height: 14px;
+    border: 1px solid #555;
+    border-radius: 2px;
+    margin-right: 0;
+    cursor: pointer;
+    display: inline-block;
+    vertical-align: middle;
+    background-color: #fff;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+.vs-quiz-custom .vs-quiz-question-answers input[type="radio"]:checked {
+    background-color: #007bff;
+    border-color: #007bff;
+    box-shadow: inset 0 0 0 3px #fff;
+}
+.vs-quiz-custom .d_contact .group-input>div {
+    width: 70%;
+    max-width: 400px;
+    margin-top: 0;
+}
+.vs-quiz-custom .slick-slider:not(.slick-loading) .slick-dots {
+    gap: 8px !important;
+}
+.vs-quiz-custom .slick-initialized.slick-dotted .slick-dots button {
+    background: #b9b9b9;
+    border-radius: 50% !important;
+    overflow: hidden;
+    width: 10px !important;
+    height: 10px !important;
+    transform: scale(1.2);
+}
+.vs-quiz-custom .slick-initialized.slick-dotted .slick-dots .slick-active button {
+    background: var(--wpmini-primary-color, #216358);
+}
+.vs-quiz-custom .slick-initialized.slick-dotted .slick-dots li:before,
+.vs-quiz-custom .slick-initialized.slick-dotted .slick-dots li button:before {
+    display: none !important;
+}
+.vs-quiz-custom .slick-initialized .slick-arrow {
+    background: #a8a8a8;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    transform: none;
+}
+.vs-quiz-custom .slick-initialized .slick-arrow:before {
+    display: none;
+}
+.vs-quiz-custom .slick-initialized .slick-prev {
+    left: 20px;
+}
+.vs-quiz-custom .slick-initialized .slick-next {
+    right: 20px;
+}
+.vs-quiz-custom .slick-initialized .slick-arrow svg {
+    width: 60%;
+    height: 60%;
+}
+.vs-quiz-custom .slick-initialized .slick-arrow svg>path {
+    stroke-width: 3px !important;
+    stroke: #ffffff !important;
+}
+.vs-quiz-custom .slick-initialized .slick-dots {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    z-index: 10;
+    transform: translateX(-50%);
+    list-style: none;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    gap: 8px;
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+}
+.vs-quiz-custom .slick-initialized.slick-dotted .slick-dots li {
+    display: inline-block;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: relative;
+    width: initial;
+    height: initial;
+}
+.vs-quiz-custom .d_contact .sendphone-v2 button {
+    background: linear-gradient(to right, #da0000, #ff6d36);
+}
+.vs-quiz-custom .vs-quiz-note {
+    font-size: 15px;
+    font-style: italic;
+    max-width: 400px;
+    margin-top: 0 !important;
+}
+.vs-quiz-custom .vs-quiz-note1 {
+    color: #f33234;
+    margin-bottom: 5px;
+}
+.vs-quiz-custom .vs-quiz-note2 {    
+    margin-bottom: 0;
+}
+/* Responsive adjustments */
+@media screen and (max-width: 991.98px) {
+    .vs-quiz-custom .vs-quiz-body {
+        padding: 30px 15px;
+    }
+    .vs-quiz-custom .vs-quiz-questions .wpmini-slickjs, .vs-quiz-custom .vs-quiz-questions .slickjs {
+        max-width: 100%;
+        padding: 0 0 30px 0;
+    }
+    .vs-quiz-custom .vs-quiz-questions .wpmini-slickjs .slick-slide {
+        padding: 25px 12px;
+    }
+    .vs-quiz-custom .vs-quiz-question-answers label {
+        width: 100%;
+    }
+    .vs-quiz-custom .d_contact .group-input>div {
+        width: 100%;
+    }
+    .vs-quiz-custom .slick-initialized .slick-arrow {
+        z-index: 5 !important;
+    }
+    .vs-quiz-custom .slick-initialized .slick-prev {
+        left: 0px;
+    }
+    .vs-quiz-custom .slick-initialized .slick-next {
+        right: 0px;
+    }
+    .vs-quiz-custom .vs-quiz-note {
+        padding: 0 15px;
+    }
+}
+@media screen and (max-width: 576px) {
+    .vs-quiz-custom .slick-slider:not(.slick-loading) .slick-dots {
+        width: fit-content;
+    }
+    .vs-quiz-custom .slick-initialized .slick-arrow {
+        top: initial !important;
+        bottom: 5px;
+    }
+    .vs-quiz-custom .slick-initialized .slick-prev {
+        left: 28%;
+    }
+    .vs-quiz-custom .slick-initialized .slick-next {
+        right: 28%;
+    }
+}

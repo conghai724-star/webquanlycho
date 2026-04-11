@@ -1,0 +1,322 @@
+/* <=== vhaboutpg ===> */
+.vhaboutpg{
+    padding: 30px 0 60px;
+}
+/* <=== vhaboutpg ===> */
+
+/* <=== vtitleab ===> */
+.vtitleab{
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    position: relative;
+    text-transform: uppercase;
+    border-bottom: 1px solid #e0e0e0;
+    color: #00379b;
+}
+.vtitleab.vmargin{
+    margin-bottom: 30px;
+}
+.vtitleab::before{
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 60px;
+    height: 3px;
+    background-color: #00379b;
+}
+.vtitleab, .vtitleab h1, .vtitleab h2, .vtitleab h3{
+    font-size: 25px;
+    line-height: 35px;
+    font-weight: bold;
+}
+/* <=== vtitleab ===> */
+
+/* <=== thecontab ===> */
+.thecontab{
+    font-size: 14px;
+    line-height: 24px;
+}
+.thecontab .tt{
+    font-size: 20px;
+    line-height: 30px;
+    color: #6bc0e7;
+}
+.thecontab p{
+    padding: 3px 0;
+}
+/* <=== thecontab ===> */
+
+/* <=== tpcontinfo ===> */
+.tpcontinfo .iftitle{
+    text-align: center;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    color: #00379b;
+}
+.tpcontinfo .iftitle, .tpcontinfo .iftitle h1, .tpcontinfo .iftitle h2{
+    font-size: 35px;
+    line-height: 45px;
+    font-weight: bold;
+}
+.tpcontinfo .ifsolus{
+    text-align: center;
+    margin-bottom: 20px;
+    color: #75c695;
+    font-style: italic;
+}
+.tpcontinfo .ifsolus, .tpcontinfo .ifsolus h3{
+    font-size: 24px;
+    line-height: 36px;
+    font-weight: 600;
+}
+/* <=== tpcontinfo ===> */
+
+/* <=== tpcontinfo ===> */
+.tpaboutpg{
+    margin-bottom: 25px;
+}
+.tpaboutpg:last-child{
+    margin-bottom: 0;
+}
+/* <=== tpcontinfo ===> */
+
+/* <=== tpabouthh ===> */
+.tpabouthh .hhinfo li{
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 15px;
+    line-height: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+.tpabouthh .hhinfo li:last-child{
+    margin-bottom: 10px;
+}
+.tpabouthh .hhinfo li .vicon{
+    width: 80px;
+    height: 80px;
+    border-radius: 100%;
+    display: flex;
+    align-items: center;
+    align-content: center;
+    justify-content: center;
+    background-color: #6bc0e7;
+    color: #fff;
+}
+.tpabouthh .hhinfo li .vicon img{
+    max-width: 80%;
+    max-height: 80%;
+}
+.tpabouthh .hhinfo li .vtext{
+    width: calc(100% - 80px);
+    padding-left: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    align-items: center;
+    align-content: center;
+}
+/* <=== tpabouthh ===> */
+
+/* <=== tpaboutbb ===> */
+.itaboutbb{
+    background-color: #e5f7ff;
+    border-radius: 5px;
+    overflow: hidden;
+}
+.itaboutbb .thumb{
+    display: block;
+    padding-top: 65.56%;
+    position: relative;
+    overflow: hidden;
+}
+.itaboutbb .thumb img{
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.itaboutbb .decss{
+    text-align: center;
+    padding: 15px;
+}
+.itaboutbb .dstitle{
+    text-transform: uppercase;
+    height: 22px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+}
+.itaboutbb .dstitle, .itaboutbb .dstitle h3{
+    font-size: 14px;
+    line-height: 22px;
+    font-weight: bold;
+}
+/* <=== tpaboutbb ===> */
+
+/* <=== tpabouttt ===> */
+.itabouttt .thumb a{
+    display: block;
+    padding-top: 71.923%;
+    position: relative;
+    border-radius: 5px;
+    border: 2px solid #e5f7ff;
+    overflow: hidden;
+}
+.itabouttt .thumb a:hover{
+    border-color: #00379b;
+}
+.itabouttt .thumb a img{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-height: 90%;
+    max-height: 90%;
+}
+/* <=== tpabouttt ===> */
+
+/* <=== tpaboutnn ===> */
+.itaboutnn{
+    height: 100%;
+    background-color: #e5f7ff;
+    border-radius: 5px;
+}
+.itaboutnn .decss{
+    padding: 12px 20px;
+    text-align: center;
+}
+.itaboutnn .dstitle{
+    text-transform: uppercase;
+    height: 38px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+.itaboutnn .dstitle, .itaboutnn .dstitle h3{
+    font-size: 14px;
+    line-height: 19px;
+    font-weight: bold;
+}
+/* <=== tpaboutnn ===> */
+
+/* <=== tpaboutss ===> */
+.tpaboutss {
+    padding-top: 30px;
+}
+.tpaboutss .sslinks a{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    font-size: 20px;
+    line-height: 30px;
+    font-weight: bold;
+    text-transform: uppercase;
+    background: rgb(145, 221, 251);
+    background: linear-gradient(90deg, rgba(145, 221, 251, 1) 0%, rgba(62, 121, 222, 1) 100%);
+    color: #fff;
+    padding: 20px 20px;
+    border-radius: 5px;
+    animation: pulse_toolhh 2s infinite;
+    box-shadow: 0 0 0 0 #6bc0e7;
+}
+@keyframes pulse_toolhh {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 #6bc0e7;
+    }
+
+    70% {
+        transform: scale(1.01);
+        box-shadow: 0 0 0 12px rgb(0,152,218,0);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgb(0,152,218,0);
+    }
+}
+.tpaboutss .sslinks a i{
+    margin-right: 12px;
+}
+/* <=== tpaboutss ===> */
+
+@media all and (max-width: 1200px){
+
+}
+@media all and (max-width: 991px){
+    /* <=== vhaboutpg ===> */
+    .vhaboutpg{
+        padding: 20px 0 30px;
+    }
+    /* <=== vhaboutpg ===> */
+
+    /* <=== vtitleab ===> */
+    .vtitleab{
+        margin-bottom: 15px;
+    }
+    .vtitleab.vmargin{
+        margin-bottom: 22px;
+    }
+    .vtitleab, .vtitleab h1, .vtitleab h2, .vtitleab h3{
+        font-size: 20px;
+        line-height: 30px;
+    }
+    /* <=== vtitleab ===> */
+
+    /* <=== thecontab ===> */
+    .thecontab{
+        text-align: justify;
+    }
+    /* <=== thecontab ===> */
+
+    /* <=== tpcontinfo ===> */
+    .tpcontinfo .iftitle, .tpcontinfo .iftitle h1, .tpcontinfo .iftitle h2{
+        font-size: 25px;
+        line-height: 33px;
+    }
+    .tpcontinfo .ifsolus, .tpcontinfo .ifsolus h3{
+        font-size: 18px;
+        line-height: 27px;
+    }
+    /* <=== tpcontinfo ===> */
+
+    /* <=== tpaboutbb ===> */
+    .itaboutbb .decss{
+        padding: 7px 10px;
+    }
+    .itaboutbb .dstitle{
+        height: 36px;
+        -webkit-line-clamp: 2;
+    }
+    .itaboutbb .dstitle, .itaboutbb .dstitle h3{
+        font-size: 13px;
+        line-height: 18px;
+    }
+    /* <=== tpaboutbb ===> */
+
+    /* <=== tpaboutnn ===> */
+    .itaboutnn .decss{
+        padding: 7px 10px;
+    }
+    .itaboutnn .dstitle{
+        height: 36px;
+        -webkit-line-clamp: 2;
+    }
+    .itaboutnn .dstitle, .itaboutnn .dstitle h3{
+        font-size: 13px;
+        line-height: 18px;
+    }
+    /* <=== tpaboutnn ===> */
+}
+@media all and (max-width: 767px){
+    
+}

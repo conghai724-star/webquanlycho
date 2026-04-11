@@ -1,0 +1,13 @@
+RewriteEngine on
+
+RewriteBase /vieclam.vn/
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php?rt=$1 [L,QSA]
+<IfModule mod_mime.c>
+  AddType application/javascript .mjs
+  AddType application/javascript .js
+  AddType application/wasm .wasm
+</IfModule>
+

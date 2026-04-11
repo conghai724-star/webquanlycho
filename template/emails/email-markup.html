@@ -1,0 +1,25 @@
+<html>
+  <head>
+    <title>Did you enjoy Google Cafe?</title>
+  </head>
+  <body>
+    <script type="application/ld+json">
+{
+  "@context": "http://schema.org",
+  "@type": "EmailMessage",
+  "potentialAction": {
+    "@type": "ConfirmAction",
+    "name": "Approve Expense",
+    "handler": {
+      "@type": "HttpActionHandler",
+      "url": "https://myexpenses.com/approve?expenseId=abc123"
+    }
+  },
+  "description": "Approval request for John's $10.13 expense for office supplies"
+}
+</script>
+    <p>
+      Dear John, please rate Google Cafe between 1 and 5 stars and, optionally, add a text comment.
+    </p>
+  </body>
+</html>

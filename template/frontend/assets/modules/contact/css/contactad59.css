@@ -1,0 +1,345 @@
+/* <=== vhcontactpg ===> */
+.vhcontactpg{
+    padding: 30px 0 50px;
+}
+/* <=== vhcontactpg ===> */
+
+/* <=== tpcontactma ===> */
+.tpcontactma{
+    margin-bottom: 50px;
+}
+.tpcontactma .magrip{
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -40px;
+}
+.tpcontactma .magrip > div{
+    padding: 0 40px;
+}
+.tpcontactma .magrip .lcol{
+    width: 52%;
+}
+.tpcontactma .magrip .rcol{
+    width: 48%;
+}
+.tpcontactma .mainfos{
+    margin-bottom: 30px;
+    padding: 20px 25px 25px;
+    background-color: #f5faff;
+}
+.tpcontactma .mainfos .iftitle{
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    color: #00a651;
+}
+.tpcontactma .mainfos .iftitle span{
+    color: #ee222b;
+}
+.tpcontactma .mainfos .iftitle, .tpcontactma .mainfos .iftitle h2{
+    font-size: 26px;
+    line-height: 34px;
+    font-weight: bold;
+}
+.tpcontactma .mainfos li{
+    display: flex;
+    margin-bottom: 10px;
+}
+.tpcontactma .mainfos li:last-child{
+    margin-bottom: 0;
+}
+.tpcontactma .mainfos li .vicon{
+    width: 40px;
+    height: 40px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    align-content: center;
+    justify-content: center;
+    background-color: #6bc0e7;
+    color: #fff;
+    font-size: 18px;
+    line-height: 27px;
+}
+.tpcontactma .mainfos li .vtext{
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    align-items: center;
+    align-content: center;
+    width: calc(100% - 40px);
+    padding-left: 12px;
+}
+.tpcontactma .mainfos li .vtext p{
+    padding: 0;
+}
+.tpcontactma .mamaprs img, .tpcontactma .mamaprs iframe{
+    width: 100%;
+}
+.tpcontactma .mathumb img{
+    width: 100%;
+}
+/* <=== tpcontactma ===> */
+
+/* <=== tpcontactmb ===> */
+.tpcontactmb{
+    margin-bottom: 30px;
+}
+.tpcontactmb .mbwrap{
+    max-width: 970px;
+    margin: 0 auto;
+}
+.tpcontactmb .mbgrip{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 0 -15px;
+}
+.tpcontactmb .mbgrip > div{
+    padding: 0 15px;
+    width: 33.33333%;
+    margin-bottom: 20px;
+}
+.itcontactmb a{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    font-size: 20px;
+    line-height: 30px;
+    font-weight: bold;
+    text-transform: uppercase;
+    background: rgb(145, 221, 251);
+    background: linear-gradient(90deg, rgba(145, 221, 251, 1) 0%, rgba(62, 121, 222, 1) 100%);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 5px;
+}
+.itcontactmb a i{
+    margin-right: 10px;
+}
+.itcontactmb a:hover{
+    animation: pulse_toolh 2s infinite;
+    box-shadow: 0 0 0 0 #6bc0e7;
+}
+/* <=== tpcontactmb ===> */
+
+/* <=== tpcontactmc ===> */
+.tpcontactmc{
+    padding: 30px 20px 45px;
+    background-color: #f5faff;
+}
+.tpcontactmc .mcinner{
+    max-width: 1025px;
+    margin: 0 auto;
+}
+.tpcontactmc .mctitle{
+    text-align: center;
+    max-width: 740px;
+    margin: 0 auto;
+    margin-bottom: 25px;
+}
+.tpcontactmc .mctitle, .tpcontactmc .mctitle h2{
+    font-size: 25px;
+    line-height: 30px;
+    font-weight: 600;
+}
+.tpcontactmc .frmchecks{
+    margin-bottom: 18px;
+    text-align: center;
+}
+.tpcontactmc .frmgrip{
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -7.5px;
+}
+.tpcontactmc .frmgrip > div{
+    padding: 0 7.5px;
+    width: 50%;
+}
+.tpcontactmc .frmgroup{
+    margin-bottom: 18px;
+}
+.tpcontactmc .frmgroup input{
+    width: 100%;
+    height: 40px;
+    border: none;
+    background-color: #fff;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
+    padding: 0 15px;
+    font-size: 15px;
+}
+.tpcontactmc .frmgroup select{
+    width: 100%;
+    height: 40px;
+    border: none;
+    background-color: #fff;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
+    padding: 0 35px 0 15px;
+    font-size: 15px;
+}
+.tpcontactmc .frmgroup .chosen-container{
+    height: 40px;
+}
+.tpcontactmc .frmgroup .chosen-container-single .chosen-single{
+    background-color: #fff;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
+    border: none;
+}
+.tpcontactmc .frmgroup textarea{
+    width: 100%;
+    height: 156px;
+    border: none;
+    background-color: #fff;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
+    padding: 10px 15px;
+    font-size: 15px;
+    resize: none;
+}
+.tpcontactmc .frmgroup input::-webkit-input-placeholder, .tpcontactmc .frmgroup textarea::-webkit-input-placeholder {
+    color: #999999;
+}
+.tpcontactmc .frmgroup input:-ms-input-placeholder, .tpcontactmc .frmgroup textarea:-ms-input-placeholder {
+    color: #999999;
+}
+.tpcontactmc .frmgroup input::placeholder, .tpcontactmc .frmgroup textarea::placeholder {
+    color: #999999;
+}
+.tpcontactmc .frmrecaps{
+    text-align: center;
+    margin-bottom: 20px;
+}
+.tpcontactmc .frmbutton{
+    text-align: center;
+}
+.tpcontactmc .frmbutton button{
+    font-size: 14px;
+    line-height: 22px;
+    height: 45px;
+    padding: 5px 24px;
+    background-color: #6bc0e7;
+    color: #fff;
+    border: none;
+    font-weight: bold;
+    border-radius: 5px;
+}
+.tpcontactmc .frmbutton button:hover{
+    background-color: #3975dc;
+}
+.tpcontactmc .frmbutton button span{
+    display: inline-block;
+    position: relative;
+    padding-right: 15px;
+}
+.tpcontactmc .frmbutton button span::before{
+    content: '\f105';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+}
+/* <=== tpcontactmc ===> */
+
+.vcheckbox{
+    display: inline-block;
+    position: relative;
+    text-align: left;
+}
+.vcheckbox input{
+    position: absolute;
+    z-index: -11111;
+    opacity: 0;
+}
+.vcheckbox label{
+    padding-left: 30px;
+    position: relative;
+    cursor: pointer;
+}
+.vcheckbox label::before{
+    content: '';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 20px;
+    height: 20px;
+    border: 1px solid #cccccc;
+    background-color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 10px;
+}
+.vcheckbox input:checked ~ label::before{
+    content: '\f00c';
+    background-color: #074b91;
+    border-color: #074b91;
+    color: #fff;
+}
+@media all and (max-width: 1200px){
+
+}
+@media all and (max-width: 991px){
+    /* <=== vhcontactpg ===> */
+    .vhcontactpg{
+        padding: 20px 0 30px;
+    }
+    /* <=== vhcontactpg ===> */
+
+    /* <=== tpcontactma ===> */
+    .tpcontactma{
+        margin-bottom: 20px;
+    }
+    .tpcontactma .magrip .lcol{
+        width: 100%;
+        margin-bottom: 20px;
+    }
+    .tpcontactma .magrip .rcol{
+        width: 100%;
+    }
+    .tpcontactma .mainfos .iftitle, .tpcontactma .mainfos .iftitle h2{
+        font-size: 22px;
+        line-height: 30px;
+    }
+    /* <=== tpcontactma ===> */
+
+    /* <=== tpcontactmb ===> */
+    .tpcontactmb{
+        margin-bottom: 0;
+    }
+    .tpcontactmb .mbgrip > div{
+        width: 50%;
+    }
+    /* <=== tpcontactmb ===> */
+
+    /* <=== tpcontactmc ===> */
+    .tpcontactmc{
+        padding: 20px 20px 35px;
+    }
+    .tpcontactmc .mctitle{
+        margin-bottom: 20px;
+    }
+    .tpcontactmc .mctitle, .tpcontactmc .mctitle h2{
+        font-size: 16px;
+        line-height: 25px;
+    }
+    .vcheckbox{
+        font-size: 12px;
+    }
+    /* <=== tpcontactmc ===> */
+}
+@media all and (max-width: 767px){
+    /* <=== tpcontactmb ===> */
+    .tpcontactmb .mbgrip > div{
+        width: 100%;
+    }
+    /* <=== tpcontactmb ===> */
+
+    /* <=== tpcontactmc ===> */
+    .tpcontactmc .frmgrip > div{
+        width: 100%;
+    }
+    /* <=== tpcontactmc ===> */
+}

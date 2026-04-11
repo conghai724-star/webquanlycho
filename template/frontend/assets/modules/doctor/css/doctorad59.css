@@ -1,0 +1,670 @@
+/* <=== vhdoctorpg ===> */
+.vhdoctorpg{
+    padding: 30px 0 60px;
+}
+.tpdoctormm .mmlist{
+    padding-bottom: 10px;
+}
+.tpdoctormm .mmrow{
+    margin-bottom: 30px;
+}
+.itdoctormm{
+    background-color: #e5f7ff;
+    border-radius: 5px;
+    overflow: hidden;
+}
+.itdoctormm .mmgrip{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    align-content: center;
+}
+.itdoctormm .mmgrip .mcol{
+    width: 250px;
+}
+.itdoctormm .mmgrip .hcol{
+    width: calc(100% - 250px);
+}
+.itdoctormm .thumb a{
+    border-radius: 5px;
+}
+.itdoctormm .decss{
+    padding: 15px 35px;
+}
+.itdoctormm .dstitle{
+    margin-bottom: 10px;
+    text-transform: uppercase;
+}
+.itdoctormm .dstitle, .itdoctormm .dstitle h3{
+    font-size: 24px;
+    line-height: 36px;
+    font-weight: bold;
+}
+.itdoctormm .dstitle a{
+    color: #00379b;
+}
+.itdoctormm .dstitle a:hover{
+    color: #6bc0e7;
+}
+.itdoctormm .dsconts{
+    font-size: 14px;
+    line-height: 23px;
+    margin-bottom: 20px;
+    max-height: 69px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+} 
+.itdoctormm .dslinks ul{
+    display: flex;
+    margin: 0 -10px;
+}
+.itdoctormm .dslinks li{
+    padding: 0 10px;
+}
+.itdoctormm .dslinks li a{
+    display: block;
+    font-size: 13px;
+    line-height: 22px;
+    font-weight: bold;
+    text-transform: uppercase;
+    padding: 9px 30px;
+    border-radius: 5px;
+    color: #fff;
+}
+.itdoctormm .dslinks li a span{
+    display: inline-block;
+    position: relative;
+}
+.itdoctormm .dslinks li a span::before{
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    position: absolute;
+
+    top: 50%;
+    transform: translateY(-50%);
+}
+.itdoctormm .dslinks li.vm a{
+    background-color: #6bc0e7;
+}
+.itdoctormm .dslinks li.vh a{
+    background-color: #00379b;
+}
+.itdoctormm .dslinks li.vm a:hover{
+    background-color: #00379b;
+}
+.itdoctormm .dslinks li.vh a:hover{
+    background-color: #6bc0e7;
+}
+.itdoctormm .dslinks li.vm a span{
+    padding-right: 14px;
+}
+.itdoctormm .dslinks li.vh a span{
+    padding-left: 23px;
+}
+.itdoctormm .dslinks li.vm a span::before{
+    content: '\f105';
+    right: 0;
+}
+.itdoctormm .dslinks li.vh a span::before{
+    content: "\f044";
+    left: 0;
+}
+/* <=== vhdoctorpg ===> */
+
+/* <=== vhtestimpg ===> */
+.tetimohome{
+    padding: 100px 0 65px;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    background-size: cover;
+    min-height: 500px;
+    display: flex;
+    align-items: center;
+    align-content: center;
+}
+.tetimohome > div{
+    width: 100%;
+}
+.hptetimohh{
+    max-width: 570px;
+    width: 100%;
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 70px 50px 45px 43px;
+    position: relative;
+}
+.hptetimohh::before{
+    content: '“';
+    position: absolute;
+    left: 43px;
+    top: -33px;
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    align-content: center;
+    justify-content: center;
+    border-radius: 100%;
+    background-color: #6bc0e7;
+    color: #fff;
+    font-size: 100px;
+    line-height: 100px;
+    padding-top: 40px;
+}
+.sltetimohh .slick-dots{
+    position: absolute;
+    bottom: 0;
+    padding: 0;
+    justify-content: flex-end;
+    left: 0;
+    right: 0;
+}
+.sltetimohh .slick-dots li{
+    margin: 0 7px;
+}
+.sltetimohh .slick-dots li button{
+    border-color: #388ac5;
+}
+.sltetimohh .slick-dots li.slick-active button{
+    background-color: #388ac5;
+    border-color: #388ac5;
+}
+.ittetimohh .hhtends{
+    margin-bottom: 30px;
+    font-size: 20px;
+    line-height: 28px;
+    font-weight: 600;
+    font-style: italic;
+}
+.ittetimohh .infgrip{
+    display: flex;
+    align-items: center;
+    align-content: center;
+    margin: 0 -10px;
+}
+.ittetimohh .infgrip > div{
+    padding: 0 10px;
+}
+.ittetimohh .infgrip .lcol{
+    width: 90px;
+}
+.ittetimohh .infgrip .rcol{
+    width: calc(100% - 90px);
+}
+.ittetimohh .ithumb{
+    width: 70px;
+    height: 70px;
+    border-radius: 100%;
+    position: relative;
+    overflow: hidden;
+} 
+.ittetimohh .ithumb img{
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.ittetimohh .idecss .dsname{
+    text-transform: uppercase;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+.ittetimohh .idecss .dschuc{
+    color: #999999;
+    font-size: 12px;
+    line-height: 20px;
+}
+/* <=== vhtestimpg ===> */
+
+/* <=== vhortherpg ===> */
+.vhortherpg{
+    padding: 30px 0 60px;
+    background-color: #f5faff;
+}
+.itdetailhh{
+    background-color: #e5f7ff;
+    border-radius: 5px;
+    overflow: hidden;
+}
+.itdetailhh .decss{
+    padding: 10px 20px 22px;
+}
+.itdetailhh .dstitle{
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+.itdetailhh .dstitle, .itdetailhh .dstitle h3{
+    font-size: 18px;
+    line-height: 27px;
+    font-weight: bold;
+}
+.itdetailhh .dstitle, .itdetailhh .dstitle a{
+    color: #00379b;
+}
+.itdetailhh .dstitle a{
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+}
+.itdetailhh .dsconts{
+    margin-bottom: 15px;
+    font-size: 13px;
+    line-height: 22px;
+    height: 66px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+.itdetailhh .dslinks ul{
+    display: flex;
+    margin: 0 -5px;
+} 
+.itdetailhh .dslinks li{
+    padding: 0 5px;
+    width: 50%;
+}
+.itdetailhh .dslinks li a{
+    display: block;
+    font-size: 12px;
+    line-height: 20px;
+    padding: 10px 5px;
+    border-radius: 5px;
+    text-transform: uppercase;
+    text-align: center;
+    color: #fff;
+    font-weight: bold;
+}
+.itdetailhh .dslinks li.vm a{
+    background-color: #6bc0e7;
+}
+.itdetailhh .dslinks li.vm a:hover{
+    background-color: #00379b;
+}
+.itdetailhh .dslinks li.vh a{
+    background-color: #00379b;
+}
+.itdetailhh .dslinks li.vh a:hover{
+    background-color: #6bc0e7;
+}
+.itdetailhh .dslinks li a span{
+    display: inline-block;
+    position: relative;
+    padding-right: 12px;
+}
+.itdetailhh .dslinks li a span::before{
+    content: '\f105';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+}
+/* <=== vhortherpg ===> */
+
+/* <=== tpdetalinf ===> */
+.tpdetalinf{
+    background-color: #e5f7ff;
+    border-radius: 5px;
+}
+.tpdetalinf .ifgrip{
+    display: flex;
+    flex-wrap: wrap;
+}
+.tpdetalinf .ifgrip .mcol{
+    width: 45.456%;
+}
+.tpdetalinf .ifgrip .hcol{
+    width: calc(100% - 45.456%);
+}
+.tpdetalinf .thumb{
+    border-radius: 5px;
+    overflow: hidden;
+}
+.tpdetalinf .thumb img{
+    width: 100%;
+}
+.tpdetalinf .decss{
+    padding: 20px 30px 35px 33px;
+}
+.tpdetalinf .dstitle{
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    color: #00379b;
+}
+.tpdetalinf .dstitle, .tpdetalinf .dstitle h1, .tpdetalinf .dstitle h2{
+    font-size: 24px;
+    line-height: 34px;
+    font-weight: bold;
+}
+.tpdetalinf .dsnotes{
+    color: #6bc0e7;
+    font-weight: 600;
+    font-style: italic;
+    margin-bottom: 5px;
+}
+.tpdetalinf .dsconts{
+    line-height: 21px;
+    margin-bottom: 20px;
+}
+.tpdetalinf .nnbook{
+    display: flex;
+}
+.tpdetalinf .nnbook a{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    font-size: 15px;
+    line-height: 25px;
+    font-weight: bold;
+    text-transform: uppercase;
+    background: rgb(145, 221, 251);
+    background: linear-gradient(90deg, rgba(145, 221, 251, 1) 0%, rgba(62, 121, 222, 1) 100%);
+    color: #fff;
+    padding: 10px 40px;
+    border-radius: 5px;
+    animation: pulse_toolhh 2s infinite;
+    box-shadow: 0 0 0 0 #6bc0e7;
+}
+@keyframes pulse_toolhh {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 #6bc0e7;
+    }
+
+    70% {
+        transform: scale(1.02);
+        box-shadow: 0 0 0 12px rgb(0,152,218,0);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgb(0,152,218,0);
+    }
+}
+.tpdetalinf .nnbook a i{
+    margin-right: 12px;
+}
+/* <=== tpdetalinf ===> */
+
+/* <=== vhdetailpg ===> */
+.vhdetailpg{
+    padding: 0 0 50px;
+}
+.hpdetailmm{
+    margin-bottom: 35px;
+}
+.hpdetailmm .mmrow{
+    margin-bottom: 25px;
+}
+.hpdetailmm .mmrow:last-child{
+    margin-bottom: 0;
+}
+.tpdetailmm .mmtitle{
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    align-content: center;
+    color: #00379b;
+    font-size: 30px;
+    line-height: 45px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+.tpdetailmm .mmtitle .ticon{
+    margin-right: 18px;
+    font-size: 30px;
+    color: #6bc0e7;
+}
+.tpspeciamm{
+    margin-top: 15px;
+}
+.tpspeciamm .mmlist{
+    margin-bottom: 12px;
+}
+.tpspeciamm .mmgrip{
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -8px;
+}
+.tpspeciamm .mmgrip > div{
+    padding: 0 8px;
+    width: 25%;
+    margin-bottom: 16px;
+}
+.itspecimm{
+    height: 100%;
+    position: relative;
+    border-radius: 5px;
+    background-color: #e5f7ff;
+    padding: 29px 20px 32px;
+    -webkit-transition: all 0.3s linear;
+    -o-transition: all 0.3s linear;
+    transition: all 0.3s linear;
+}
+.itspecimm:hover{
+    transform: translateY(-3px);
+    box-shadow: 0 5px 10px 0 rgba(0, 0, 0, 0.1);
+}
+.itspecimm .mlinks{
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+.itspecimm .mlinks a{
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+.itspecimm .mthumb{
+    width: 100px;
+    height: 100px;
+    border-radius: 100%;
+    border: 3px solid #5395e0;
+    display: flex;
+    align-items: center;
+    align-content: center;
+    justify-content: center;
+    margin: 0 auto;
+    margin-bottom: 15px;
+    -webkit-transition: all 0.3s linear;
+    -o-transition: all 0.3s linear;
+    transition: all 0.3s linear;
+}
+.itspecimm:hover .mthumb{
+    background-color: #fff;
+}
+.itspecimm .mthumb img{
+    max-width: 75%;
+    max-height: 75%;
+}
+.itspecimm .mdecss{
+    text-align: center;
+    text-transform: uppercase;
+}
+.itspecimm .mdecss, .itspecimm .mdecss h3{
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 400;
+}
+/* <=== vhdetailpg ===> */
+
+@media all and (max-width: 1200px){
+
+}
+@media all and (max-width: 991px){
+    /* <=== vhdoctorpg ===> */
+    .vhdoctorpg{
+        padding: 5px 0 30px;
+    }
+    .tpspeciamm .mmgrip{
+        margin: 0 -10px;
+    }
+    .tpspeciamm .mmgrip > div{
+        padding: 0 10px;
+        margin-bottom: 20px;
+        width: 33.3333%;
+    }
+    .hpdetailmm{
+        margin-bottom: 20px;
+    }
+    .itspecimm{
+        padding: 16px 16px 12px;
+    }
+    .itspecimm .mdecss, .itspecimm .mdecss h3{
+        font-size: 13px;
+        line-height: 19px;
+        font-weight: bold;
+    }
+    .itspecimm .mdecss,  .itspecimm .mdecss a{
+        color: #00379b;
+    }
+    .itspecimm .mthumb{
+        width: 58px;
+        height: 58px;
+        border-width: 3px;
+    }
+    /* <=== vhdoctorpg ===> */
+
+    /* <=== vhtestimpg ===> */
+    .tetimohome{
+        padding: 80px 0 70px;
+        min-height: 440px;
+        background-attachment: unset;
+    }    
+    /* <=== vhtestimpg ===> */
+
+    /* <=== vhortherpg ===> */
+    .vhortherpg{
+        padding: 20px 0 40px;
+    }
+    .itdetailhh .dstitle, .itdetailhh .dstitle h3{
+        font-size: 20px;
+    }
+    /* <=== vhortherpg ===> */
+
+    /* <=== vhdetailpg ===> */
+
+    .tpspeciamm .pggrip{
+        margin: 0 -10px;
+    }
+    .tpspeciamm .pggrip > div{
+        padding: 0 10px;
+        margin-bottom: 20px;
+        width: 33.3333%;
+    }
+    .tpdetailmm .mmtitle{
+        font-size: 20px;
+        line-height: 30px;
+    }
+    .tpdetailmm .mmtitle .ticon{
+        margin-right: 10px
+    }
+    /* <=== vhdetailpg ===> */
+}
+@media all and (max-width: 767px){
+    /* <=== vhdetailpg ===> */
+    .tpspeciamm .mmgrip > div{
+        width: 50%;
+    }
+    /* <=== vhdetailpg ===> */
+    
+    /* <=== vhdoctorpg ===> */
+    .itdoctormm{
+        background-color: transparent;
+    }
+    .itdoctormm .mmgrip .mcol{
+        margin: 0 auto;
+    }
+    .itdoctormm .mmgrip .hcol{
+        width: 100%;
+    }
+    .itdoctormm .thumb{
+        position: relative;
+        z-index: 1;
+    }
+    .itdoctormm .decss{
+        position: relative;
+        margin-top: -55px;
+        padding: 75px 20px 20px;
+        background-color: #e5f7ff;
+        border-radius: 5px;
+    }
+    .itdoctormm .dstitle, .itdoctormm .dstitle h3{
+        font-size: 18px;
+        line-height: 27px;
+    }
+    .itdoctormm .dslinks ul{
+        margin: 0 -6px;
+    }
+    .itdoctormm .dslinks li{
+        padding: 0 6px;
+    }
+    .itdoctormm .dslinks li.vm{
+        width: 47.12%;
+    }
+    .itdoctormm .dslinks li.vh{
+        width: calc(100% - 47.12%);
+    }
+    .itdoctormm .dslinks li a{
+        font-size: 12px;
+        line-height: 23px;
+        padding: 6px 5px;
+        text-align: center;
+    }
+    
+    /* <=== vhdoctorpg ===> */
+
+    /* <=== vhtestimpg ===> */
+    .hptetimohh{
+        padding: 45px 20px 23px;
+    }
+    .hptetimohh::before{
+        width: 65px;
+        height: 65px;
+        font-size: 75px;
+        line-height: 75px;
+        padding-top: 30px;
+        left: 23px;
+    }
+    .ittetimohh .hhtends{
+        font-size: 14px;
+        line-height: 23px;
+        text-align: justify;
+        margin-bottom: 15px;
+    }
+    /* <=== vhtestimpg ===> */
+
+    /* <=== tpdetalinf ===> */
+    .tpdetalinf .ifgrip .mcol{
+        width: 100%;
+    }
+    .tpdetalinf .ifgrip .hcol{
+        width: 100%;
+    }
+    .tpdetalinf .decss{
+        padding: 15px 18px 25px;
+    }
+    .tpdetalinf .dstitle, .tpdetalinf .dstitle h1, .tpdetalinf .dstitle h2{
+        font-size: 22px;
+        line-height: 32px;
+    }
+    .tpdetalinf .dsnotes{
+        font-size: 13px;
+        letter-spacing: -0.3px;
+    }
+    /* <=== tpdetalinf ===> */
+}

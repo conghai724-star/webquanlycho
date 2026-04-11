@@ -1,0 +1,137 @@
+.g-recaptcha > div {
+    margin: 0 auto;
+}
+.ext_maps iframe,
+#ext_maps iframe{
+	width: 100% !important;
+    height: 550px !important;
+}
+.info_contact br{
+	display: none;
+}
+
+.mostSidebar {
+    height: 100%;
+}
+.vhsendsell{
+    height: calc(100% - 283px);
+    position: relative;
+}
+.vhsendsell .thumb{
+    height: 100%;
+}
+.vhsendsell .thumb a{
+    display: block;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    height: 100%;
+    position: relative;
+}
+.vhsendsell .thumb a::before{
+    content: '';
+    position: absolute;
+    background-color: #002c85;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    opacity: 0.75;
+}
+.vhsendsell .thumb a img{
+    width: 100%;
+}
+.vhsendsell .decs{
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    transform: translateY(-50%);
+    text-align: center;
+    pointer-events: none;
+    color: #fff;
+}
+.vhsendsell .decs a{
+    color: #fff; 
+}
+.vhsendsell .decs h3{
+    font-size: 16px;
+    line-height: 24px;
+    text-transform: uppercase;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+.vhsendsell .decs .view a{
+    font-size: 13px;
+    line-height: 21px;
+    text-decoration: underline;
+    text-transform: uppercase;
+    font-weight: bold;
+    display: inline-block;
+}
+.vhsendsell .decs .view a span{
+    display: inline-block;
+    position: relative;
+    padding-right: 15px;
+    text-decoration: underline;
+}
+.vhsendsell .decs .view a span::before{
+    content: '\f0da';
+    right: 0;
+    top: 50%;
+    position: absolute;
+    transform: translateY(-50%);
+    font-family: FontAwesome;
+    -webkit-transition: all 0.3s linear;
+    -o-transition: all 0.3s linear;
+    transition: all 0.3s linear;
+}
+.vhsendsell:hover .decs .view a span::before{
+    right: -5px;
+}
+.lstaddress ul{
+    display: block;
+}
+/* .lstaddress li{
+    padding-left: 0px;
+    display: flex;
+    align-items: baseline;
+} */
+.lstaddress li .img{
+    margin-right: 20px;
+}
+.ctmaps a{
+    font-size: 15px;
+    line-height: 23px;
+    font-weight: bold;
+    color: #ac383b;
+    display: inline-block;
+}
+.ctmaps a:hover{
+    color: #e6c05b;
+}
+.ctmaps a span{
+    margin-left: 8px;
+    display: inline-block;
+}
+.vhcontact .cscontact{
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    color: #ac383b;
+}
+.vhcontact .cscontact, .vhcontact .cscontact h3{
+    font-size: 25px;
+    line-height: 35px;
+    font-weight: bold;
+}
+.div_input input,
+.div_input textarea{
+    padding: 5px 10px !important;
+}
+
+@media all and (min-width: 992px){
+    .tpcontactmc .frmgroup textarea{
+        height: 215px;
+    }
+}
