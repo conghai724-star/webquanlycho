@@ -14,6 +14,13 @@ Class adminController extends baseController
 		
 		$this->view->show("backend/login");
 	}
+	public function register()
+{
+   
+
+    // GET: hiển thị trang đăng ký
+    $this->view->admintmp("register");
+}
 	
 	public function logout(){
 		session_unset();

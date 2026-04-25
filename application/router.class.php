@@ -131,11 +131,11 @@ private function getController() {
 					$args[$k++] = $parts[$i]; 
 				$this->args = $args;
 			} 
-		}elseif($parts[0] == "dich-vu")
+		}elseif($parts[0] == "dang-ky-tai-khoan.html")
 		{
 			// echo $parts[0];
-			$this->controller = "page";
-			$this->action = "services";
+			$this->controller = "admin";
+			$this->action = "register";
 			if(isset( $parts[1]))
 			{
 				$count_args = count($parts);

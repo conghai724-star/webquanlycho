@@ -2820,7 +2820,8 @@ Class apiController extends baseController
 		$password = $db->escapestring($_POST["password"]);
 		
 		$password = md5($password);
-		$db->query("SELECT * FROM hicrm_users WHERE user_email = '".$email."' AND user_password = '".$password."' OR user_username ='".$email."' AND user_status = 1 ");
+		$db->query("SELECT * FROM hicrm_users WHERE user_email = '".$email."' AND user_password = '".$password."' AND user_status = 1 ");
+		// echo $password;
         if($db->num_row())
         {
             $row = $db->fetch_object(true);
@@ -4717,6 +4718,107 @@ Class apiController extends baseController
 		echo json_encode($result);
 	}
 	//AGENCY API
+
+	//Student API
+	public function addstudent()
+	{
+		global $db;
+
+		// POST: xử lý tạo tài khoản sinh viên
+		if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+			header('Content-Type: application/json; charset=utf-8');
+	
+			$studentCode = isset($_POST['student_code']) ? trim($_POST['student_code']) : '';
+			$studentName = isset($_POST['student_name']) ? trim($_POST['student_name']) : '';
+	
+			if ($studentCode === '' || $studentName === '') {
+				echo json_encode(array(
+					'success' => false,
+					'message' => 'Vui lòng nhập đầy đủ mã sinh viên và họ tên.'
+				));
+				return;
+			}
+	
+			$studentCode = $db->escapestring($studentCode);
+			$studentName = $db->escapestring($studentName);
+	
+			/**
+			 * IMPORTANT:
+			 * Đổi tên bảng/cột theo DB thật của bạn.
+			 * Ví dụ mình dùng: hicrm_students(student_code, student_name, student_email, student_phone)
+			 */
+			
+			$db->query("
+				SELECT * FROM hicrm_students
+				WHERE student_code = '".$studentCode."'
+				  AND student_name = '".$studentName."'
+				LIMIT 1
+			");
+
+	
+			if (!$db->num_row()) {
+				echo json_encode(array(
+					'success' => false,
+					'message' => 'Không tồn tại sinh viên "'.$studentName.'" trong hệ thống'
+				));
+				return;
+			}
+	
+			$student = $db->fetch_object(true);
+	
+			// Kiểm tra tài khoản đã tồn tại chưa (tránh trùng)
+			$db->query("
+				SELECT id FROM hicrm_users
+				WHERE user_username = '".$studentCode."'
+				LIMIT 1
+			");
+	
+			if ($db->num_row()) {
+				echo json_encode(array(
+					'success' => false,
+					'message' => 'Tài khoản sinh viên đã tồn tại.'
+				));
+				return;
+			}
+	
+			// Tạo tài khoản mới
+			$username = $studentCode; // username lấy theo mã sinh viên
+			$rawPassword = $studentCode; // có thể đổi sang random + gửi mail
+			$user_password = md5($rawPassword); // đồng bộ hệ thống hiện tại đang dùng md5
+			$user_email = !empty($student->student_email) ? $db->escapestring($student->student_email) : $studentCode.'@sv.local';
+	
+			$registerTime = date('Y-m-d H:i:s');
+	
+			$db->query("INSERT INTO hicrm_users(
+				user_username,
+				user_password,
+				user_email,
+				user_role,
+				user_category,
+				user_status,
+				user_is_subscribed,
+				user_created_date
+			) VALUES (
+				'".$username."',
+				'".$user_password."',
+				'".$user_email."',
+				'1',
+				'3',
+				'1',
+				'0',
+				'".date('Y-m-d H:i:s')."'
+			)");
+	
+			echo json_encode(array(
+				'status' => 200,
+				'message' => 'Tạo tài khoản thành công cho sinh viên '.$studentName,
+				'username' => $studentName,
+				'username' => $studentCode,
+				'default_password' => $rawPassword
+			));
+			return;
+		}
+	}
 	
 }
 
