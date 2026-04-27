@@ -231,40 +231,64 @@
 	});
 		
 		
-		$("#add-student").click(function(e) {
-			var s_code = $("#s_code").val();
-			var s_name = $("#s_name").val();
-			$.ajax({
-				"type": "POST",
-				"url": "<?php echo XC_URL; ?>/api/addstudent",
-				"data": {
-					'student_code': s_code,
-					'student_name': s_name
-				},
-				"dataType":'json',
-				success:function(data){
-					if(data.status == 200){
-						Swal.fire({
-						  icon: 'success',
-						  title: "Sinh viên: " + s_name,
-						  text: "Tài khoản đã được tạo thành công",
-						  footer: 'Tài khoản đăng nhập: <b> '+data.username + '<br>Mật khẩu của bạn là: <b> '+data.default_password,   
-						  timer: 10000
-						})
-						setTimeout(function(){ window.location.href=data.return_url;     }, 10000);
-					}else{
-						Swal.fire({
-						  icon: 'error',
-						  title: "Lỗi",
-						  text: data.message,
-						  footer: '<a href=""></a>'
-						})
-					}
-				}
-			
-			});
-			return false;
-		});
+    $("#add-student").click(function(e) {
+    e.preventDefault();
+
+    var s_code = $("#s_code").val();
+    var s_name = $("#s_name").val();
+
+    //Hiển thị loading ngay khi click
+    Swal.fire({
+        title: 'Đang kiểm tra...',
+        text: 'Vui lòng chờ trong giây lát',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    $.ajax({
+        type: "POST",
+        url: "<?php echo XC_URL; ?>/api/addstudent",
+        data: {
+            student_code: s_code,
+            student_name: s_name
+        },
+        dataType: 'json',
+
+        success: function(data){
+            // Delay 0.5s để tạo cảm giác đang xử lý
+            setTimeout(function(){
+
+                if(data.status == 200){
+                    Swal.fire({
+                        icon: 'success',
+                        title: "Sinh viên: " + s_name,
+                        text: "Tài khoản đã được tạo thành công",
+                        footer: 'User: <b>'+data.username+'</b><br>Password: <b>'+data.default_password+'</b>',
+                        timer: 10000
+                    });
+
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Cảnh báo',
+                        text: data.message
+                    });
+                }
+
+            }, 700); // 👈 0.5 giây
+        },
+
+        error: function(){
+            Swal.fire({
+                icon: 'error',
+                title: 'Lỗi server',
+                text: 'Không thể kết nối API'
+            });
+        }
+    });
+});
 	
 		
 	
@@ -413,64 +437,7 @@
         }
     }
 
-    // Xác nhận tạo tài khoản
-    function confirmCreateAccount(studentName, studentId) {
-    Swal.fire({
-        title: 'Xác nhận',
-        text: `Hệ thống sẽ khởi tạo tài khoản cho sinh viên ${studentName}. Bạn có chắc chắn không?`,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#1760a5',
-        cancelButtonColor: '#ccc',
-        confirmButtonText: 'Đồng ý',
-        cancelButtonText: 'Hủy',
-        allowOutsideClick: false
-       
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // 1. Hiển thị icon đang xử lý
-            Swal.fire({
-                title: 'Đang xử lý...',
-                text: 'Vui lòng chờ trong giây lát',
-                allowOutsideClick: false,
-                showConfirmButton: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
-            console.log(studentName, studentId);
-            // 2. Gửi API bằng jQuery AJAX
-            $.ajax({
-                url: '<?php echo XC_URL; ?>/api/createAccountStudent', // Đường dẫn đến file xử lý phía server
-                type: 'POST',
-                data: {
-                    action: 'create_student_account',
-                    student_id: studentId,
-                    student_name: studentName
-                },
-                dataType: 'json',
-                success: function(response) {
-                    // Giả lập trễ 1s để người dùng thấy icon loading (tùy chọn)
-                    setTimeout(() => {
-                        if (response.success) {
-                            Swal.fire({
-                                title: 'Thành công',
-                                text: response.message || 'Tài khoản đã được tạo!',
-                                icon: 'success',
-                                confirmButtonColor: '#1760a5'
-                            });
-                        } else {
-                            Swal.fire('Lỗi', response.message || 'Có lỗi xảy ra', 'error');
-                        }
-                    }, 1000);
-                },
-                error: function(xhr, status, error) {
-                    Swal.fire('Lỗi hệ thống', 'Không thể kết nối đến máy chủ: ' + error, 'error');
-                }
-            });
-        }
-    });
-}
+   
 
     // Logic validate cho Candidate và Employer (giữ nguyên của bạn)
     function validateForm(form) {

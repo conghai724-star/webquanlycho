@@ -14,6 +14,9 @@ Class adminController extends baseController
 		
 		$this->view->show("backend/login");
 	}
+	public function employyer(){
+		$this->view->admintmp('employyer');
+	}
 	public function register()
 {
    

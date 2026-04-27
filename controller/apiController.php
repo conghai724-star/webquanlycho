@@ -4718,12 +4718,12 @@ Class apiController extends baseController
 		echo json_encode($result);
 	}
 	//AGENCY API
-
-	//Student API
-	public function addstudent()
+/// Start Code Cuong
+// API Student register
+public function addstudent()
 	{
 		global $db;
-
+		$result = array();
 		// POST: xử lý tạo tài khoản sinh viên
 		if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			header('Content-Type: application/json; charset=utf-8');
@@ -4732,24 +4732,19 @@ Class apiController extends baseController
 			$studentName = isset($_POST['student_name']) ? trim($_POST['student_name']) : '';
 	
 			if ($studentCode === '' || $studentName === '') {
-				echo json_encode(array(
-					'success' => false,
-					'message' => 'Vui lòng nhập đầy đủ mã sinh viên và họ tên.'
-				));
+					$result['status'] = 400;
+					$result['message'] = 'Vui lòng nhập đầy đủ mã sinh viên và họ tên.';
+			
+				echo json_encode($result);
 				return;
 			}
 	
 			$studentCode = $db->escapestring($studentCode);
 			$studentName = $db->escapestring($studentName);
 	
-			/**
-			 * IMPORTANT:
-			 * Đổi tên bảng/cột theo DB thật của bạn.
-			 * Ví dụ mình dùng: hicrm_students(student_code, student_name, student_email, student_phone)
-			 */
-			
+					
 			$db->query("
-				SELECT * FROM hicrm_students
+				SELECT * FROM hicrm_student_profile
 				WHERE student_code = '".$studentCode."'
 				  AND student_name = '".$studentName."'
 				LIMIT 1
@@ -4783,9 +4778,9 @@ Class apiController extends baseController
 	
 			// Tạo tài khoản mới
 			$username = $studentCode; // username lấy theo mã sinh viên
-			$rawPassword = $studentCode; // có thể đổi sang random + gửi mail
-			$user_password = md5($rawPassword); // đồng bộ hệ thống hiện tại đang dùng md5
-			$user_email = !empty($student->student_email) ? $db->escapestring($student->student_email) : $studentCode.'@sv.local';
+			$rawPassword = $studentCode; // có thể đổi sang random + gửi mail (sẽ thực hiện sau. Tạm thời dùng password là mã sinh viên)
+			$user_password = md5($rawPassword);
+			$user_email = !empty($student->student_email) ? $db->escapestring($student->student_email) : $studentCode.'@sv.cdkt';
 	
 			$registerTime = date('Y-m-d H:i:s');
 	
@@ -4819,6 +4814,11 @@ Class apiController extends baseController
 			return;
 		}
 	}
+
+
+//End API student register
+// end code Cương
+	
 	
 }
 
