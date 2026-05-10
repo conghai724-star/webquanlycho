@@ -6,8 +6,7 @@
         <!--Nav Start-->
         <nav class="nav navbar navbar-expand-lg navbar-light iq-navbar">
           <div class="container-fluid navbar-inner">
-            <a href="../dashboard/index.html" class="navbar-brand">
-                
+            <a href="" class="navbar-brand">
                 <!--Logo start-->
                 <div class="logo-main">
                     <div class="logo-normal">

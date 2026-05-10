@@ -15,6 +15,7 @@ Class adminController extends baseController
 		$this->view->show("backend/login");
 	}
 	public function employyer(){
+		
 		$this->view->admintmp('employyer');
 	}
 	public function register()
@@ -32,37 +33,40 @@ Class adminController extends baseController
 	public function users($para)
 	{
 		
-		global $db;
+		$userModel = $this->model->get('userModel');
 		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ header("Location: ".XC_URL."/admin/login"); }
-		if(isset($para[1]) && $para[1] == "detail" ){
-			$id = $para[2];
-			// print_r('aaa');
-			$db->query("SELECT *, u.id as uid FROM hicrm_users as u 
-					LEFT JOIN hicrm_status as s ON u.user_status = s.id
-					LEFT JOIN hicrm_user_groups as g ON u.user_group = g.id
-					LEFT JOIN hicrm_departments as d ON u.user_dept = d.id
-					WHERE u.id = '".$id."'");
-			$user = $db->fetch_object(true);		
-			$this->view->data['user'] = $user;
-			$this->view->show('backend/user-detail');
-		}else{
-			$db->query("SELECT *, u.id as uid FROM hicrm_users as u 
-						LEFT JOIN hicrm_status as s ON u.user_status = s.id
-						LEFT JOIN hicrm_user_groups as g ON u.user_group = g.id
-						LEFT JOIN hicrm_departments as d ON u.user_dept = d.id
-						WHERE u.user_status NOT IN(99)
-						");
-			$users = $db->fetch_object();
-			$db->query("SELECT * FROM hicrm_departments");
-			$departments = $db->fetch_object();
-			$db->query("SELECT * FROM hicrm_user_groups");
-			$user_group = $db->fetch_object();
-			$this->view->data['positions'] = $positions;
-			$this->view->data['departments'] = $departments;
-			$this->view->data['user_group'] = $user_group;
-			$this->view->data['users'] = $users;
-			$this->view->show("backend/users");
+		if(isset($para[1]) && $para[1] == "add"){
+			$this->view->data['method'] = 'add';
+			$this->view->data['user_categories'] = $userModel->get_user_category();
+			$this->view->data['roles'] = $userModel->role_user();
+			$this->view->data['pagetitle'] = 'Thêm tài khoản';
+			$this->view->admintmp("user-action");
+		}elseif(isset($para[1]) && $para[1] == "edit"){
+			$this->view->data['method'] = 'edit';
+			$this->view->data['user_categories'] = $userModel->get_user_category();
+			$this->view->data['roles'] = $userModel->role_user();
+			$this->view->data['user'] = $userModel->get_user($para[2]);
+			$this->view->data['pagetitle'] = 'Sửa tài khoản';
+			$this->view->admintmp("user-action");
+		}elseif(isset($para[1]) && $para[1] == "detail"){
+			$this->view->data['method'] = 'detail';
+			$this->view->data['pagetitle'] = 'Chi tiết tài khoản';
+			$this->view->admintmp("user-action");
+		}elseif(isset($para[1]) && $para[1] == "role"){
+			$this->view->data['roles'] = $userModel->role_user();
+			$this->view->data['user'] = $userModel->get_user($para[2]);
+			$this->view->data['role_detail'] = $userModel->role_user_detail($userModel->get_user($para[2])->user_group);
+			$this->view->data['user_roles'] = $userModel->get_user_role();
+			$this->view->data['method'] = 'role';
+			$this->view->data['pagetitle'] = 'Thêm nhóm quyền';
+			$this->view->admintmp("user-role");
 		}
+		else{
+			$this->view->data['active_menu'] = "users";
+			$this->view->data['users'] = $userModel->get_user_list();
+			$this->view->admintmp("users");
+		}
+		
 	}
 	public function editusers($para){
 		$id = $para[1];

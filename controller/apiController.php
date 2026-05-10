@@ -34,20 +34,19 @@ Class apiController extends baseController
 	public function adduser(){
 		global $db;
 		
-		$user_fullname = $_POST['user_fullname'];
+		// $user_fullname = $_POST['user_fullname'];
 		$user_email = $db->escapestring($_POST['user_email']);
-		$user_phone = $_POST['user_phone'];
-		$user_address = $_POST['user_address'];
 		$user_username = $db->escapestring($_POST['user_username']);
 		$user_password = md5($db->escapestring($_POST['user_password']));
 		// $user_password_confirm = md5($db->escapestring($_POST['user_password_confirm']));	
-		$user_avatar = $_POST['user_avatar'];
-		$user_group = $_POST['user_group'];
-		$user_dept = $_POST['user_dept'];
+		// $user_avatar = $_POST['user_avatar'];
+		// $user_group = $_POST['user_group'];
+		// $user_dept = $_POST['user_dept'];
+		$user_category = $_POST['user_category'];
 		$user_status = 1;
 		$user_commission = 0.00;
 		$user_basic_salary = 0.00;
-		$user_register_time = date("Y-m-d H:i:s");
+		$user_created_date = date("Y-m-d H:i:s");
 		$result = array();
 		// echo $user_fullname . 'aeqwe';
 		$error = '';
@@ -80,12 +79,43 @@ Class apiController extends baseController
 			// $db->query("INSERT INTO hicrm_users(user_username, user_password, user_email, user_fullname, user_phone, user_group, user_dept, user_address, user_avatar, user_status, user_commission, user_basic_salary, user_register_time) VALUES ('".$user_username."','".$user_password."','".$user_email."','".$user_fullname."','".$user_phone."','".$user_group."','".$user_dept."','".$user_address."','".$user_avatar."','".$user_status."','".$user_commission."','".$user_basic_salary."','".$user_register_time."') "); 
 			// $result['status'] = 200;
 			// }
-			$db->query("INSERT INTO hicrm_users(user_username, user_password, user_email, user_fullname, user_phone, user_group, user_dept, user_address, user_avatar, user_status, user_commission, user_basic_salary, user_register_time) VALUES ('".$user_username."','".$user_password."','".$user_email."','".$user_fullname."','".$user_phone."','".$user_group."','".$user_dept."','".$user_address."','".$user_avatar."','".$user_status."','".$user_commission."','".$user_basic_salary."','".$user_register_time."') "); 
+			$db->query("INSERT INTO hicrm_users(user_username, user_password, user_email, user_role, user_category, user_status, user_is_subscribed, user_created_date) VALUES
+			 ('".$user_username."','".$user_password."','".$user_email."','0','".$user_category."','1','0','".$user_created_date."')"); 
 			$result['status'] = 200;
 		
 		echo json_encode($result);
 		
 	}
+	public function resetpassword(){
+		global $db;
+		$result = array();
+		$id = isset($_POST['id']) ? $db->escapestring($_POST['id']) : '';
+		if(empty($id)){
+			$result['status'] = 400;
+			$result['message'] = 'ID người dùng không hợp lệ';
+			echo json_encode($result);
+			return;
+		}
+
+		$db->query("SELECT * FROM hicrm_users WHERE id = '".$id."'");
+		$user = $db->fetch_object(true);
+		if(!$db->num_row($user)){
+			$result['status'] = 404;
+			$result['message'] = 'Người dùng không tồn tại';
+			echo json_encode($result);
+			return;
+		}
+
+		$chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+		$new_password = substr(str_shuffle(str_repeat($chars, 8)), 0, 8);
+		$hashed_password = md5($db->escapestring($new_password));
+
+		$db->query("UPDATE hicrm_users SET user_password = '".$hashed_password."' WHERE id = '".$id."'");
+
+		$result['status'] = 200;
+		$result['new_password'] = $new_password;
+		echo json_encode($result);
+	}	
 	////Update user
 	public function updateUser(){
 		

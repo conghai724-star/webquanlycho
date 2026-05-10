@@ -345,7 +345,7 @@
             </div>
             <div class="form-group full-width" style="margin-top: -10px;">
                 <button type="button" class="btn-search" id='add-student'>
-                    <i class="fas fa-search"></i> Tìm kiếm sinh viên
+                    <i class="fas fa-search"></i> Tìm kiếm & Tạo tài khoản sinh viên
                 </button>
             </div>
             

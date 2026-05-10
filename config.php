@@ -33,7 +33,7 @@ define('ThemeMaster', 'frontend'); //Replace xpanel by your theme's name
 define('AdminThemeMaster', 'backend'); //Replace xpanel by your admin theme's name
 
 /*** define site path ***/  
-define('XC_URL','http://localhost/vieclam.vn/');
+define('XC_URL','http://localhost/vieclam.vn');
 $siteurl = XC_URL;
 /*** template path ***/
 $template_path = XC_URL.'/template/'.ThemeMaster; //Warning: Don't change here
