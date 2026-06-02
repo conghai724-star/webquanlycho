@@ -181,25 +181,9 @@
                      <div class="new-user-info">
                         <form action="#" method="POST" id="frm-role">
                            <div class="row">
-                              <!-- Bên trái: Thông tin cơ bản -->
-                              <div class="col-md-4">
-                                 <h5>Thông tin tài khoản</h5>
-                                 <br>
-                                 <div class="form-group mb-2">
-                                    <label class="form-label" for="username">Tên đăng nhập: <?php echo isset($user) ? $user->user_username : ''; ?></label>
-                                    
-                                 </div>
-                                 <div class="form-group mb-2">
-                                    <label class="form-label" for="email">Email: <?php echo isset($user) ? $user->user_email : ''; ?></label>
-                                    
-                                 </div>
-                                 
-                              </div>
 
                               <!-- Bên phải: Nhóm quyền và quyền chi tiết -->
                               <div class="col-md-8">
-                                 <h5>Phân quyền</h5>
-
                                  <!-- Nhóm quyền -->
                                  <div class="form-group mb-3">
                                     <label class="form-label">Nhóm quyền:</label>

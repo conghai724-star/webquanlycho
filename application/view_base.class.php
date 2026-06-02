@@ -20,12 +20,12 @@ private static $instance;
  *
  */
 function __construct() {
-	$this->home  = &home::getInstance();
-	$this->url  = &general::getInstance();
-	$this->helper  = &general::getInstance();
-	$this->shop  = &shop::getInstance();
-	$this->erp  = &erp::getInstance();
-	$this->pdf  = &pdf::getInstance();
+	$this->home  = home::getInstance();
+	$this->url  = general::getInstance();
+	$this->helper  = general::getInstance();
+	$this->shop  = shop::getInstance();
+	$this->erp  = erp::getInstance();
+	$this->pdf  = pdf::getInstance();
 }
 
 public static function getInstance() {

@@ -1,424 +1,144 @@
-<?php require "header_new.php"; ?>
+<?php require "header.php"; ?>
 
 <style>
-    /* Reset nhỏ gọn */
-* {
-    box-sizing: border-box;
+/* ===== CONTACT PAGE ===== */
+.contact-page{background:linear-gradient(180deg,#f5f8fc 0%,#ffffff 55%,#f4f5f6 100%);overflow:hidden}
+.contact-hero{position:relative;padding:58px 20px 42px;background:radial-gradient(circle at 15% 20%,rgba(13,78,150,.16),transparent 30%),radial-gradient(circle at 85% 10%,rgba(132,68,4,.16),transparent 28%),linear-gradient(135deg,#0d4e96 0%,#073763 58%,#844404 100%);color:#fff}
+.contact-hero:after{content:'';position:absolute;left:-8%;right:-8%;bottom:-62px;height:110px;background:#fff;border-radius:50% 50% 0 0/100% 100% 0 0}
+.contact-hero-inner{max-width:none;margin:0 auto;position:relative;z-index:1;display:grid;grid-template-columns:1.15fr .85fr;gap:34px;align-items:center}
+.contact-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.26);padding:7px 14px;border-radius:999px;font-size:13px;font-weight:700;margin-bottom:18px;backdrop-filter:blur(8px)}
+.contact-hero h1{font-size:42px;line-height:1.16;font-weight:800;letter-spacing:-1px;margin-bottom:14px;max-width:760px}
+.contact-hero p{font-size:15px;line-height:1.8;color:rgba(255,255,255,.86);max-width:650px}
+.contact-hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}.contact-btn{display:inline-flex;align-items:center;gap:8px;padding:12px 18px;border-radius:14px;font-weight:800;font-size:14px;transition:.2s;border:1px solid rgba(255,255,255,.22)}
+.contact-btn.primary{background:#fff;color:#0d4e96}.contact-btn.secondary{background:rgba(255,255,255,.12);color:#fff}.contact-btn:hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(0,0,0,.18)}
+.contact-hero-card{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);border-radius:28px;padding:22px;box-shadow:0 24px 70px rgba(0,0,0,.18);backdrop-filter:blur(12px)}
+.hero-card-top{display:flex;align-items:center;gap:14px;margin-bottom:18px}.hero-card-icon{width:54px;height:54px;border-radius:18px;background:#fff;color:#0d4e96;display:flex;align-items:center;justify-content:center;font-size:27px;box-shadow:0 12px 28px rgba(0,0,0,.14)}
+.hero-card-title{font-size:16px;font-weight:800}.hero-card-sub{font-size:12px;color:rgba(255,255,255,.72);margin-top:3px}.hero-mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.hero-mini{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.17);border-radius:16px;padding:13px}.hero-mini b{display:block;font-size:18px;color:#fff}.hero-mini span{font-size:11px;color:rgba(255,255,255,.72)}
+.contact-main{max-width:none;margin:0 auto;padding:54px 20px 44px;position:relative;z-index:2}.contact-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:22px;align-items:stretch}.contact-panel{background:#fff;border:1px solid #e9eef6;border-radius:26px;box-shadow:0 16px 46px rgba(13,78,150,.08);overflow:hidden}.contact-panel.pad{padding:24px}.panel-title{font-size:22px;font-weight:800;color:#111;margin-bottom:8px}.panel-desc{font-size:13px;color:#687385;line-height:1.7;margin-bottom:22px}.info-list{display:grid;gap:14px}.info-item{display:flex;gap:13px;align-items:flex-start;padding:14px;border:1px solid #edf2f8;border-radius:18px;background:linear-gradient(180deg,#fff,#f8fbff);transition:.2s}.info-item:hover{border-color:#0d4e96;transform:translateY(-2px);box-shadow:0 10px 24px rgba(13,78,150,.08)}.info-icon{width:42px;height:42px;border-radius:14px;background:#eef5ff;color:#0d4e96;display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0}.info-label{font-size:12px;font-weight:700;color:#8a95a6;text-transform:uppercase;letter-spacing:.4px}.info-value{font-size:14px;font-weight:700;color:#1f2937;margin-top:3px;line-height:1.5}.info-note{font-size:12px;color:#788398;margin-top:2px;line-height:1.5}.contact-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:20px}.contact-stat{border-radius:18px;background:#0d4e96;color:#fff;padding:16px 12px;text-align:center}.contact-stat:nth-child(2){background:#844404}.contact-stat:nth-child(3){background:#143d63}.contact-stat b{display:block;font-size:20px}.contact-stat span{font-size:11px;opacity:.78}.map-card{display:flex;flex-direction:column}.map-head{padding:22px 24px 16px;display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.map-title{font-size:22px;font-weight:800;color:#111}.map-desc{font-size:13px;color:#687385;margin-top:7px;line-height:1.6}.map-badge{display:inline-flex;align-items:center;gap:7px;background:#fff7ed;color:#844404;border:1px solid #fed7aa;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:800;white-space:nowrap}.map-wrap{height:458px;margin:0 16px 16px;border-radius:22px;overflow:hidden;border:1px solid #e5ecf5;position:relative;background:#e9eef6}.map-wrap iframe{width:100%;height:100%;border:0;display:block}.contact-form-section{display:grid;grid-template-columns:1fr .95fr;gap:22px;margin-top:22px}.contact-form{background:#fff;border:1px solid #e9eef6;border-radius:26px;padding:24px;box-shadow:0 16px 46px rgba(13,78,150,.08)}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.form-group{display:flex;flex-direction:column;gap:7px}.form-group.full{grid-column:1/-1}.form-group label{font-size:12px;font-weight:800;color:#334155}.form-group input,.form-group textarea,.form-group select{border:1px solid #dfe7f2;border-radius:14px;padding:12px 14px;font-family:inherit;font-size:14px;outline:none;background:#fbfdff;transition:.18s}.form-group textarea{min-height:120px;resize:vertical}.form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:#0d4e96;box-shadow:0 0 0 4px rgba(13,78,150,.1);background:#fff}.submit-btn{margin-top:14px;width:100%;border:0;border-radius:16px;padding:14px 18px;background:linear-gradient(135deg,#0d4e96,#073763);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:.2s}.submit-btn:hover{transform:translateY(-2px);box-shadow:0 14px 28px rgba(13,78,150,.22)}.support-card{border-radius:26px;padding:24px;background:linear-gradient(135deg,#111827,#0d4e96);color:#fff;position:relative;overflow:hidden;box-shadow:0 18px 48px rgba(13,78,150,.16)}.support-card:before{content:'';position:absolute;width:220px;height:220px;border-radius:50%;right:-70px;top:-70px;background:rgba(255,255,255,.11)}.support-card>*{position:relative}.support-card h3{font-size:24px;margin-bottom:10px}.support-card p{font-size:13px;line-height:1.8;color:rgba(255,255,255,.78);margin-bottom:18px}.support-steps{display:grid;gap:12px}.support-step{display:flex;gap:12px;align-items:flex-start;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.13);border-radius:16px;padding:13px}.support-step i{font-size:22px;color:#ffd08a}.support-step b{display:block;font-size:13px}.support-step span{display:block;font-size:12px;color:rgba(255,255,255,.72);margin-top:3px;line-height:1.5}.faq-strip{margin-top:22px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.faq-item{background:#fff;border:1px solid #e9eef6;border-radius:20px;padding:18px;box-shadow:0 10px 28px rgba(15,23,42,.05)}.faq-item i{font-size:24px;color:#0d4e96}.faq-item b{display:block;font-size:14px;margin:8px 0 5px;color:#111}.faq-item span{font-size:12px;line-height:1.6;color:#64748b}
+@media(max-width:1024px){.contact-hero-inner,.contact-grid,.contact-form-section{grid-template-columns:1fr}.contact-hero-card{max-width:560px}.map-wrap{height:390px}.faq-strip{grid-template-columns:1fr 1fr}}
+@media(max-width:768px){.contact-hero{padding:42px 16px 38px}.contact-hero h1{font-size:32px}.contact-main{padding:44px 14px 34px}.contact-panel.pad,.contact-form,.support-card{padding:18px}.map-head{padding:18px;flex-direction:column}.map-wrap{margin:0 12px 12px;height:330px}.contact-stats,.faq-strip{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.hero-mini-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.contact-hero h1{font-size:26px}.contact-hero p{font-size:13px}.contact-hero-actions{flex-direction:column}.contact-btn{justify-content:center;width:100%}.hero-mini-grid{grid-template-columns:1fr}.panel-title,.map-title{font-size:19px}.info-item{padding:12px}.map-wrap{height:290px;border-radius:18px}.contact-form-section{gap:14px}.contact-page{background:#f6f8fb}}
+/* Responsive hardening for shared header/footer layout */
+.contact-page *{box-sizing:border-box}
+.contact-page img,.contact-page iframe{max-width:100%}
+.contact-page a,.contact-page button,.contact-page input,.contact-page select,.contact-page textarea{min-width:0}
+.contact-hero-inner,.contact-grid,.contact-form-section,.faq-strip,.hero-mini-grid,.form-grid{min-width:0}
+.contact-panel,.contact-form,.support-card,.faq-item,.contact-hero-card{min-width:0}
+.info-value,.info-note,.panel-desc,.map-desc,.support-card p,.support-step span,.faq-item span{overflow-wrap:anywhere}
+.form-group input,.form-group textarea,.form-group select{width:100%}
+@media(max-width:900px){
+  .contact-hero-card{width:100%;margin:0 auto}
+  .contact-main{padding-top:46px}
+  .map-wrap{height:360px}
 }
-
-/* Container */
-.ctn {
-    width: 100%;
-    max-width: 1200px;
-    padding: 0 20px;
-    margin: 0 auto 40px auto;
+@media(max-width:640px){
+  .contact-hero{padding:38px 14px 34px}
+  .contact-hero:after{bottom:-42px;height:78px}
+  .contact-hero h1{font-size:30px;letter-spacing:0}
+  .contact-eyebrow{font-size:12px;padding:7px 10px}
+  .contact-main{padding:38px 12px 30px}
+  .contact-panel,.contact-form,.support-card{border-radius:20px}
+  .info-item,.support-step{gap:10px}
+  .map-head{gap:10px}
+  .map-badge{white-space:normal}
+  .submit-btn{font-size:14px}
 }
-
-/* Tiêu đề */
-#pctHead {
-    text-align: center;
-    margin-bottom: 40px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-size: clamp(20px, 2.5vw, 32px);
-}
-
-/* Grid contact */
-.contact-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 30px;
-    margin-bottom: 60px;
-}
-
-/* Block */
-.contact-info-block,
-.contact-map-block {
-    background: #fff;
-    border-radius: 14px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-    border: 1px solid #eef2f6;
-    overflow: hidden;
-}
-
-/* Header block */
-.sbHead {
-    background-color: #1760a5;
-    color: #fff;
-    padding: 18px 20px;
-    font-weight: 600;
-    font-size: clamp(14px, 1.2vw, 18px);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-/* Contact content */
-.contact-container {
-    padding: 25px;
-}
-
-.contact-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 15px;
-    margin-bottom: 20px;
-}
-
-.icon-box {
-    background-color: #e8f1f8;
-    color: #1760a5;
-    width: 45px;
-    height: 45px;
-    min-width: 45px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-radius: 10px;
-    transition: 0.3s;
-}
-
-.contact-item:hover .icon-box {
-    background-color: #1760a5;
-    color: #fff;
-}
-
-.content {
-    font-size: clamp(14px, 1vw, 16px);
-    line-height: 1.6;
-    overflow-wrap: break-word;
-}
-
-.bold-text {
-    font-weight: 700;
-    color: #1760a5;
-}
-
-/* Map responsive */
-#pctMaps-img {
-    position: relative;
-    width: 100%;
-    padding-bottom: 60%;
-    height: 0;
-}
-
-#pctMaps-img iframe {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-}
-
-/* Form */
-.form-container {
-    width: 100%;
-    max-width: 1000px;
-    margin: 0 auto;
-    padding: 50px 40px;
-    background: #fff;
-    border-radius: 16px;
-    box-shadow: 0 15px 40px rgba(0,0,0,0.08);
-    border: 1px solid #eef2f6;
-}
-
-.form-container h2 {
-    text-align: center;
-    margin-bottom: 35px;
-    font-size: clamp(18px, 2vw, 26px);
-}
-
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 30px;
-}
-
-.form-column {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-}
-
-.form-container input,
-.form-container textarea {
-    width: 100%;
-    padding: 14px 18px;
-    border: 1px solid #e0e6ed;
-    border-radius: 8px;
-    font-size: 15px;
-    background: #fcfdfe;
-    transition: 0.3s;
-}
-
-.form-container input:focus,
-.form-container textarea:focus {
-    border-color: #1760a5;
-    background: #fff;
-    box-shadow: 0 0 0 3px rgba(23,96,165,0.15);
-    outline: none;
-}
-
-.form-container textarea {
-    min-height: 180px;
-    resize: vertical;
-}
-
-/* Button */
-.btn-submit {
-    margin-top: 25px;
-    background: linear-gradient(135deg, #1760a5 0%, #69bce3 100%);
-    color: #fff;
-    border: none;
-    padding: 14px 40px;
-    border-radius: 50px;
-    font-weight: 600;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    transition: 0.3s;
-}
-
-.btn-submit:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(23,96,165,0.3);
-}
-.btn-wrap {
-    text-align: center;
-    margin-top: 30px;
-}
-
-/* ================= RESPONSIVE ================= */
-
-/* Tablet */
-@media (max-width: 992px) {
-    .contact-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .form-row {
-        grid-template-columns: 1fr;
-    }
-
-    .form-container {
-        padding: 40px 25px;
-    }
-}
-
-/* Mobile */
-@media (max-width: 576px) {
-    .ctn {
-        padding: 0 15px;
-    }
-
-    .contact-container {
-        padding: 20px;
-    }
-
-    .icon-box {
-        width: 40px;
-        height: 40px;
-    }
-
-    .btn-submit {
-        width: 100%;
-        justify-content: center;
-    }
+@media(max-width:420px){
+  .contact-hero{padding-left:12px;padding-right:12px}
+  .contact-hero h1{font-size:26px}
+  .contact-hero-card{padding:16px;border-radius:20px}
+  .hero-card-top{align-items:flex-start}
+  .hero-card-icon,.info-icon{width:38px;height:38px;border-radius:13px;font-size:19px}
+  .contact-panel.pad,.contact-form,.support-card{padding:16px}
+  .info-item{padding:11px;border-radius:15px}
+  .map-head{padding:16px}
+  .map-wrap{height:260px;margin:0 10px 10px;border-radius:16px}
+  .support-card h3{font-size:21px}
+  .faq-item{padding:15px;border-radius:16px}
 }
 </style>
-</section>    
-<div id="breadcrumbs">
-   <div class="ctn">
-      <div id="crumbs"><a href="index.html">Trang chủ</a> <span>/</span> <a class="current">Liên hệ</a></div>
-   </div>
-</div>
-<div class="ctn">
-    <h1 id="pctHead" style="color:#1760a5;">THÔNG TIN LIÊN HỆ & GÓP Ý</h1>
 
+<main class="contact-page">
+  <section class="contact-hero">
+    <div class="contact-hero-inner">
+      <div>
+        <div class="contact-eyebrow"><i class="ti ti-headset"></i> Trung tâm hỗ trợ & kết nối việc làm</div>
+        <h1>Liên hệ với Cổng thông tin việc làm</h1>
+        <p>Chúng tôi luôn sẵn sàng hỗ trợ sinh viên, người tìm việc và nhà tuyển dụng trong quá trình đăng tin, ứng tuyển, tạo CV và kết nối cơ hội nghề nghiệp.</p>
+        <div class="contact-hero-actions">
+          <a class="contact-btn primary" href="tel:02603860929"><i class="ti ti-phone-call"></i> Gọi ngay</a>
+          <a class="contact-btn secondary" href="mailto:vieclam@kontum.edu.vn"><i class="ti ti-mail"></i> Gửi email</a>
+        </div>
+      </div>
+      <div class="contact-hero-card">
+        <div class="hero-card-top">
+          <div class="hero-card-icon"><i class="ti ti-building-community"></i></div>
+          <div><div class="hero-card-title">Trường Cao đẳng Kon Tum</div><div class="hero-card-sub">Đồng hành cùng sinh viên và doanh nghiệp</div></div>
+        </div>
+        <div class="hero-mini-grid">
+          <div class="hero-mini"><b>24/7</b><span>Tiếp nhận thông tin trực tuyến</span></div>
+          <div class="hero-mini"><b>48h</b><span>Phản hồi yêu cầu hỗ trợ</span></div>
+          <div class="hero-mini"><b>100+</b><span>Đối tác tuyển dụng</span></div>
+          <div class="hero-mini"><b>1 chạm</b><span>Kết nối cơ hội việc làm</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="contact-main">
     <div class="contact-grid">
-        <div class="contact-info-block">
-            <div class="sbHead">
-                <i class="fa-solid fa-circle-info"></i>
-                Phòng khám Đa khoa & Nhà thuốc Trường Cao đẳng Kon Tum
-            </div>
-            <div class="contact-container">
-                <div class="contact-item">
-                    <div class="icon-box"><i class="fa-solid fa-location-dot"></i></div>
-                    <div class="content">
-                        <span class="bold-text">Địa chỉ:</span><br>
-                        <?php echo $this->helper->get_config('site_address'); ?>
-                    </div>
-                </div>
-
-                <div class="contact-item">
-                    <div class="icon-box"><i class="fa-solid fa-phone"></i></div>
-                    <div class="content">
-                        <span class="bold-text">Hotline:</span><br>
-                        <?php echo $this->helper->get_config('site_hotline'); ?>
-                    </div>
-                </div>
-
-                <div class="contact-item">
-                    <div class="icon-box"><i class="fa-solid fa-envelope"></i></div>
-                    <div class="content">
-                        <span class="bold-text">Email:</span><br>
-                        <?php echo $this->helper->get_config('site_email'); ?>
-                    </div>
-                </div>
-
-                <div class="contact-item">
-                    <div class="icon-box"><i class="fa-solid fa-clock"></i></div>
-                    <div class="content">
-                        <span class="bold-text">Giờ làm việc:</span><br>
-                        <i class="fa-regular fa-circle-check" style="color: #27ae60;"></i> <b>Phòng khám Đa khoa: </b><br> - Sáng 07:00 - 11:00 <br> - Chiều 13:00 - 17:00 <br>(Thứ Hai - Thứ Sáu)<br>
-                        <i class="fa-regular fa-circle-check" style="color: #27ae60;"></i> <b>Nhà thuốc:</b> <br> 07:00 - 21:00 (Hằng ngày)
-                    </div>
-                </div>
-            </div>
+      <div class="contact-panel pad">
+        <h2 class="panel-title">Thông tin đơn vị</h2>
+        <p class="panel-desc">Thông tin liên hệ chính thức phục vụ tư vấn tuyển dụng, hỗ trợ ứng viên và tiếp nhận hợp tác doanh nghiệp.</p>
+        <div class="info-list">
+          <div class="info-item"><div class="info-icon"><i class="ti ti-school"></i></div><div><div class="info-label">Tên đơn vị</div><div class="info-value">Trường Cao đẳng Kon Tum</div><div class="info-note">Cổng thông tin việc làm dành cho sinh viên và người tìm việc</div></div></div>
+          <div class="info-item"><div class="info-icon"><i class="ti ti-map-pin"></i></div><div><div class="info-label">Địa chỉ</div><div class="info-value">14 Ngụy Như Kon Tum, phường Ngô Mây, TP. Kon Tum, tỉnh Kon Tum</div><div class="info-note">Vui lòng liên hệ trước khi đến làm việc trực tiếp</div></div></div>
+          <div class="info-item"><div class="info-icon"><i class="ti ti-phone"></i></div><div><div class="info-label">Số điện thoại</div><div class="info-value">0260 3860 929</div><div class="info-note">Hỗ trợ trong giờ hành chính</div></div></div>
+          <div class="info-item"><div class="info-icon"><i class="ti ti-mail"></i></div><div><div class="info-label">Email</div><div class="info-value">vieclam@kontum.edu.vn</div><div class="info-note">Tiếp nhận hồ sơ, hợp tác tuyển dụng và phản hồi hỗ trợ</div></div></div>
+          <div class="info-item"><div class="info-icon"><i class="ti ti-clock-hour-4"></i></div><div><div class="info-label">Thời gian làm việc</div><div class="info-value">Thứ 2 - Thứ 6: 07:30 - 17:00</div><div class="info-note">Nghỉ thứ 7, chủ nhật và các ngày lễ theo quy định</div></div></div>
         </div>
+        <div class="contact-stats"><div class="contact-stat"><b>5K+</b><span>Ứng viên</span></div><div class="contact-stat"><b>500+</b><span>Tin tuyển dụng</span></div><div class="contact-stat"><b>98%</b><span>Hài lòng</span></div></div>
+      </div>
 
-        <div class="contact-map-block">
-            <div class="sbHead">
-                <i class="fa-solid fa-map-location-dot"></i>
-                Hướng dẫn chỉ đường
-            </div>
-            <div id="pctMaps-img">
-                <iframe src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d966.3126413926132!2d108.001433!3d14.354906000000001!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x316bffa0ba9f2cb5%3A0x66766298d169597f!2zMzQ3IELDoCBUcmnhu4d1LCBQaMaw4budbmcgUXV54bq_dCBUaOG6r25nLCBLb24gVHVtLCBWaeG7h3QgTmFt!5e0!3m2!1svi!2sus!4v1772011905251!5m2!1svi!2sus" referrerpolicy="no-referrer-when-downgrade" 
-                    width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
-            </div>
+      <div class="contact-panel map-card">
+        <div class="map-head"><div><h2 class="map-title">Bản đồ chỉ đường</h2><p class="map-desc">Tìm vị trí đơn vị trên Google Map để thuận tiện liên hệ, làm việc và kết nối tuyển dụng.</p></div><div class="map-badge"><i class="ti ti-map-2"></i> Google Map</div></div>
+        <div class="map-wrap">
+          <iframe loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=Tr%C6%B0%E1%BB%9Dng%20Cao%20%C4%91%E1%BA%B3ng%20Kon%20Tum&output=embed"></iframe>
         </div>
+      </div>
     </div>
 
-    <div class="form-container">
-        <h2>PHẢN HỒI KHÁCH HÀNG</h2>
+    <div class="contact-form-section">
+      <form class="contact-form" action="#" method="post">
+        <h2 class="panel-title">Gửi yêu cầu liên hệ</h2>
+        <p class="panel-desc">Điền thông tin bên dưới, bộ phận phụ trách sẽ tiếp nhận và phản hồi trong thời gian sớm nhất.</p>
+        <div class="form-grid">
+          <div class="form-group"><label>Họ và tên</label><input type="text" name="fullname" placeholder="Nhập họ và tên"></div>
+          <div class="form-group"><label>Số điện thoại</label><input type="tel" name="phone" placeholder="Nhập số điện thoại"></div>
+          <div class="form-group"><label>Email</label><input type="email" name="email" placeholder="Nhập email"></div>
+          <div class="form-group"><label>Nhóm hỗ trợ</label><select name="type"><option>Tư vấn tìm việc</option><option>Hỗ trợ nhà tuyển dụng</option><option>Hợp tác doanh nghiệp</option><option>Góp ý hệ thống</option></select></div>
+          <div class="form-group full"><label>Nội dung</label><textarea name="message" placeholder="Nhập nội dung cần hỗ trợ..."></textarea></div>
+        </div>
+        <button class="submit-btn" type="submit"><i class="ti ti-send"></i> Gửi thông tin liên hệ</button>
+      </form>
 
-       <form action="#" method="POST" id="myForm" onsubmit="return false;">
-            <div class="form-row">
-                <div class="form-column">
-                    <input type="text" placeholder="Họ tên *" id='customer_name' name='customer_name'>
-                    <input type="text" placeholder="Điện thoại *" id='customer_phone' name='customer_phone'>
-                    <input type="email" placeholder="Email" id='customer_email'>
-                    <input type="text" placeholder="Địa chỉ" id='customer_address'>
-                </div>
-
-                <div class="form-column">
-                    <textarea placeholder="Ý kiến của bạn... *" id='content' name='content'></textarea>
-                </div>
-            </div>
-           <div class="btn-wrap">
-                <button type="submit" class="btn-submit" id='send'>
-                    GỬI THÔNG TIN <i class="fa-solid fa-paper-plane"></i>
-                </button>
-            </div>
-        </form>
+      <div class="support-card">
+        <h3>Hỗ trợ nhanh hơn</h3>
+        <p>Để quá trình xử lý thuận tiện, vui lòng cung cấp rõ thông tin người liên hệ, nội dung cần hỗ trợ và tài liệu liên quan nếu có.</p>
+        <div class="support-steps">
+          <div class="support-step"><i class="ti ti-user-check"></i><div><b>Ứng viên / sinh viên</b><span>Hỗ trợ tạo CV, tìm việc phù hợp và theo dõi trạng thái ứng tuyển.</span></div></div>
+          <div class="support-step"><i class="ti ti-building"></i><div><b>Nhà tuyển dụng</b><span>Hỗ trợ đăng tin, duyệt tin tuyển dụng và kết nối nguồn ứng viên.</span></div></div>
+          <div class="support-step"><i class="ti ti-handshake"></i><div><b>Đối tác doanh nghiệp</b><span>Tiếp nhận đề xuất hợp tác, ngày hội việc làm và chương trình thực tập.</span></div></div>
+        </div>
+      </div>
     </div>
-</div>
 
-<?php require "footer_new.php"; ?>
-<script>
-    jQuery(function($) {
-    $(document).ready(function(){
-         $.validator.addMethod("alpha", function(value, element){
+    <div class="faq-strip">
+      <div class="faq-item"><i class="ti ti-file-cv"></i><b>Hỗ trợ CV</b><span>Tư vấn hoàn thiện hồ sơ, cập nhật thông tin cá nhân và xuất CV chuyên nghiệp.</span></div>
+      <div class="faq-item"><i class="ti ti-speakerphone"></i><b>Đăng tin tuyển dụng</b><span>Tiếp nhận nhu cầu tuyển dụng, kiểm duyệt nội dung và hiển thị tin phù hợp.</span></div>
+      <div class="faq-item"><i class="ti ti-shield-check"></i><b>Bảo mật thông tin</b><span>Cam kết tiếp nhận và xử lý thông tin liên hệ đúng mục đích hỗ trợ.</span></div>
+    </div>
+  </section>
+</main>
 
-        return this.optional(element) || value == value.match(/^[0-9, '']+$/);
-
-    }, "Vui lòng nhập ký tự số!");
-	$("#myForm").validate({
-		onfocusout: false,
-		onkeyup: false,
-		onclick: false,
-		rules: {
-			"customer_name": {
-				required: true
-			},
-			"customer_phone": {
-				required: true
-			},
-			"content":{
-				required: true
-			}
-			
-		},
-		messages:{
-				customer_name: {
-					required: "Bạn chưa nhập họ và tên"
-				},
-				customer_phone: {
-					required: "Bạn chưa nhập số điện thoại"
-				},
-				content: "Bạn chưa nhập ý kiến phản hồi"
-				
-			}
-	});
-		
-		$('#send').click(function(e) {
-		    if ($("#myForm").valid()) {
-				var formData = new FormData();
-				formData.append('customer_name', $('#customer_name').val());
-				formData.append('customer_phone', $('#customer_phone').val());
-				formData.append('customer_email', $('#customer_email').val());
-				formData.append('customer_address', $('#customer_address').val());
-				formData.append('content', $('#content').val());
-				formData.append('rating', 0);
-				
-				
-			$.ajax({
-				type: "POST",
-				url: "<?php echo XC_URL;?>/api/addFeedback",
-				data:formData,
-				dataType: 'json',
-				enctype: 'multipart/form-data',
-				processData: false,
-				contentType: false,
-				success: function(data){
-					if (data.status == 200) {
-						console.log(data);
-						let timerInterval;
-
-						Swal.fire({
-							icon: 'success',
-							title: 'Gửi phản hồi thành công!',
-							html: data.message, // Bạn có thể thay bằng data.message
-							footer: 'Hệ thống tự động chuyển hướng sau <b id="countdown" style="color:red; padding: 0 5px;">5</b> giây',
-							timer: 5000,
-							timerProgressBar: true,
-							allowOutsideClick: false, // Ngăn người dùng tắt thông báo sớm
-							didOpen: () => {
-								const b = Swal.getFooter().querySelector('#countdown');
-								let timeLeft = 10;
-								timerInterval = setInterval(() => {
-									timeLeft--;
-									if (b) b.textContent = timeLeft;
-								}, 1000);
-							},
-							willClose: () => {
-								clearInterval(timerInterval);
-							}
-						}).then((result) => {
-							// Sau 5 giây hoặc khi bấm OK sẽ nhảy về trang chủ
-							window.location.href = '<?php echo XC_URL;?>'; // Thay index.php bằng link trang chủ của bạn
-						});
-					} else {
-						Swal.fire({
-							icon: 'error',
-							title: 'Lỗi',
-							text: data.message
-						});
-					}
-				}
-			});
-		    }
-			
-		});
-// 	flatpickr("#booking_date", {
-//     dateFormat: "d/m/Y",
-//     minDate: "today", // Không cho chọn ngày quá khứ
-//     locale: "vn"      // Nếu muốn tiếng Việt
-// });
-		
-
-	});
-		});
-</script>
+<?php require "footer.php"; ?>

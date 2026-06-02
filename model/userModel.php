@@ -7,8 +7,7 @@ Class userModel extends baseModel
 		$db->query("SELECT *, u.id as uid FROM hicrm_users as u 
 		LEFT JOIN hicrm_user_groups as g ON u.user_group = g.id
 		LEFT JOIN hicrm_status as s ON u.user_status = s.id
-		LEFT JOIN hicrm_user_category as c ON u.user_category = c.id
-		WHERE u.user_status NOT IN(99) ORDER BY u.user_created_date DESC");
+		WHERE u.user_status NOT IN(99) ORDER BY u.user_created_at DESC");
 		return $db->fetch_object();
 	}
 	public function get_user_category(){

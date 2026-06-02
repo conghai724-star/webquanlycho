@@ -178,7 +178,6 @@
     </div>
 
     <!-- Library Bundle Script -->
-    <script src="<?php echo $admintemplate_path; ?>/assets/js/core/libs.min.js"></script>
     
     <!-- External Library Bundle Script -->
     <script src="<?php echo $admintemplate_path; ?>/assets/js/core/external.min.js"></script>

@@ -80,6 +80,162 @@ Class baseMailler {
             return true;
         }
     }
+    //send email register new account student   
+    public  function sendStudentPasswordEmail($name, $to, $username, $password, $subject)
+	{
+		if (!defined('MAIL_PASS') || MAIL_PASS === '') {
+			return false;
+		}
+
+		require_once __SITE_PATH . '/application/phpmailer.class.php';
+		require_once __SITE_PATH . '/application/smtp.class.php';
+
+		$mail = new PHPMailer();
+		$mail->IsSMTP();
+		$mail->Host = MAIL_HOST;
+		$mail->Port = MAIL_PORT;
+		$mail->SMTPAuth = MAIL_AUTH;
+		$mail->SMTPSecure = MAIL_SECURE;
+		$mail->Username = MAIL_ACC;
+		$mail->Password = MAIL_PASS;
+		$mail->CharSet = 'UTF-8';
+		$mail->From = MAIL_ACC;
+		$mail->FromName = 'Trường Cao đẳng Kon Tum';
+		$mail->AddAddress($to, $name);
+		$mail->AddReplyTo(MAIL_ACC, 'Trường Cao đẳng Kon Tum');
+		$mail->IsHTML(true);
+		$mail->Subject = $subject;
+		$mail->Body = $this->getStudentPasswordEmailTemplate($name, $username, $password);
+        if(!$mail->Send())
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+	}
+    public  function sendVerifyEmail($name, $to, $token,$subject)
+	{
+		if (!defined('MAIL_PASS') || MAIL_PASS === '') {
+			return false;
+		}
+
+		require_once __SITE_PATH . '/application/phpmailer.class.php';
+		require_once __SITE_PATH . '/application/smtp.class.php';
+
+		$mail = new PHPMailer();
+		$mail->IsSMTP();
+		$mail->Host = MAIL_HOST;
+		$mail->Port = MAIL_PORT;
+		$mail->SMTPAuth = MAIL_AUTH;
+		$mail->SMTPSecure = MAIL_SECURE;
+		$mail->Username = MAIL_ACC;
+		$mail->Password = MAIL_PASS;
+		$mail->CharSet = 'UTF-8';
+		$mail->From = MAIL_ACC;
+		$mail->FromName = 'Trường Cao đẳng Kon Tum';
+		$mail->AddAddress($to, $name);
+		$mail->AddReplyTo(MAIL_ACC, 'Trường Cao đẳng Kon Tum');
+		$mail->IsHTML(true);
+		$mail->Subject = $subject; 
+		$mail->Body = $this->getEmailTemplate($name, $to, $token);
+        if(!$mail->Send())
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+	}
+    // Template for new account email
+    private function getEmailTemplate($name, $email, $token)
+	{
+		return 
+		
+		'<div style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,sans-serif;">
+        <div style="max-width:620px;margin:30px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.08);">
+            
+            <div style="background:linear-gradient(135deg,#0d4e96,#1976d2);padding:28px;text-align:center;color:#fff;">
+                <h2 style="margin:0;font-size:24px;">Cổng thông tin việc làm</h2>
+                <p style="margin:8px 0 0;font-size:14px;">Thông tin tài khoản đăng nhập</p>
+            </div>
+
+            <div style="padding:32px;color:#333;">
+                <h3 style="margin-top:0;color:#0d4e96;">Xin chào '.$name.',</h3>
+
+                <p style="font-size:15px;line-height:1.6;">
+                   Chúc mừng bạn đã đăng ký tài khoản tại Cổng thông tin việc làm Trường Cao đẳng Kon Tum thành công! Vui lòng xác thực email của bạn bằng cách nhấp vào liên kết bên dưới.
+                </p>
+
+                <div style="background:#f0f6ff;border:1px solid #d8e8ff;border-radius:12px;padding:20px;margin:24px 0;">
+                    <p style="margin:0 0 10px ;border-bottom:1px solid #d8e8ff;padding-bottom:10px;"><b>Email đăng ký:</b> '.$email.'</p>
+                    
+                </div>
+                <p style="color:#b42318"><strong>Lưu ý:</strong> Vui lòng xác thực email của bạn trước khi đăng nhập.</p>
+                <div style="text-align:center;margin:30px 0;">
+                    <a href="'.XC_URL.'/verify_email/'.$token.'"
+                       style="background:#0d4e96;color:#fff;text-decoration:none;padding:14px 28px;border-radius:30px;font-weight:bold;display:inline-block;">
+                        Xác thưc email ngay
+                    </a>
+                </div>
+
+                <p style="font-size:14px;color:#777;">
+                  Email này được gửi tự động, vui lòng không trả lời.
+                </p>
+            </div>
+
+            <div style="background:#f1f3f6;padding:18px;text-align:center;font-size:13px;color:#777;">
+                © '.date('Y').' Cổng thông tin việc làm. All rights reserved.
+            </div>
+        </div>
+    </div>';
+	}
+    private function getPasswordEmailTemplate($name, $email, $token)
+	{
+		return 
+		
+		'<div style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,sans-serif;">
+        <div style="max-width:620px;margin:30px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.08);">
+            
+            <div style="background:linear-gradient(135deg,#0d4e96,#1976d2);padding:28px;text-align:center;color:#fff;">
+                <h2 style="margin:0;font-size:24px;">Cổng thông tin việc làm</h2>
+                <p style="margin:8px 0 0;font-size:14px;">Thông tin tài khoản đăng nhập</p>
+            </div>
+
+            <div style="padding:32px;color:#333;">
+                <h3 style="margin-top:0;color:#0d4e96;">Xin chào '.$name.',</h3>
+
+                <p style="font-size:15px;line-height:1.6;">
+                    Tài khoản của bạn đã được tạo thành công. Vui lòng sử dụng thông tin bên dưới để đăng nhập hệ thống.
+                </p>
+
+                <div style="background:#f0f6ff;border:1px solid #d8e8ff;border-radius:12px;padding:20px;margin:24px 0;">
+                    <p style="margin:0 0 10px ;border-bottom:1px solid #d8e8ff;padding-bottom:10px;"><b>Tên đăng nhập:</b> '.$username.'</p>
+                    <p style="margin:0;"><b>Mật khẩu:</b> 
+                        <span style="font-size:18px;color:#d35400;font-weight:bold;">'.$password.'</span>
+                    </p>
+                </div>
+                <p style="color:#b42318"><strong>Lưu ý:</strong> Vui lòng đổi mật khẩu sau khi đăng nhập lần đầu.</p>
+                <div style="text-align:center;margin:30px 0;">
+                    <a href="'.XC_URL.'"
+                       style="background:#0d4e96;color:#fff;text-decoration:none;padding:14px 28px;border-radius:30px;font-weight:bold;display:inline-block;">
+                        Đăng nhập ngay
+                    </a>
+                </div>
+
+                <p style="font-size:14px;color:#777;">
+                  Email này được gửi tự động, vui lòng không trả lời.
+                </p>
+            </div>
+
+            <div style="background:#f1f3f6;padding:18px;text-align:center;font-size:13px;color:#777;">
+                © '.date('Y').' Cổng thông tin việc làm. All rights reserved.
+            </div>
+        </div>
+    </div>';
+	}
 	function newaccount($name,$to,$username,$activelink) 
 	{
         include_once "phpmailer.class.php";

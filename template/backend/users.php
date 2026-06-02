@@ -154,9 +154,8 @@ $(document).ready(function () {
                      <thead>
                         <tr class="ligth">
                            <th>STT</th>
-                           <th>Tên tài khoản</th>
+                           <th>Họ và tên</th>
                            <th>Email</th>
-                           <th>Quyền tài khoản</th>
                            <th>Loại tài khoản</th>
                            <th>Trạng thái</th>
                            <th style="min-width: 100px">Thao tác</th>
@@ -167,10 +166,9 @@ $(document).ready(function () {
                         <?php foreach($users as $user): ?>
                         <tr>
                           <td><?php echo $i; ?></td>
-                          <td><?php echo $user->user_username; ?></td>
+                          <td><?php echo $user->full_name; ?></td>
                           <td><?php echo $user->user_email; ?></td>
                           <td><?php echo $user->group_name; ?></td>
-                          <td><?php echo $user->user_category_name; ?></td>
                           <td><?php echo $user->status_label; ?></td>
                            <td>
                               <div class="flex align-items-center list-user-action">
@@ -183,9 +181,9 @@ $(document).ready(function () {
                                         <i class="fa-solid fa-key"></i>
                                       </span>
                                   </a>
-                              <!-- <a class="btn btn-sm btn-icon btn-info" 
+                              <a class="btn btn-sm btn-icon btn-info" 
                                     data-bs-toggle="tooltip" 
-                                    data-bs-placement="top" 
+                                    data-bs-placement="top" disable 
                                     title="Detail" 
                                     href="<?php echo XC_URL;?>/admin/users/detail/<?php echo $user->uid; ?>">
 
@@ -208,7 +206,7 @@ $(document).ready(function () {
 
                                       </span>
 
-                                  </a> -->
+                                  </a>
                                  <a class="btn btn-sm btn-icon btn-warning" data-bs-toggle="tooltip" data-bs-placement="top" title="Edit" data-original-title="Edit" href="<?php echo XC_URL;?>/admin/users/edit/<?php echo $user->uid; ?>">
                                     <span class="btn-inner">
                                        <svg class="icon-20" width="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -218,9 +216,9 @@ $(document).ready(function () {
                                        </svg>
                                     </span>
                                  </a>
-                                 <a class="btn btn-sm btn-icon btn-info" data-bs-toggle="tooltip" data-bs-placement="top" title="Phân quyền" href="<?php echo XC_URL;?>/admin/users/role/<?php echo $user->uid; ?>">
+                                 <a class="btn btn-sm btn-icon btn-info"  data-bs-toggle="tooltip" data-bs-placement="top" title="Phân quyền" href="<?php echo XC_URL;?>/admin/users/role/<?php echo $user->uid; ?>">
                                     <span class="btn-inner">
-                                       <i class="fa-solid fa-shield-halved"></i>
+                                       <i class="fa-solid fa-shield-halved" ></i>
                                     </span>
                                  </a>
                                  <a class="btn btn-sm btn-icon btn-danger btn-open-delete-user"

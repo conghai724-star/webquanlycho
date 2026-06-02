@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Vieclam24h - Tìm việc nhanh, tuyển dụng hiệu quả</title>
+  <style>
+    :root{
+      --brand-blue:#844404;
+      --brand-blue-dark:#5f2f03;
+      --brand-orange:#b85d08;
+      --text:#2f2419;
+      --muted:#75675a;
+      --border:#eadfce;
+      --bg:#fffdf9;
+      --white:#fff;
+      --radius:16px;
+      --shadow:0 12px 30px rgba(132,68,4,.10);
+      --container:min(1200px,100% - 32px);
+      --font:Inter, "Segoe UI", Arial, sans-serif;
+    }
+
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0}
+    body{
+      font-family:var(--font);
+      color:var(--text);
+      background:var(--bg);
+      line-height:1.5;
+    }
+    a{text-decoration:none;color:inherit}
+    img{max-width:100%;display:block}
+    .container{width:var(--container);margin:auto}
+
+    .header{
+      position:sticky;top:0;z-index:20;background:var(--white);
+      border-bottom:1px solid var(--border);
+    }
+    .topbar{
+      background:#f7eee3;
+      border-bottom:1px solid #eadfce;
+      font-size:13px;color:#6f4a23;
+    }
+    .topbar .container{
+      display:flex;justify-content:space-between;align-items:center;gap:16px;
+      padding:8px 0;flex-wrap:wrap;
+    }
+
+    .nav .container{
+      display:flex;align-items:center;justify-content:space-between;gap:20px;
+      padding:14px 0;
+    }
+    .logo{
+      font-weight:800;font-size:24px;color:var(--brand-blue);letter-spacing:.2px;
+    }
+    .logo span{color:var(--brand-orange)}
+    .menu{
+      display:flex;align-items:center;gap:20px;flex-wrap:wrap;
+      font-weight:600;color:#344054;font-size:14px;
+    }
+    .actions{display:flex;gap:10px;align-items:center}
+    .btn{
+      padding:10px 16px;border-radius:999px;border:1px solid transparent;
+      font-weight:700;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
+    }
+    .btn-outline{border-color:var(--brand-blue);color:var(--brand-blue);background:#fff}
+    .btn-primary{background:var(--brand-blue);color:#fff}
+    .btn-primary:hover{background:var(--brand-blue-dark)}
+
+    .hero{
+      background:linear-gradient(180deg,#f9f1e7 0%, #fffcf8 45%, #ffffff 100%);
+      padding:42px 0 26px;
+    }
+    .hero-grid{
+      display:grid;grid-template-columns:1.1fr .9fr;gap:24px;align-items:center;
+    }
+    .hero h1{
+      margin:0 0 10px;
+      font-size:44px;line-height:1.12;color:#5f2f03;
+    }
+    .hero p{margin:0;color:var(--muted);font-size:16px}
+    .kpi{
+      margin-top:16px;display:inline-flex;padding:8px 14px;border-radius:999px;
+      background:#fff6ea;color:#844404;font-weight:700;font-size:14px;border:1px solid #f0d2ad;
+    }
+
+    .search-card{
+      background:#fff;border:1px solid var(--border);border-radius:20px;padding:20px;
+      box-shadow:var(--shadow);
+    }
+    .search-title{margin:0 0 12px;color:#5f2f03;font-size:18px}
+    .search-grid{
+      display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end;
+    }
+    .field label{
+      font-size:12px;font-weight:700;color:#667085;display:block;margin-bottom:6px;
+      text-transform:uppercase;letter-spacing:.03em;
+    }
+    .field input,.field select{
+      width:100%;height:44px;border:1px solid var(--border);border-radius:12px;
+      padding:0 12px;background:#fff;color:#111827;outline:none;
+    }
+    .field input:focus,.field select:focus{
+      border-color:#d5a779;box-shadow:0 0 0 3px rgba(132,68,4,.14);
+    }
+
+    .quick{
+      margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;
+    }
+    .chip{
+      border:1px solid #edd8bf;background:#fff8ef;color:#7a4107;
+      padding:7px 11px;border-radius:999px;font-size:13px;font-weight:600;
+    }
+
+    .section{padding:30px 0}
+    .section-head{
+      display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;
+    }
+    .section-head h2{margin:0;font-size:26px;color:#5f2f03}
+    .section-head a{font-weight:700;color:var(--brand-blue);font-size:14px}
+
+    .jobs{
+      background:#fff;border:1px solid var(--border);border-radius:16px;overflow:hidden;
+    }
+    .job{
+      display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;
+      padding:16px;border-bottom:1px solid var(--border);align-items:center;
+    }
+    .job:last-child{border-bottom:0}
+    .job h3{margin:0 0 4px;font-size:17px;color:#5f2f03}
+    .job p{margin:0;font-size:14px;color:#667085}
+    .meta{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    .tag{
+      padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;
+      border:1px solid #f0dcc5;background:#fff8ef;color:#7a4107;
+    }
+    .tag.hot{background:#fcefdc;border-color:#f0d2ad;color:#9a4b06}
+
+    .grid-cards{
+      display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;
+    }
+    .card{
+      background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;
+      transition:transform .15s ease, box-shadow .15s ease;
+    }
+    .card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+    .card h3{margin:0 0 6px;font-size:17px;color:#5f2f03}
+    .card p{margin:0;color:#667085;font-size:14px}
+
+    .app-banner{
+      margin-top:8px;background:#fff5e9;border:1px solid #edd8bf;border-radius:20px;
+      padding:22px;
+      display:grid;grid-template-columns:1.1fr .9fr;gap:16px;align-items:center;
+    }
+    .app-banner h3{margin:0 0 8px;font-size:28px;color:#5f2f03}
+    .app-banner p{margin:0 0 14px;color:#465266}
+    .phone{
+      min-height:170px;border-radius:16px;background:linear-gradient(135deg,#844404,#b86a24);
+      display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:20px;
+    }
+
+    .footer{
+      margin-top:30px;background:#844404;color:#f8eede;
+    }
+    .footer .container{padding:28px 0 16px}
+    .foot-grid{
+      display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;
+    }
+    .footer h4{margin:0 0 8px;color:#fff;font-size:16px}
+    .footer p{margin:6px 0;font-size:14px}
+    .copyright{
+      margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.15);
+      text-align:center;font-size:13px;color:#f3dfc5;
+    }
+
+    .menu-toggle{display:none}
+
+    @media (max-width:1024px){
+      .hero h1{font-size:36px}
+      .grid-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .search-grid{grid-template-columns:1fr 1fr}
+      .search-grid .btn{width:100%}
+    }
+
+    @media (max-width:768px){
+      .menu-toggle{
+        display:inline-flex;border:1px solid var(--border);background:#fff;border-radius:10px;
+        padding:8px 12px;font-weight:700;color:#844404;
+      }
+      .menu{display:none}
+      .menu.open{
+        display:flex;flex-direction:column;align-items:flex-start;width:100%;
+        border-top:1px solid var(--border);padding-top:12px;
+      }
+      .nav .container{flex-wrap:wrap}
+      .actions{width:100%;justify-content:flex-start}
+
+      .hero-grid{grid-template-columns:1fr}
+      .hero h1{font-size:30px}
+      .job{grid-template-columns:1fr}
+      .meta{justify-content:flex-start}
+      .grid-cards{grid-template-columns:1fr}
+      .app-banner{grid-template-columns:1fr}
+      .foot-grid{grid-template-columns:1fr}
+      .topbar .container{flex-direction:column;align-items:flex-start}
+    }
+
+    @media (max-width:480px){
+      .container{width:min(1200px,100% - 20px)}
+      .hero{padding-top:28px}
+      .hero h1{font-size:26px}
+      .section-head h2{font-size:22px}
+      .btn{width:100%}
+      .actions{flex-direction:column;align-items:stretch}
+      .search-grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="topbar">
+      <div class="container">
+        <span>Hotline Người tìm việc: (028) 7109 2424</span>
+        <span>Hotline Nhà tuyển dụng: (028) 7108 2424</span>
+      </div>
+    </div>
+
+    <div class="nav">
+      <div class="container">
+        <a class="logo" href="#">Viec<span>lam</span>24h</a>
+
+        <button class="menu-toggle" id="menuToggle" aria-expanded="false">Menu</button>
+
+        <nav class="menu" id="menuNav">
+          <a href="#jobs-hot">Việc làm</a>
+          <a href="#career">Ngành nghề</a>
+          <a href="#region">Khu vực</a>
+          <a href="#tools">Công cụ</a>
+        </nav>
+
+        <div class="actions">
+          <a class="btn btn-outline" href="#">Đăng nhập</a>
+          <a class="btn btn-primary" href="#">Đăng tin tuyển dụng</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <span class="kpi">670.000+ người đã ứng tuyển thành công</span>
+          <h1>Tìm việc nhanh hơn, dễ dàng hơn cùng Vieclam24h</h1>
+          <p>Gợi ý công việc theo kỹ năng, kinh nghiệm và khu vực. Ứng tuyển 1 chạm trên mọi thiết bị.</p>
+        </div>
+
+        <div class="search-card">
+          <h2 class="search-title">Tìm việc ngay</h2>
+          <form class="search-grid">
+            <div class="field">
+              <label>Từ khóa</label>
+              <input type="text" placeholder="Vị trí, kỹ năng, công ty..." />
+            </div>
+            <div class="field">
+              <label>Khu vực</label>
+              <select><option>Toàn quốc</option><option>TP.HCM</option><option>Hà Nội</option></select>
+            </div>
+            <div class="field">
+              <label>Ngành nghề</label>
+              <select><option>Tất cả ngành nghề</option><option>Marketing</option><option>Kế toán</option></select>
+            </div>
+            <button class="btn btn-primary" type="submit">Tìm việc</button>
+          </form>
+          <div class="quick">
+            <span class="chip">Việc đi làm ngay</span>
+            <span class="chip">Không cần CV</span>
+            <span class="chip">Việc làm Hà Nội</span>
+            <span class="chip">Việc làm TP.HCM</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="jobs-hot" class="section">
+      <div class="container">
+        <div class="section-head">
+          <h2>Việc làm tuyển gấp</h2>
+          <a href="#">Xem thêm</a>
+        </div>
+
+        <div class="jobs">
+          <article class="job">
+            <div>
+              <h3>Nhân viên kinh doanh - Thu nhập cao</h3>
+              <p>Công ty Cổ phần ABC</p>
+            </div>
+            <div class="meta">
+              <span class="tag hot">HOT</span>
+              <span class="tag">15-20 triệu</span>
+              <span class="tag">TP.HCM</span>
+            </div>
+          </article>
+          <article class="job">
+            <div>
+              <h3>Kế toán tổng hợp</h3>
+              <p>Công ty TNHH XYZ</p>
+            </div>
+            <div class="meta">
+              <span class="tag hot">HOT</span>
+              <span class="tag">12-18 triệu</span>
+              <span class="tag">Long An</span>
+            </div>
+          </article>
+          <article class="job">
+            <div>
+              <h3>Nhân viên chăm sóc khách hàng</h3>
+              <p>Công ty Dịch vụ 24h</p>
+            </div>
+            <div class="meta">
+              <span class="tag">8-12 triệu</span>
+              <span class="tag">Hà Nội</span>
+              <span class="tag">Không cần CV</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="career" class="section">
+      <div class="container">
+        <div class="section-head">
+          <h2>Việc làm theo nghề nghiệp</h2>
+          <a href="#">Xem thêm</a>
+        </div>
+        <div class="grid-cards">
+          <div class="card"><h3>Hành chính - Thư ký</h3><p>Văn phòng, hành chính, trợ lý.</p></div>
+          <div class="card"><h3>Bán hàng - Kinh doanh</h3><p>Tư vấn, sales, phát triển thị trường.</p></div>
+          <div class="card"><h3>Marketing</h3><p>Digital, content, branding, performance.</p></div>
+          <div class="card"><h3>Kế toán - Kiểm toán</h3><p>Kế toán nội bộ, thuế, kiểm toán.</p></div>
+          <div class="card"><h3>Khoa học - Kỹ thuật</h3><p>Cơ khí, điện, tự động hóa.</p></div>
+          <div class="card"><h3>Khách sạn - Nhà hàng</h3><p>Lễ tân, phục vụ, bếp, điều hành.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="region" class="section">
+      <div class="container">
+        <div class="section-head">
+          <h2>Việc làm theo khu vực</h2>
+          <a href="#">Xem thêm</a>
+        </div>
+        <div class="grid-cards">
+          <div class="card"><h3>Toàn quốc</h3><p>Tổng hợp tin tuyển dụng toàn quốc.</p></div>
+          <div class="card"><h3>Hà Nội</h3><p>Cơ hội việc làm tại thủ đô.</p></div>
+          <div class="card"><h3>TP.HCM</h3><p>Nhiều vị trí hấp dẫn, cập nhật mỗi ngày.</p></div>
+        </div>
+
+        <div class="app-banner" id="tools">
+          <div>
+            <h3>Ứng tuyển 1 chạm - Mọi lúc mọi nơi</h3>
+            <p>Tải ứng dụng để nhận thông báo việc làm phù hợp và ứng tuyển nhanh ngay trên điện thoại.</p>
+            <a class="btn btn-primary" href="#">Tải app ngay</a>
+          </div>
+          <div class="phone">APP VIECLAM24H</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="foot-grid">
+        <div>
+          <h4>Hotline Người tìm việc</h4>
+          <p>HCM: (028) 7109 2424</p>
+          <p>HN: (024) 7309 2424</p>
+        </div>
+        <div>
+          <h4>Hotline Nhà tuyển dụng</h4>
+          <p>HCM: (028) 7108 2424</p>
+          <p>HN: (024) 7308 2424</p>
+        </div>
+        <div>
+          <h4>Về chúng tôi</h4>
+          <p>Vieclam24h - Nền tảng tìm việc và tuyển dụng trực tuyến.</p>
+        </div>
+      </div>
+      <div class="copyright">© 2026 Vieclam24h. All rights reserved.</div>
+    </div>
+  </footer>
+
+  <script>
+    const menuToggle = document.getElementById("menuToggle");
+    const menuNav = document.getElementById("menuNav");
+
+    menuToggle.addEventListener("click", function () {
+      const isOpen = menuNav.classList.toggle("open");
+      menuToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    });
+  </script>
+</body>
+</html>

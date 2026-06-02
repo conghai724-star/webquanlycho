@@ -116,6 +116,53 @@ Class apiController extends baseController
 		$result['new_password'] = $new_password;
 		echo json_encode($result);
 	}	
+	//insert user database
+	public function userAction(){
+		global $db;
+		
+		$full_name = $db->escapestring($_POST['full_name']);
+		$email = $db->escapestring($_POST['user_email']);
+		$password = md5($db->escapestring($_POST['user_password']));
+		$user_group = 1;
+		$method = $_POST['method'];
+		$user_created_date = date("d-m-Y");
+		$result = array();
+		
+		if(isset($method) && $method == "add"){
+			if(empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)){
+				$result['status'] = 400;
+				$result['message'] = 'Email không hợp lệ';
+				echo json_encode($result);
+				return;
+			}
+			$password_raw = trim($_POST['user_password']);
+			if(empty($password_raw)){
+				$result['status'] = 400;
+				$result['message'] = 'Mật khẩu không được để trống';
+				echo json_encode($result);
+				return;
+			}
+			
+			$password = md5($db->escapestring($password_raw));
+			$db->query("SELECT * FROM hicrm_users WHERE user_email = '".$email."'");
+			if($db->num_row()){
+				$existing = $db->fetch_object(true);
+				if($existing->user_email == $email){
+					$result['status'] = 400;
+					$result['message'] = 'Email đã tồn tại';
+				}
+				echo json_encode($result);
+				return;
+			}
+			$db->query("INSERT INTO hicrm_users(full_name, user_password, user_email, user_group) VALUES ('".$full_name."','".$password."','".$email."','".$user_group."')");
+			$result['status'] = 200;
+			$result['message'] = 'Thêm thành công';
+			$result['url'] = XC_URL."/admin/users";
+		}
+		echo json_encode($result);
+	}
+	//end insert user database
+
 	////Update user
 	public function updateUser(){
 		
@@ -2845,29 +2892,27 @@ Class apiController extends baseController
 	{
 		global $db;
 		$result = array();
-		
 		$email = $db->escapestring($_POST["email"]);
 		$password = $db->escapestring($_POST["password"]);
-		
 		$password = md5($password);
-		$db->query("SELECT * FROM hicrm_users WHERE user_email = '".$email."' AND user_password = '".$password."' AND user_status = 1 ");
-		// echo $password;
+		$db->query("SELECT * FROM hicrm_users WHERE (user_email = '".$email."' OR user_username = '".$email."') AND user_password = '".$password."' AND user_status = 1 LIMIT 1");
+		
         if($db->num_row())
         {
             $row = $db->fetch_object(true);
             $_SESSION['user']['id'] = $row->id; 
             $_SESSION['user']['email'] = $row->user_email;
-			$_SESSION['user']['fullname'] = $row->user_fullname;
+			$_SESSION['user']['full_name'] = $row->full_name;
 			$_SESSION['user']['group'] = $row->user_group;
             $_SESSION['LoggedIn'] = 1;
 			$result["status"] = 200;
-			$result["name"] = $_SESSION['user']['fullname'];
+			$result["name"] = $_SESSION['user']['full_name'];
+			$result["message"] = "Đăng nhập thành công";
 			$result['return_url'] = XC_URL."/admin";
         }
 		else
 		{
 			$result["status"] = "500";
-			//echo "error"
 			$result['message'] = 'Thông tin tài khoản hoặc mật khẩu không chính xác';
 		}
 		echo json_encode($result);
@@ -3417,74 +3462,7 @@ Class apiController extends baseController
 		}
 		echo json_encode($result);
 	}
-	public function registers()
-	{
-		global $db;
-		$result = array();
-		$email = $db->escapestring($_POST["email"]);
-        $password = md5($db->escapestring($_POST["password"]));
-		$username = $db->escapestring($_POST["username"]);
-		$phone = $_POST['phone'];
-		$fullname = $_POST['fullname'];
-		if(filter_var($email, FILTER_VALIDATE_EMAIL))
-		{
-			
-			$db->query("SELECT * FROM hicrm_users WHERE user_email = '".$email."'");
-			$db->fetch_object(true);
-			if($db->num_row()){
-				$result["status"] = 500;
-				$result["message"] = "Địa chỉ email đã được sử dụng!";
-			}else{
-				$db->query("SELECT * FROM hicrm_users WHERE user_username = '".$username."'");
-				$db->fetch_object(true);
-				if($db->num_row()){
-					$result["status"] = 500;
-					$result["message"] = "Tên đăng nhập đã tồn tại!";
-				}else{
-					$db->query("SELECT * FROM hicrm_users WHERE user_phone = '".$phone."'");
-					$db->fetch_object(true);
-					if($db->num_row() > 5){
-						$result["status"] = 500;
-						$result["message"] = "Số điện thoại này đã đăng ký hơn 5 tài khoản!";
-					}else{
-						
-						$db->query("INSERT INTO hicrm_users(user_username, user_password, user_email, user_fullname, user_phone, user_group,user_status, user_register_time) VALUES ('".$username."','".$password."','".$email."','".$fullname."','".$phone."','2','1','".date('Y-m-d H:i:s')."')");
-						$result['message'] = "Đăng ký thành công!";
-						$result["status"] = 200;
-					}
-				}
-			}
-		}else
-		{
-			$result["status"] = 500;
-			$result["message"] = "Địa chỉ email không hợp lệ!";
-		}
-		
-		echo json_encode($result);
-			/*
-			$db->query("SELECT * FROM hicrm_users WHERE user_email = '".$email."'");
-			$db->fetch_object(true);
-			if($db->num_row())
-			{
-				$result["status"] = 500;
-				$result["message"] = "Địa chỉ email đã được sử dụng!";
-			}
-			elseif()
-			{
-				$db->query("SELECT * FROM hicrm_users WHERE user_phone = '".$phone."'");
-				$db->fetch_object(true);
-				if($db->num_row()){
-					$result['message'] = "Số điện thoại đã được sử dụng!";
-					$result['status'] = 200;
-				}else{
-					echo "INSERT INTO hicrm_users(user_username, user_password, user_email, user_fullname, user_phone, user_group,user_status, user_register_time) VALUES ('".$username."','".$password."','".$email."','".$fullname."','".$phone."','2','".date('Y-m-d H:i:s')."')";
-					$db->query("INSERT INTO hicrm_users(user_username, user_password, user_email, user_fullname, user_phone, user_group,user_status, user_register_time) VALUES ('".$username."','".$password."','".$email."','".$fullname."','".$phone."','2','".date('Y-m-d H:i:s')."')");
-					$result['message'] = "Đăng ký thành công!";
-					$result["status"] = 200;
-				}
-			} */
-		
-	}
+	
 	public function deletelisting()
 	{
 		$result = array();
@@ -4753,103 +4731,757 @@ Class apiController extends baseController
 public function addstudent()
 	{
 		global $db;
-		$result = array();
-		// POST: xử lý tạo tài khoản sinh viên
-		if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-			header('Content-Type: application/json; charset=utf-8');
-	
-			$studentCode = isset($_POST['student_code']) ? trim($_POST['student_code']) : '';
-			$studentName = isset($_POST['student_name']) ? trim($_POST['student_name']) : '';
-	
-			if ($studentCode === '' || $studentName === '') {
-					$result['status'] = 400;
-					$result['message'] = 'Vui lòng nhập đầy đủ mã sinh viên và họ tên.';
-			
-				echo json_encode($result);
-				return;
-			}
-	
-			$studentCode = $db->escapestring($studentCode);
-			$studentName = $db->escapestring($studentName);
-	
-					
-			$db->query("
-				SELECT * FROM hicrm_student_profile
-				WHERE student_code = '".$studentCode."'
-				  AND student_name = '".$studentName."'
-				LIMIT 1
-			");
 
-	
-			if (!$db->num_row()) {
-				echo json_encode(array(
-					'success' => false,
-					'message' => 'Không tồn tại sinh viên "'.$studentName.'" trong hệ thống'
-				));
-				return;
-			}
-	
-			$student = $db->fetch_object(true);
-	
-			// Kiểm tra tài khoản đã tồn tại chưa (tránh trùng)
-			$db->query("
-				SELECT id FROM hicrm_users
-				WHERE user_username = '".$studentCode."'
-				LIMIT 1
-			");
-	
-			if ($db->num_row()) {
-				echo json_encode(array(
-					'success' => false,
-					'message' => 'Tài khoản sinh viên đã tồn tại.'
-				));
-				return;
-			}
-	
-			// Tạo tài khoản mới
-			$username = $studentCode; // username lấy theo mã sinh viên
-			$rawPassword = $studentCode; // có thể đổi sang random + gửi mail (sẽ thực hiện sau. Tạm thời dùng password là mã sinh viên)
-			$user_password = md5($rawPassword);
-			$user_email = !empty($student->student_email) ? $db->escapestring($student->student_email) : $studentCode.'@sv.cdkt';
-	
-			$registerTime = date('Y-m-d H:i:s');
-	
-			$db->query("INSERT INTO hicrm_users(
-				user_username,
-				user_password,
-				user_email,
-				user_role,
-				user_category,
-				user_status,
-				user_is_subscribed,
-				user_created_date
-			) VALUES (
-				'".$username."',
-				'".$user_password."',
-				'".$user_email."',
-				'1',
-				'3',
-				'1',
-				'0',
-				'".date('Y-m-d H:i:s')."'
-			)");
-	
+		header('Content-Type: application/json; charset=utf-8');
+
+		if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 			echo json_encode(array(
-				'status' => 200,
-				'message' => 'Tạo tài khoản thành công cho sinh viên '.$studentName,
-				'username' => $studentName,
-				'username' => $studentCode,
-				'default_password' => $rawPassword
+				'success' => false,
+				'status' => 405,
+				'message' => 'Phương thức không hợp lệ.'
 			));
 			return;
 		}
+
+		$studentCodeRaw = isset($_POST['student_code']) ? trim($_POST['student_code']) : '';
+		$studentNameRaw = isset($_POST['student_name']) ? trim($_POST['student_name']) : '';
+		$action = isset($_POST['action']) ? trim($_POST['action']) : 'search';
+
+		if ($studentCodeRaw === '' || $studentNameRaw === '') {
+			echo json_encode(array(
+				'success' => false,
+				'status' => 400,
+				'message' => 'Vui lòng nhập họ tên và mã sinh viên.'
+			));
+			return;
+		}
+
+		if (!in_array($action, array('search', 'create'), true)) {
+			echo json_encode(array(
+				'success' => false,
+				'status' => 400,
+				'message' => 'Thao tác không hợp lệ.'
+			));
+			return;
+		}
+
+		$studentCode = $db->escapestring($studentCodeRaw);
+		$studentName = $db->escapestring($studentNameRaw);
+
+		$db->query("
+			SELECT * FROM hicrm_student_profile
+			WHERE student_code = '".$studentCode."'
+			  AND student_name = '".$studentName."'
+			LIMIT 1
+		");
+
+		if (!$db->num_row()) {
+			echo json_encode(array(
+				'success' => false,
+				'status' => 404,
+				'step' => 'not_found',
+				'message' => 'Không tìm thấy sinh viên.'
+			));
+			return;
+		}
+
+		$student = $db->fetch_object(true);
+
+		if ($action === 'search') {
+			echo json_encode(array(
+				'success' => true,
+				'status' => 200,
+				'step' => 'found',
+				'message' => 'Tìm thấy sinh viên.',
+				'student_id' => $student->id,
+				'student_code' => $studentCodeRaw,
+				'student_name' => $studentNameRaw
+			));
+			return;
+		}
+
+		$db->query("
+			SELECT id FROM hicrm_users
+			WHERE user_username = '".$studentCode."'
+			LIMIT 1
+		");
+
+		if ($db->num_row()) {
+			echo json_encode(array(
+				'success' => false,
+				'status' => 409,
+				'step' => 'exists',
+				'message' => 'Tài khoản sinh viên đã tồn tại.'
+			));
+			return;
+		}
+
+		$username = $studentCode;
+		$rawPassword = $this->generateStudentPassword(10);
+		$user_password = md5($rawPassword);
+		$user_email_raw = !empty($student->student_email) ? trim($student->student_email) : '';
+		$user_email = $user_email_raw !== '' ? $db->escapestring($user_email_raw) : $studentCode.'@sv.cdkt';
+		$full_name = $db->escapestring($student->student_name);
+		$user_phone = !empty($student->student_phone) ? $db->escapestring($student->student_phone) : '';
+		$student_id = $student->id;
+		$registerTime = date('Y-m-d H:i:s');
+
+		$db->query("INSERT INTO hicrm_users(
+			student_id,
+			user_username,
+			full_name,
+			user_email,
+			user_phone,
+			user_password,
+			user_group,
+			user_status,
+			user_avatar_url,
+			user_reset_token,
+			user_reset_token_expires,
+			user_two_fa_enabled,
+			user_two_fa_secret,
+			user_two_fa_method,
+			user_email_verified_at,
+			user_email_verify_token,
+			user_last_login_at,
+			user_last_login_ip,
+			user_created_at,
+			user_updated_at,
+			user_deleted_at,
+			user_is_subscribed
+		) VALUES (
+			'".$student_id."',
+			'".$username."',
+			'".$full_name."',
+			'".$user_email."',
+			'".$user_phone."',
+			'".$user_password."',
+			'3',
+			'1',
+			'',
+			NULL,
+			NULL,
+			'0',
+			NULL,
+			NULL,
+			NULL,
+			NULL,
+			NULL,
+			NULL,
+			'".$registerTime."',
+			'".$registerTime."',
+			NULL,
+			'0'
+		)");
+
+		$db->query("SELECT id FROM hicrm_users WHERE user_username = '".$studentCode."' LIMIT 1");
+
+		if (!$db->num_row()) {
+			echo json_encode(array(
+				'success' => false,
+				'status' => 500,
+				'step' => 'create_failed',
+				'message' => 'Không thể tạo tài khoản, vui lòng thử lại sau.'
+			));
+			return;
+		}
+
+		$db->query("UPDATE hicrm_student_profile SET student_is_register = '1' WHERE id = '".$student_id."'");
+
+		$emailSent = false;
+		$emailMessage = '';
+		$emailError = '';
+
+		// if ($user_email_raw !== '' && filter_var($user_email_raw, FILTER_VALIDATE_EMAIL)) {
+		// 	$emailSent = $this->mail->sendStudentPasswordEmail($student->student_name, $user_email_raw, $username, $rawPassword, 'Thông tin tài khoản đăng nhập hệ thống Cổg thông tin việc làm Trường Cao đẳng Kon Tum');
+		// 	$emailError = isset($this->studentMailError) ? $this->studentMailError : '';
+		// 	$emailMessage = $emailSent
+		// 		? 'Mật khẩu đã được gửi đến email '.$this->maskEmail($user_email_raw).'.'
+		// 		: 'Tài khoản đã được tạo nhưng chưa thể gửi email. Vui lòng kiểm tra cấu hình SMTP.';
+		// } else {
+		// 	$emailMessage = ' Sinh viên chưa có email hợp lệ, vì vậy không thể gửi mật khẩu qua email.';
+		// }
+
+		echo json_encode(array(
+			'success' => true,
+			'status' => 200,
+			'step' => 'success',
+			'message' => 'Khởi tạo tài khoản thành công.'.$emailMessage,
+			'description' => 'Vui lòng liên hệ giáo viên chủ nhiệm để nhận thông tin đăng nhập.'
+			// 'username' => $studentCodeRaw,
+			// 'email' => $user_email_raw !== '' ? $this->maskEmail($user_email_raw) : '',
+			// 'email_sent' => $emailSent,
+			// 'mail_error' => $emailError
+		));
+		return;
 	}
 
+	public function insertStudens()
+	{
+		global $db;
 
+		header('Content-Type: application/json; charset=utf-8');
+
+		if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+			echo json_encode(array(
+				'success' => false,
+				'status' => 405,
+				'message' => 'Phương thức không hợp lệ.'
+			));
+			return;
+		}
+
+		if (!isset($_FILES['student_file']) || empty($_FILES['student_file']['tmp_name'])) {
+			echo json_encode(array(
+				'success' => false,
+				'status' => 400,
+				'message' => 'Vui lòng chọn file Excel hoặc CSV để nhập.'
+			));
+			return;
+		}
+
+		$file = $_FILES['student_file'];
+		$extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+		$rows = array();
+
+		if ($extension === 'csv') {
+			$rows = $this->parseCsvFile($file['tmp_name']);
+		} elseif ($extension === 'xlsx') {
+			$rows = $this->parseXlsxFile($file['tmp_name']);
+		} else {
+			echo json_encode(array(
+				'success' => false,
+				'status' => 400,
+				'message' => 'Chỉ chấp nhận file .xlsx hoặc .csv.'
+			));
+			return;
+		}
+
+		if (empty($rows) || count($rows) < 2) {
+			echo json_encode(array(
+				'success' => false,
+				'status' => 400,
+				'message' => 'File trống hoặc không có dữ liệu hợp lệ.'
+			));
+			return;
+		}
+
+		$header = array_change_key_case(array_map('trim', $rows[0]), CASE_LOWER);
+		$allowedColumns = array(
+			'student_code',
+			'student_name',
+			'student_phone',
+			'student_email',
+			'student_class',
+			'student_birthday',
+			'student_gender',
+			'student_major_id',
+			'student_gpa',
+			'student_rank',
+			'student_description'
+		);
+
+		$inserted = 0;
+		$skipped = 0;
+		$errors = array();
+
+		for ($rowIndex = 1; $rowIndex < count($rows); $rowIndex++) {
+			$row = $rows[$rowIndex];
+			if (!is_array($row)) {
+				continue;
+			}
+
+			$record = array_fill_keys($allowedColumns, '');
+			foreach ($header as $columnIndex => $columnName) {
+				if (!in_array($columnName, $allowedColumns, true)) {
+					continue;
+				}
+				$record[$columnName] = isset($row[$columnIndex]) ? trim($row[$columnIndex]) : '';
+			}
+
+			$studentCode = trim($record['student_code']);
+			$studentName = trim($record['student_name']);
+
+			if ($studentCode === '' || $studentName === '') {
+				$skipped++;
+				$errors[] = 'Dòng '.($rowIndex + 1).': thiếu mã hoặc tên sinh viên.';
+				continue;
+			}
+
+			$db->query("SELECT id FROM hicrm_student_profile WHERE student_code = '".$db->escapestring($studentCode)."' LIMIT 1");
+			if ($db->num_row()) {
+				$skipped++;
+				$errors[] = 'Dòng '.($rowIndex + 1).': mã sinh viên '.$studentCode.' đã tồn tại, bỏ qua.';
+				continue;
+			}
+
+			$studentClassRaw = $record['student_class'];
+			$studentBirthday = $record['student_birthday'] ?: '1970-01-01';
+			$studentGender = is_numeric($record['student_gender']) ? (int)$record['student_gender'] : 0;
+			$studentMajorId = is_numeric($record['student_major_id']) ? (int)$record['student_major_id'] : 1;
+			$studentGpa = $record['student_gpa'] !== '' ? $db->escapestring($record['student_gpa']) : null;
+			$studentRank = $db->escapestring($record['student_rank']);
+			$studentDescription = $db->escapestring($record['student_description']);
+
+			$studentPhone = $db->escapestring($record['student_phone']);
+			$studentEmail = $db->escapestring($record['student_email']);
+			$studentClassValue = $db->escapestring($studentClassRaw !== '' ? $studentClassRaw : '1');
+
+			$db->query("INSERT INTO hicrm_student_profile (student_code, student_name, student_phone, student_email, student_class, student_birthday, student_gender, student_major_id, student_gpa, student_rank, student_description) VALUES ('".$db->escapestring($studentCode)."', '".$db->escapestring($studentName)."', '".$studentPhone."', '".$studentEmail."', '".$studentClassValue."', '".$db->escapestring($studentBirthday)."', '".$studentGender."', '".$studentMajorId."', ".($studentGpa !== null ? "'".$studentGpa."'" : 'NULL').", '".$studentRank."', '".$studentDescription."')");
+			$inserted++;
+		}
+
+		echo json_encode(array(
+			'success' => true,
+			'status' => 200,
+			'inserted' => $inserted,
+			'skipped' => $skipped,
+			'errors' => $errors,
+			'message' => 'Import hoàn tất.'
+		));
+	}
+
+	private function parseCsvFile($filePath, $delimiter = ',')
+	{
+		$rows = array();
+		if (!is_readable($filePath)) {
+			return $rows;
+		}
+		if (($handle = fopen($filePath, 'r')) === false) {
+			return $rows;
+		}
+		while (($data = fgetcsv($handle, 0, $delimiter)) !== false) {
+			$rows[] = $data;
+		}
+		fclose($handle);
+		return $rows;
+	}
+
+	private function parseXlsxFile($filePath)
+	{
+		$rows = array();
+		if (!class_exists('ZipArchive')) {
+			return $rows;
+		}
+
+		$zip = new ZipArchive();
+		if ($zip->open($filePath) !== true) {
+			return $rows;
+		}
+
+		$sharedStrings = array();
+		if (($index = $zip->locateName('xl/sharedStrings.xml')) !== false) {
+			$sharedXml = $zip->getFromIndex($index);
+			if ($sharedXml !== false) {
+				$shared = simplexml_load_string($sharedXml);
+				if ($shared && isset($shared->si)) {
+					foreach ($shared->si as $si) {
+						$value = '';
+						if (isset($si->t)) {
+							$value = (string)$si->t;
+						} elseif (isset($si->r)) {
+							foreach ($si->r as $r) {
+								$value .= (string)$r->t;
+							}
+						}
+						$sharedStrings[] = $value;
+					}
+				}
+			}
+		}
+
+		$sheetIndex = $zip->locateName('xl/worksheets/sheet1.xml');
+		if ($sheetIndex === false) {
+			$zip->close();
+			return $rows;
+		}
+
+		$sheetXml = $zip->getFromIndex($sheetIndex);
+		$zip->close();
+		if ($sheetXml === false) {
+			return $rows;
+		}
+
+		$xml = simplexml_load_string($sheetXml);
+		if (!$xml || !isset($xml->sheetData) || !isset($xml->sheetData->row)) {
+			return $rows;
+		}
+
+		foreach ($xml->sheetData->row as $row) {
+			$current = array();
+			foreach ($row->c as $cell) {
+				$column = preg_replace('/[0-9]+/', '', (string)$cell['r']);
+				$index = $this->xlsxColumnIndex($column);
+				$value = '';
+				if (isset($cell->v)) {
+					$value = (string)$cell->v;
+					if (isset($cell['t']) && (string)$cell['t'] === 's') {
+						$value = isset($sharedStrings[(int)$value]) ? $sharedStrings[(int)$value] : $value;
+					}
+				}
+				$current[$index] = $value;
+			}
+
+			if (!empty($current)) {
+				ksort($current);
+				$maxIndex = max(array_keys($current));
+				$filled = array();
+				for ($i = 0; $i <= $maxIndex; $i++) {
+					$filled[] = isset($current[$i]) ? $current[$i] : '';
+				}
+				$rows[] = $filled;
+			}
+		}
+
+		return $rows;
+	}
+
+	private function xlsxColumnIndex($column)
+	{
+		$length = strlen($column);
+		$index = 0;
+		for ($i = 0; $i < $length; $i++) {
+			$index = $index * 26 + (ord($column[$i]) - ord('A') + 1);
+		}
+		return $index - 1;
+	}
+
+	private function generateStudentPassword($length = 10)
+	{
+		$chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#$!';
+		$password = '';
+		$max = strlen($chars) - 1;
+
+		for ($i = 0; $i < $length; $i++) {
+			$password .= $chars[random_int(0, $max)];
+		}
+
+		return $password;
+	}
+	private function maskEmail($email)
+	{
+		if (strpos($email, '@') === false) return $email;
+		$parts = explode('@', $email, 2);
+		$user = $parts[0];
+		$domain = $parts[1];
+		$prefix = substr($user, 0, min(2, strlen($user)));
+		return $prefix.str_repeat('*', max(1, strlen($user) - strlen($prefix))).'@'.$domain;
+	}
+	public function insertcompany(){
+		global $db;
+		$result = array();
+		$company_name = isset($_POST['company_name']) ? $db->escapestring(trim($_POST['company_name'])) : '';
+		$companyTax = isset($_POST['tax_code']) ? $db->escapestring(trim($_POST['tax_code'])) : '';
+		if ($company_name === '' || $companyTax === '') {
+			$result['status'] = 400;
+			$result['message'] = 'Tên công ty hoặc mã số thuế không được bỏ trống';
+			echo json_encode($result);
+			return;
+		}
+
+		// K	iểm tra mã số thuế đã tồn tại trong bảng hicrm_employers
+		$db->query("SELECT id FROM hicrm_employers WHERE tax_code = '".$companyTax."' LIMIT 1");
+		if($db->num_row()){
+			$result['status'] = 400;
+			$result['message'] = 'Mã số thuế đã tồn tại';
+			echo json_encode($result);
+			return;
+		}
+
+		// Chèn chỉ tên và mã số thuế
+		$db->query("INSERT INTO hicrm_employers (company_name, tax_code) VALUES ('".$company_name."', '".$companyTax."')");
+		$result['status'] = 200;
+		$result['message'] = 'Tạo công ty thành công';
+
+		echo json_encode($result);
+	}
+	public function registeremployer(){
+		global $db;
+		$result = array();	
+		$contact_name = isset($_POST['contact_name']) ? $db->escapestring(trim($_POST['contact_name'])) : '';
+		$email = isset($_POST['email']) ? $db->escapestring(trim($_POST['email'])) : '';
+		$company_id = isset($_POST['company_id']) ? $db->escapestring(trim($_POST['company_id'])) : '';
+		$phone = isset($_POST['phone']) ? $db->escapestring(trim($_POST['phone'])) : '';
+		$password = isset($_POST['password']) ? $db->escapestring(trim($_POST['password'])) : '';
+		// $confirm_password = isset($_POST['confirm_password']) ? $db->escapestring(trim($_POST['confirm_password'])) : '';
+		//check email exist
+		// echo $email, $contact_name, $company_id, $phone, $password.'ádasdasd' ;
+		$db->query("SELECT id FROM hicrm_users WHERE user_email = '".$email."' LIMIT 1");
+		if($db->num_row()){	
+			$result['status'] = 400;
+			$result['message'] = 'Email đã tồn tại';
+			echo json_encode($result);
+			return;
+		}
+		//insert data to users table
+		
+		$db->query("INSERT INTO hicrm_users (employee_id, full_name, user_email, user_phone, user_password, user_group, user_status, user_created_at) VALUES ('".$company_id."', '".$contact_name."', '".$email."', '".$phone."', '".md5($password)."', '2', '1', '".date('Y-m-d H:i:s')."')");	
+		$emailSent = false;
+		$emailMessage = '';
+		$emailError = '';
+		// tạo token xác thực email
+		$token     = bin2hex(random_bytes(32));
+		//tạo token hết hạn sau 15 phút
+		$expiresAt = date('Y-m-d H:i:s', strtotime('+15 minutes'));
+		
+		// update token vào database
+		$db->query("UPDATE hicrm_users SET user_email_verify_token = '".$token."', user_email_verified_at = '".$expiresAt."' WHERE user_email = '".$email."'");
+
+
+		if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+			$emailSent = $this->mail->sendVerifyEmail($contact_name, $email, $token, 'Xác thực tài khoản đăng nhập hệ thống Cổng thông tin việc làm Trường Cao đẳng Kon Tum');
+			$emailError = isset($this->studentMailError) ? $this->studentMailError : '';
+			$emailMessage = $emailSent
+				? 'Hệ thống đã gửi liên kết xác thực đến email '.$this->maskEmail($email).'.'
+				: 'Tài khoản đã được tạo nhưng chưa thể xác thực email. Vui lòng kiểm tra cấu hình liên hệ quản trị viên.';
+		} else {
+			$emailMessage = 'Chưa có email hợp lệ, vì vậy không thể gửi liên kết xác thực qua email.';
+		}
+		echo json_encode(array(
+			'success' => true,
+			'status' => 200,
+			'message' => $emailMessage,
+			'email' => $email !== '' ? $this->maskEmail($email) : '',
+			'email_sent' => $emailSent,
+			'mail_error' => $emailError
+		));
+		return;
+	}
+
+	public function registercandidate(){
+		global $db;
+		$result = array();	
+		$fullname = isset($_POST['fullname']) ? $db->escapestring(trim($_POST['fullname'])) : '';
+		$email = isset($_POST['email']) ? $db->escapestring(trim($_POST['email'])) : '';
+		$phone = isset($_POST['phone']) ? $db->escapestring(trim($_POST['phone'])) : '';
+		$password = isset($_POST['password']) ? $db->escapestring(trim($_POST['password'])) : '';
+		// $confirm_password = isset($_POST['confirm_password']) ? $db->escapestring(trim($_POST['confirm_password'])) : '';
+		//check email exist
+		// echo $email, $contact_name, $company_id, $phone, $password.'ádasdasd' ;
+		$db->query("SELECT id FROM hicrm_users WHERE user_email = '".$email."' LIMIT 1");
+		if($db->num_row()){	
+			$result['status'] = 400;
+			$result['message'] = 'Email đã tồn tại';
+			echo json_encode($result);
+			return;
+		}
+		//insert data to users table
+		
+		$db->query("INSERT INTO hicrm_users (full_name, user_email, user_phone, user_password, user_group, user_status, user_created_at) VALUES ('".$fullname."', '".$email."', '".$phone."', '".md5($password)."', '4', '1', '".date('Y-m-d H:i:s')."')");	
+		$emailSent = false;
+		$emailMessage = '';
+		$emailError = '';
+		// tạo token xác thực email
+		$token     = bin2hex(random_bytes(32));
+		//tạo token hết hạn sau 15 phút
+		$expiresAt = date('Y-m-d H:i:s', strtotime('+15 minutes'));
+		
+		// update token vào database
+		$db->query("UPDATE hicrm_users SET user_email_verify_token = '".$token."', user_email_verified_at = '".$expiresAt."' WHERE user_email = '".$email."'");
+
+
+		if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+			$emailSent = $this->mail->sendVerifyEmail($fullname, $email, $token, 'Xác thực tài khoản đăng nhập hệ thống Cổng thông tin việc làm Trường Cao đẳng Kon Tum');
+			$emailError = isset($this->studentMailError) ? $this->studentMailError : '';
+			$emailMessage = $emailSent
+				? 'Hệ thống đã gửi liên kết xác thực đến email '.$this->maskEmail($email).'.'
+				: 'Tài khoản đã được tạo nhưng chưa thể xác thực email. Vui lòng kiểm tra cấu hình liên hệ quản trị viên.';
+		} else {
+			$emailMessage = 'Chưa có email hợp lệ, vì vậy không thể gửi liên kết xác thực qua email.';
+		}
+		echo json_encode(array(
+			'success' => true,
+			'status' => 200,
+			'message' => $emailMessage,
+			'email' => $email !== '' ? $this->maskEmail($email) : '',
+			'email_sent' => $emailSent,
+			'mail_error' => $emailError
+		));
+		return;
+	}
+
+	// private function getStudentPasswordEmailTemplate($name, $username, $password)
+	// {
+	// 	return 
+		
+	// 	'<div style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,sans-serif;">
+    //     <div style="max-width:620px;margin:30px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.08);">
+            
+    //         <div style="background:linear-gradient(135deg,#0d4e96,#1976d2);padding:28px;text-align:center;color:#fff;">
+    //             <h2 style="margin:0;font-size:24px;">Cổng thông tin việc làm</h2>
+    //             <p style="margin:8px 0 0;font-size:14px;">Thông tin tài khoản đăng nhập</p>
+    //         </div>
+
+    //         <div style="padding:32px;color:#333;">
+    //             <h3 style="margin-top:0;color:#0d4e96;">Xin chào '.$name.',</h3>
+
+    //             <p style="font-size:15px;line-height:1.6;">
+    //                 Tài khoản của bạn đã được tạo thành công. Vui lòng sử dụng thông tin bên dưới để đăng nhập hệ thống.
+    //             </p>
+
+    //             <div style="background:#f0f6ff;border:1px solid #d8e8ff;border-radius:12px;padding:20px;margin:24px 0;">
+    //                 <p style="margin:0 0 10px ;border-bottom:1px solid #d8e8ff;padding-bottom:10px;"><b>Email:</b> '.$username.'</p>
+    //                 <p style="margin:0;"><b>Mật khẩu:</b> 
+    //                     <span style="font-size:18px;color:#d35400;font-weight:bold;">'.$password.'</span>
+    //                 </p>
+    //             </div>
+    //             <p style="color:#b42318"><strong>Lưu ý:</strong> Vui lòng đổi mật khẩu sau khi đăng nhập lần đầu.</p>
+    //             <div style="text-align:center;margin:30px 0;">
+    //                 <a href="'.XC_URL.'"
+    //                    style="background:#0d4e96;color:#fff;text-decoration:none;padding:14px 28px;border-radius:30px;font-weight:bold;display:inline-block;">
+    //                     Đăng nhập ngay
+    //                 </a>
+    //             </div>
+
+    //             <p style="font-size:14px;color:#777;">
+    //               Email này được gửi tự động, vui lòng không trả lời.
+    //             </p>
+    //         </div>
+
+    //         <div style="background:#f1f3f6;padding:18px;text-align:center;font-size:13px;color:#777;">
+    //             © '.date('Y').' Cổng thông tin việc làm. All rights reserved.
+    //         </div>
+    //     </div>
+    // </div>';
+	// }
 //End API student register
 // end code Cương
-	
-	
+
+	// Thêm nhóm quyền mới
+	public function addGroup(){
+		global $db;
+
+		$group_name = $db->escapestring($_POST['group_name']);
+		$group_class = $db->escapestring($_POST['group_class'] ?? '');
+		$group_icon = $db->escapestring($_POST['group_icon'] ?? '');
+		$user_role_id = $db->escapestring($_POST['user_role_id'] ?? '');
+		$result = array();
+
+		if(empty($group_name)){
+			$result['status'] = 400;
+			$result['message'] = 'Tên nhóm quyền không được để trống';
+			echo json_encode($result);
+			return;
+		}
+
+		// Kiểm tra nhóm quyền đã tồn tại chưa
+		$db->query("SELECT id FROM hicrm_user_groups WHERE group_name = '".$group_name."' AND group_status != 99");
+		if($db->num_row()){
+			$result['status'] = 400;
+			$result['message'] = 'Tên nhóm quyền đã tồn tại';
+			echo json_encode($result);
+			return;
+		}
+
+		// Thêm nhóm quyền mới
+		$db->query("INSERT INTO hicrm_user_groups( group_name, group_class, group_icon, group_status) VALUES ('".$group_name."','".$group_class."','".$group_icon."',1)");
+
+		if($db->affected_rows() > 0){
+			$result['status'] = 200;
+			$result['message'] = 'Thêm nhóm quyền thành công';
+			$result['url'] = XC_URL."/admin/groups";
+		}else{
+			$result['status'] = 500;
+			$result['message'] = 'Có lỗi xảy ra khi thêm nhóm quyền';
+		}
+
+		echo json_encode($result);
+	}
+	// End thêm nhóm quyền mới
+
+	public function linkemployer(){
+		global $db;
+		$result = array();
+		$id = isset($_POST['id']) ? $db->escapestring($_POST['id']) : '';
+
+		if($id == ''){
+			$result['status'] = 400;
+			$result['message'] = 'ID nhà tuyển dụng không hợp lệ';
+			echo json_encode($result);
+			return;
+		}
+
+		$db->query("SELECT id FROM hicrm_employers WHERE id = '".$id."'");
+		if(!$db->num_row()){
+			$result['status'] = 404;
+			$result['message'] = 'Nhà tuyển dụng không tồn tại';
+			echo json_encode($result);
+			return;
+		}
+
+		$db->query("UPDATE hicrm_employers SET is_linked_school = 1 WHERE id = '".$id."'");
+		$result['status'] = 200;
+		$result['message'] = 'Liên kết nhà tuyển dụng thành công';
+		echo json_encode($result);
+	}
+
+	public function deleteemployer(){
+		global $db;
+		$result = array();
+		$id = isset($_POST['id']) ? $db->escapestring($_POST['id']) : '';
+
+		if($id == ''){
+			$result['status'] = 400;
+			$result['message'] = 'ID nhà tuyển dụng không hợp lệ';
+			echo json_encode($result);
+			return;
+		}
+
+		$db->query("SELECT id FROM hicrm_employers WHERE id = '".$id."'");
+		if(!$db->num_row()){
+			$result['status'] = 404;
+			$result['message'] = 'Nhà tuyển dụng không tồn tại';
+			echo json_encode($result);
+			return;
+		}
+
+		$db->query("UPDATE hicrm_users SET employee_id = 0 WHERE employee_id = '".$id."' AND user_group = '2'");
+		$db->query("DELETE FROM hicrm_employers WHERE id = '".$id."'");
+
+		$result['status'] = 200;
+		$result['message'] = 'Xóa nhà tuyển dụng thành công';
+		echo json_encode($result);
+	}
+
+	// Xóa nhóm quyền
+	public function deletegroup(){
+		global $db;
+		$result = array();
+		$id = $_POST['id'];
+		$group_status = $_POST['group_status'];
+
+		if(empty($id)){
+			$result['status'] = 400;
+			$result['message'] = 'ID nhóm quyền không hợp lệ';
+			echo json_encode($result);
+			return;
+		}
+
+		// Kiểm tra nhóm quyền có tồn tại không
+		$db->query("SELECT id FROM hicrm_user_groups WHERE id = '".$id."'");
+		if(!$db->num_row()){
+			$result['status'] = 404;
+			$result['message'] = 'Nhóm quyền không tồn tại';
+			echo json_encode($result);
+			return;
+		}
+
+		// Xóa nhóm quyền (đánh dấu xóa)
+		$db->query("UPDATE hicrm_user_groups SET group_status = 99 WHERE id = '".$id."'");
+
+		if($db->affected_rows() > 0){
+			$result['status'] = 200;
+			$result['message'] = 'Xóa nhóm quyền thành công';
+		}else{
+			$result['status'] = 500;
+			$result['message'] = 'Có lỗi xảy ra khi xóa nhóm quyền';
+		}
+
+		echo json_encode($result);
+	}
+	// End xóa nhóm quyền
+
+
 }
 
 

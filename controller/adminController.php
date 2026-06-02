@@ -3,20 +3,90 @@ Class adminController extends baseController
 {
     public function index()
     {
-		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ header("Location: ".XC_URL."/admin/login"); }
+		global $db;
+		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ header("Location: ".XC_URL."/admin/login"); return; }
+		$db->query("SELECT * FROM hicrm_users WHERE id = '".$_SESSION['user']['id']."'");
 		
+		$user = $db->fetch_object(true);
+		if($user->user_group == 1){
+			$this->view->admintmp('index');
+		}else{
+			$this->view->data['page_title'] = "Bạn không có quyền truy cập trang này";
+			$this->view->data['page_description'] = "Xin lỗi, Trang này yêu cầu quyền quản trị.";
+			$this->view->show('404');
+		}
 		// $this->view->show("backend/index");
 		
-		$this->view->admintmp('index');
+		
+		
     }
 	public function login()
 	{ 
 		
-		$this->view->show("backend/login");
+		$this->view->admintmp("login");
 	}
-	public function employyer(){
-		
+	public function employyer($para = ''){
+		global $db;
+		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ header("Location: ".XC_URL."/admin/login"); return; }
+
+		$where = array("1=1");
+		$keyword = isset($_GET['keyword']) ? trim($_GET['keyword']) : "";
+		$linked_status = isset($_GET['linked_status']) ? trim($_GET['linked_status']) : "";
+		$page = (isset($_GET['page']) && (int)$_GET['page'] > 0) ? (int)$_GET['page'] : 1;
+		$per_page = 20;
+
+		if($linked_status === "linked"){
+			$where[] = "e.is_linked_school = 1";
+		}elseif($linked_status === "unlinked"){
+			$where[] = "e.is_linked_school = 0";
+		}
+
+		if($keyword !== ""){
+			$keyword_sql = $db->escapestring($keyword);
+			$where[] = "(e.company_name LIKE '%".$keyword_sql."%' OR e.tax_code LIKE '%".$keyword_sql."%' OR reps.representative_name LIKE '%".$keyword_sql."%')";
+		}
+
+		$base_sql = "FROM hicrm_employers e
+					LEFT JOIN (
+						SELECT employee_id,
+							GROUP_CONCAT(DISTINCT full_name SEPARATOR ', ') AS representative_name,
+							GROUP_CONCAT(DISTINCT user_email SEPARATOR ', ') AS representative_email,
+							GROUP_CONCAT(DISTINCT user_phone SEPARATOR ', ') AS representative_phone
+						FROM hicrm_users
+						WHERE user_group = '2' AND user_deleted_at IS NULL
+						GROUP BY employee_id
+					) reps ON reps.employee_id = e.id
+					WHERE ".implode(" AND ", $where);
+
+		$db->query("SELECT COUNT(e.id) AS total ".$base_sql);
+		$total_employers = (int)$db->fetch_object(true)->total;
+		$total_pages = max(1, ceil($total_employers / $per_page));
+		if($page > $total_pages){
+			$page = $total_pages;
+		}
+		$offset = ($page - 1) * $per_page;
+
+		$db->query("SELECT e.*,
+					reps.representative_name,
+					reps.representative_email,
+					reps.representative_phone
+					".$base_sql."
+					ORDER BY e.id DESC
+					LIMIT ".$offset.",".$per_page);
+
+		$this->view->data['active_menu'] = "employers";
+		$this->view->data['employers'] = $db->fetch_object();
+		$this->view->data['keyword'] = $keyword;
+		$this->view->data['linked_status'] = $linked_status;
+		$this->view->data['page'] = $page;
+		$this->view->data['per_page'] = $per_page;
+		$this->view->data['total_employers'] = $total_employers;
+		$this->view->data['total_pages'] = $total_pages;
 		$this->view->admintmp('employyer');
+	}
+
+	public function employers($para = ''){
+		$this->employyer($para);
 	}
 	public function register()
 {
@@ -37,7 +107,8 @@ Class adminController extends baseController
 		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ header("Location: ".XC_URL."/admin/login"); }
 		if(isset($para[1]) && $para[1] == "add"){
 			$this->view->data['method'] = 'add';
-			$this->view->data['user_categories'] = $userModel->get_user_category();
+			$user_category = $userModel->get_user_category();
+			$this->view->data['user_category'] = $user_category;
 			$this->view->data['roles'] = $userModel->role_user();
 			$this->view->data['pagetitle'] = 'Thêm tài khoản';
 			$this->view->admintmp("user-action");
@@ -68,6 +139,28 @@ Class adminController extends baseController
 		}
 		
 	}
+	//end users
+
+	// Quản lý nhóm quyền
+	public function groups($para)
+	{
+		$userModel = $this->model->get('userModel');
+		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ header("Location: ".XC_URL."/admin/login"); }
+
+		if(isset($para[1]) && $para[1] == "add"){
+			$this->view->data['method'] = 'add';
+			$this->view->data['pagetitle'] = 'Thêm nhóm quyền mới';
+			$this->view->data['user_roles'] = $userModel->get_user_role(); // Load quyền chi tiết để chọn
+			$this->view->admintmp("group-add");
+		}else{
+			$this->view->data['active_menu'] = "groups";
+			$this->view->data['groups'] = $userModel->role_user(); // Load nhóm quyền
+			$this->view->data['pagetitle'] = 'Danh sách nhóm quyền';
+			$this->view->admintmp("groups");
+		}
+	}
+	//end groups
+
 	public function editusers($para){
 		$id = $para[1];
 		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ header("Location: ".XC_URL."/admin/login"); }
@@ -127,6 +220,50 @@ Class adminController extends baseController
 		$this->view->data["customer_code"] = $lastno;
 		$this->view->data["employee_code"] = $lastno2;
 		$this->view->show("backend/add-users");
+	}
+	//end
+
+	// Quản lý sinh viên
+	public function students($para)
+	{
+		global $db;
+		
+		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ header("Location: ".XC_URL."/admin/login"); }
+		if(isset($para[1]) && $para[1] == "add"){
+			$this->view->data['method'] = 'add';
+			$user_category = $userModel->get_user_category();
+			$this->view->data['user_category'] = $user_category;
+			$this->view->data['roles'] = $userModel->role_user();
+			$this->view->data['pagetitle'] = 'Thêm tài khoản';
+			$this->view->admintmp("user-action");
+		}elseif(isset($para[1]) && $para[1] == "edit"){
+			$this->view->data['method'] = 'edit';
+			$this->view->data['user_categories'] = $userModel->get_user_category();
+			$this->view->data['roles'] = $userModel->role_user();
+			$this->view->data['user'] = $userModel->get_user($para[2]);
+			$this->view->data['pagetitle'] = 'Sửa tài khoản';
+			$this->view->admintmp("user-action");
+		}elseif(isset($para[1]) && $para[1] == "detail"){
+			$this->view->data['method'] = 'detail';
+			$this->view->data['pagetitle'] = 'Chi tiết tài khoản';
+			$this->view->admintmp("user-action");
+		}elseif(isset($para[1]) && $para[1] == "role"){
+			$this->view->data['roles'] = $userModel->role_user();
+			$this->view->data['user'] = $userModel->get_user($para[2]);
+			$this->view->data['role_detail'] = $userModel->role_user_detail($userModel->get_user($para[2])->user_group);
+			$this->view->data['user_roles'] = $userModel->get_user_role();
+			$this->view->data['method'] = 'role';
+			$this->view->data['pagetitle'] = 'Thêm nhóm quyền';
+			$this->view->admintmp("user-role");
+		}
+		else{
+			//get student list
+			$db->query("SELECT * FROM hicrm_student_profile ORDER BY id DESC"); 
+			$this->view->data['active_menu'] = "students";
+			$this->view->data['students'] = $db->fetch_object();
+			$this->view->admintmp("students");
+		}
+		
 	}
 	//end
 	public function gioithieu($para){
@@ -632,29 +769,24 @@ Class adminController extends baseController
 	}
 	public function config()
     {
-		if(!(isset($_SESSION['staff']['id']) && $_SESSION['staff']['id'] != "")){ header("Location: ".XC_URL."/admin/login"); }
-		if(isset($_POST['updatekey']) && $_POST['updatekey'] != "")
+		global $db;
+		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ header("Location: ".XC_URL."/admin/login"); return; }
+
+		if(isset($_POST['config_id']) && $_POST['config_id'] != "")
 		{
-			global $db;
-			$listkey = explode(',',$_POST['updatekey']);
-			for($i = 0;$i< count($listkey);$i++)
-			{
-				$db->query("SELECT id FROM ow_configs WHERE config_key = '".$listkey[$i]."'");
-				if($db->num_row())
-				{
-					$db->query("UPDATE ow_configs SET config_value = '".$_POST[$listkey[$i]]."' WHERE config_key = '".$listkey[$i]."'");
-				}
-				else
-				{
-					$db->query("INSERT INTO ow_configs(config_key,config_value) VALUES('".$listkey[$i]."','".$_POST[$listkey[$i]]."')");
-				}
-			}
-			header("Location: ".XC_URL."/admin/config");
+			$config_id = $db->escapestring($_POST['config_id']);
+			$config_value = isset($_POST['config_value']) ? $db->escapestring($_POST['config_value']) : "";
+			$db->query("UPDATE hicrm_configs SET config_value = '".$config_value."' WHERE id = '".$config_id."'");
+			header("Location: ".XC_URL."/admin/config?updated=1&id=".$config_id);
+			return;
 		}
-		else
-		{
-			$this->view->show("config");
-		}
+
+		$db->query("SELECT * FROM hicrm_configs ORDER BY id ASC");
+		$this->view->data['active_menu'] = "config";
+		$this->view->data['configs'] = $db->fetch_object();
+		$this->view->data['selected_config_id'] = isset($_GET['id']) ? $_GET['id'] : "";
+		$this->view->data['updated'] = isset($_GET['updated']) ? $_GET['updated'] : "";
+		$this->view->admintmp("system-config");
 		
     }
 	

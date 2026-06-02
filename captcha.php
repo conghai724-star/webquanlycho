@@ -7,7 +7,9 @@
  * Create Date: 14:34 - 29/11/2013
  * Website: www.xiao.vn
  */
-session_start();
+if (session_id() === '') {
+	session_start();
+}
 function create_image()
 {
     $md5_hash = md5(rand(0,999));

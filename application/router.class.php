@@ -134,7 +134,7 @@ private function getController() {
 		}elseif($parts[0] == "dang-ky-tai-khoan.html")
 		{
 			// echo $parts[0];
-			$this->controller = "admin";
+			$this->controller = "home";
 			$this->action = "register";
 			if(isset( $parts[1]))
 			{
@@ -145,25 +145,12 @@ private function getController() {
 					$args[$k++] = $parts[$i]; 
 				$this->args = $args;
 			}
-		}elseif($parts[0] == "dat-thuoc-noi-bo.html")
+		}
+		elseif($parts[0] == "verify_email")
 		{
 			// echo $parts[0];
-			$this->controller = "page";
-			$this->action = "booking_internal";
-			if(isset( $parts[1]))
-			{
-				$count_args = count($parts);
-				$k = 1;
-				$args = array();
-				for($i = 1; $i < $count_args; $i++)
-					$args[$k++] = $parts[$i]; 
-				$this->args = $args;
-			}
-		}elseif($parts[0] == "bmi-online")
-		{
-			// echo $parts[0];
-			$this->controller = "page";
-			$this->action = "bmi";
+			$this->controller = "home";
+			$this->action = "verify_email";
 			if(isset( $parts[1]))
 			{
 				$count_args = count($parts);
@@ -207,7 +194,7 @@ private function getController() {
 		elseif($parts[0] == "gioi-thieu.html")
 		{
 			// echo $parts[0];
-			$this->controller = "page";
+			$this->controller = "home";
 			$this->action = "introduce";
 			if(isset( $parts[1]))
 			{
@@ -360,11 +347,11 @@ private function getController() {
 					$args[$k++] = $parts[$i]; 
 				$this->args = $args;
 			}
-		}elseif($parts[0] == "chuyen-khoa.html")
+		}elseif($parts[0] == "quan-ly-nha-tuyen-dung.html")
 		{
 			// echo $parts[0];
-			$this->controller = "page";
-			$this->action = "chuyenkhoa";
+			$this->controller = "home";
+			$this->action = "employers";
 			if(isset( $parts[1]))
 			{
 				$count_args = count($parts);
@@ -390,21 +377,21 @@ private function getController() {
 			}
 		}
 		//Router backend
-		elseif($parts[1] == "admin")
-		{
-			$this->controller = "admin";
-			$this->action = "admin";
-			// echo $this->action;
-			if(isset( $parts[1]))
-			{
-				$count_args = count($parts);
-				$k = 1;
-				$args = array();
-				for($i = 1; $i < $count_args; $i++)
-					$args[$k++] = $parts[$i]; 
-				$this->args = $args;
-			}
-		}
+		// elseif($parts[0] == "admin")
+		// {
+		// 	$this->controller = "admin";
+		// 	$this->action = "index";
+		// 	// echo $this->action;
+		// 	if(isset( $parts[1]))
+		// 	{
+		// 		$count_args = count($parts);
+		// 		$k = 1;
+		// 		$args = array();
+		// 		for($i = 1; $i < $count_args; $i++)
+		// 			$args[$k++] = $parts[$i]; 
+		// 		$this->args = $args;
+		// 	}
+		// }
 		else 
 		{
 			

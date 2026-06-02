@@ -1,797 +1,306 @@
 <?php require "header.php"; ?>
-        <div class="sidebar-footer"></div>
-    </aside>    <main class="main-content">
-      <div class="position-relative iq-banner">
-        <!--Nav Start-->
-        <nav class="nav navbar navbar-expand-lg navbar-light iq-navbar">
-          <div class="container-fluid navbar-inner">
-            <a href="./../dashboard/index.html" class="navbar-brand">
-                
-                <!--Logo start-->
-                <div class="logo-main">
-                    <div class="logo-normal">
-                        <svg class="text-primary icon-30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect x="-0.757324" y="19.2427" width="28" height="4" rx="2" transform="rotate(-45 -0.757324 19.2427)" fill="currentColor"/>
-                            <rect x="7.72803" y="27.728" width="28" height="4" rx="2" transform="rotate(-45 7.72803 27.728)" fill="currentColor"/>
-                            <rect x="10.5366" y="16.3945" width="16" height="4" rx="2" transform="rotate(45 10.5366 16.3945)" fill="currentColor"/>
-                            <rect x="10.5562" y="-0.556152" width="28" height="4" rx="2" transform="rotate(45 10.5562 -0.556152)" fill="currentColor"/>
-                        </svg>
-                    </div>
-                    <div class="logo-mini">
-                        <svg class="text-primary icon-30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect x="-0.757324" y="19.2427" width="28" height="4" rx="2" transform="rotate(-45 -0.757324 19.2427)" fill="currentColor"/>
-                            <rect x="7.72803" y="27.728" width="28" height="4" rx="2" transform="rotate(-45 7.72803 27.728)" fill="currentColor"/>
-                            <rect x="10.5366" y="16.3945" width="16" height="4" rx="2" transform="rotate(45 10.5366 16.3945)" fill="currentColor"/>
-                            <rect x="10.5562" y="-0.556152" width="28" height="4" rx="2" transform="rotate(45 10.5562 -0.556152)" fill="currentColor"/>
-                        </svg>
-                    </div>
-                </div>
-                <!--logo End-->
-                
-                
-                
-                
-                <h4 class="logo-title">Hope UI</h4>
-            </a>
-            <div class="sidebar-toggle" data-toggle="sidebar" data-active="true">
-                <i class="icon">
-                 <svg  width="20px" class="icon-20" viewBox="0 0 24 24">
-                    <path fill="currentColor" d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z" />
-                </svg>
-                </i>
-            </div>
-            <div class="input-group search-input">
-              <span class="input-group-text" id="search-input">
-                <svg class="icon-18" width="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="11.7669" cy="11.7666" r="8.98856" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></circle>
-                    <path d="M18.0186 18.4851L21.5426 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                </svg>
-              </span>
-              <input type="search" class="form-control" placeholder="Search...">
-            </div>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-              <span class="navbar-toggler-icon">
-                  <span class="mt-2 navbar-toggler-bar bar1"></span>
-                  <span class="navbar-toggler-bar bar2"></span>
-                  <span class="navbar-toggler-bar bar3"></span>
-                </span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarSupportedContent">
-              <ul class="mb-2 navbar-nav ms-auto align-items-center navbar-list mb-lg-0">
-                <li class="me-0 me-xl-2">
-                  <a class="btn btn-primary btn-sm d-flex gap-2 align-items-center" aria-current="page" href="http://hopeui.iqonic.design/pro?utm_source=hopeui-free-demo&utm_medium=hopeui-free-demo&utm_campaign=hopeui-pro-launch" target="_blank">
-                    <svg class="icon-16" width="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M21.4274 2.5783C20.9274 2.0673 20.1874 1.8783 19.4974 2.0783L3.40742 6.7273C2.67942 6.9293 2.16342 7.5063 2.02442 8.2383C1.88242 8.9843 2.37842 9.9323 3.02642 10.3283L8.05742 13.4003C8.57342 13.7163 9.23942 13.6373 9.66642 13.2093L15.4274 7.4483C15.7174 7.1473 16.1974 7.1473 16.4874 7.4483C16.7774 7.7373 16.7774 8.2083 16.4874 8.5083L10.7164 14.2693C10.2884 14.6973 10.2084 15.3613 10.5234 15.8783L13.5974 20.9283C13.9574 21.5273 14.5774 21.8683 15.2574 21.8683C15.3374 21.8683 15.4274 21.8683 15.5074 21.8573C16.2874 21.7583 16.9074 21.2273 17.1374 20.4773L21.9074 4.5083C22.1174 3.8283 21.9274 3.0883 21.4274 2.5783Z" fill="currentColor"></path>
-                      <path opacity="0.4" fill-rule="evenodd" clip-rule="evenodd" d="M3.01049 16.8079C2.81849 16.8079 2.62649 16.7349 2.48049 16.5879C2.18749 16.2949 2.18749 15.8209 2.48049 15.5279L3.84549 14.1619C4.13849 13.8699 4.61349 13.8699 4.90649 14.1619C5.19849 14.4549 5.19849 14.9299 4.90649 15.2229L3.54049 16.5879C3.39449 16.7349 3.20249 16.8079 3.01049 16.8079ZM6.77169 18.0003C6.57969 18.0003 6.38769 17.9273 6.24169 17.7803C5.94869 17.4873 5.94869 17.0133 6.24169 16.7203L7.60669 15.3543C7.89969 15.0623 8.37469 15.0623 8.66769 15.3543C8.95969 15.6473 8.95969 16.1223 8.66769 16.4153L7.30169 17.7803C7.15569 17.9273 6.96369 18.0003 6.77169 18.0003ZM7.02539 21.5683C7.17139 21.7153 7.36339 21.7883 7.55539 21.7883C7.74739 21.7883 7.93939 21.7153 8.08539 21.5683L9.45139 20.2033C9.74339 19.9103 9.74339 19.4353 9.45139 19.1423C9.15839 18.8503 8.68339 18.8503 8.39039 19.1423L7.02539 20.5083C6.73239 20.8013 6.73239 21.2753 7.02539 21.5683Z" fill="currentColor"></path>
-                    </svg>
-                    Go Pro
-                  </a>
-                </li>
-                <li class="nav-item dropdown">
-                    <a href="#" class="search-toggle nav-link" id="dropdownMenuButton2" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <img src="./../assets/images/Flag/flag001.png" class="img-fluid rounded-circle" alt="user" style="height: 30px; min-width: 30px; width: 30px;">
-                    <span class="bg-primary"></span>
-                    </a>
-                    <div class="p-0 sub-drop dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton2">
-                        <div class="m-0 border-0 shadow-none card">
-                            <div class="p-0 ">
-                                <ul class="p-0 list-group list-group-flush">
-                                    <li class="iq-sub-card list-group-item"><a class="p-0" href="#"><img src="./../assets/images/Flag/flag-03.png" alt="img-flaf" class="img-fluid me-2" style="width: 15px;height: 15px;min-width: 15px;"/>Spanish</a></li>
-                                    <li class="iq-sub-card list-group-item"><a class="p-0" href="#"><img src="./../assets/images/Flag/flag-04.png" alt="img-flaf" class="img-fluid me-2" style="width: 15px;height: 15px;min-width: 15px;"/>Italian</a></li>
-                                    <li class="iq-sub-card list-group-item"><a class="p-0" href="#"><img src="./../assets/images/Flag/flag-02.png" alt="img-flaf" class="img-fluid me-2" style="width: 15px;height: 15px;min-width: 15px;"/>French</a></li>
-                                    <li class="iq-sub-card list-group-item"><a class="p-0" href="#"><img src="./../assets/images/Flag/flag-05.png" alt="img-flaf" class="img-fluid me-2" style="width: 15px;height: 15px;min-width: 15px;"/>German</a></li>
-                                    <li class="iq-sub-card list-group-item"><a class="p-0" href="#"><img src="./../assets/images/Flag/flag-06.png" alt="img-flaf" class="img-fluid me-2" style="width: 15px;height: 15px;min-width: 15px;"/>Japanese</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </li>
-                <li class="nav-item dropdown">
-                  <a href="#"  class="nav-link" id="notification-drop" data-bs-toggle="dropdown" >
-                      <svg class="icon-24" width="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M19.7695 11.6453C19.039 10.7923 18.7071 10.0531 18.7071 8.79716V8.37013C18.7071 6.73354 18.3304 5.67907 17.5115 4.62459C16.2493 2.98699 14.1244 2 12.0442 2H11.9558C9.91935 2 7.86106 2.94167 6.577 4.5128C5.71333 5.58842 5.29293 6.68822 5.29293 8.37013V8.79716C5.29293 10.0531 4.98284 10.7923 4.23049 11.6453C3.67691 12.2738 3.5 13.0815 3.5 13.9557C3.5 14.8309 3.78723 15.6598 4.36367 16.3336C5.11602 17.1413 6.17846 17.6569 7.26375 17.7466C8.83505 17.9258 10.4063 17.9933 12.0005 17.9933C13.5937 17.9933 15.165 17.8805 16.7372 17.7466C17.8215 17.6569 18.884 17.1413 19.6363 16.3336C20.2118 15.6598 20.5 14.8309 20.5 13.9557C20.5 13.0815 20.3231 12.2738 19.7695 11.6453Z" fill="currentColor"></path>
-                        <path opacity="0.4" d="M14.0088 19.2283C13.5088 19.1215 10.4627 19.1215 9.96275 19.2283C9.53539 19.327 9.07324 19.5566 9.07324 20.0602C9.09809 20.5406 9.37935 20.9646 9.76895 21.2335L9.76795 21.2345C10.2718 21.6273 10.8632 21.877 11.4824 21.9667C11.8123 22.012 12.1482 22.01 12.4901 21.9667C13.1083 21.877 13.6997 21.6273 14.2036 21.2345L14.2026 21.2335C14.5922 20.9646 14.8734 20.5406 14.8983 20.0602C14.8983 19.5566 14.4361 19.327 14.0088 19.2283Z" fill="currentColor"></path>
-                      </svg>
-                      <span class="bg-danger dots"></span>
-                  </a>
-                  <div class="p-0 sub-drop dropdown-menu dropdown-menu-end" aria-labelledby="notification-drop">
-                      <div class="m-0 shadow-none card">
-                        <div class="py-3 card-header d-flex justify-content-between bg-primary">
-                            <div class="header-title">
-                              <h5 class="mb-0 text-white">All Notifications</h5>
-                            </div>
-                        </div>
-                        <div class="p-0 card-body">
-                            <a href="#" class="iq-sub-card">
-                              <div class="d-flex align-items-center">
-                                  <img class="p-1 avatar-40 rounded-pill bg-soft-primary" src="./../assets/images/shapes/01.png" alt="">
-                                  <div class="ms-3 w-100">
-                                    <h6 class="mb-0 ">Emma Watson Bni</h6>
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <p class="mb-0">95 MB</p>
-                                        <small class="float-end font-size-12">Just Now</small>
-                                    </div>
-                                  </div>
-                              </div>
-                            </a>
-                            <a href="#" class="iq-sub-card">
-                              <div class="d-flex align-items-center">
-                                  <div class="">
-                                    <img class="p-1 avatar-40 rounded-pill bg-soft-primary" src="./../assets/images/shapes/02.png" alt="">
-                                  </div>
-                                  <div class="ms-3 w-100">
-                                    <h6 class="mb-0 ">New customer is join</h6>
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <p class="mb-0">Cyst Bni</p>
-                                        <small class="float-end font-size-12">5 days ago</small>
-                                    </div>
-                                  </div>
-                              </div>
-                            </a>
-                            <a href="#" class="iq-sub-card">
-                              <div class="d-flex align-items-center">
-                                  <img class="p-1 avatar-40 rounded-pill bg-soft-primary" src="./../assets/images/shapes/03.png" alt="">
-                                  <div class="ms-3 w-100">
-                                    <h6 class="mb-0 ">Two customer is left</h6>
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <p class="mb-0">Cyst Bni</p>
-                                        <small class="float-end font-size-12">2 days ago</small>
-                                    </div>
-                                  </div>
-                              </div>
-                            </a>
-                            <a href="#" class="iq-sub-card">
-                              <div class="d-flex align-items-center">
-                                  <img class="p-1 avatar-40 rounded-pill bg-soft-primary" src="./../assets/images/shapes/04.png" alt="">
-                                  <div class="w-100 ms-3">
-                                    <h6 class="mb-0 ">New Mail from Fenny</h6>
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <p class="mb-0">Cyst Bni</p>
-                                        <small class="float-end font-size-12">3 days ago</small>
-                                    </div>
-                                  </div>
-                              </div>
-                            </a>
-                        </div>
-                      </div>
-                  </div>
-                </li>
-                <li class="nav-item dropdown">
-                  <a href="#" class="nav-link" id="mail-drop" data-bs-toggle="dropdown"  aria-haspopup="true" aria-expanded="false">
-                    <svg class="icon-24" width="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path opacity="0.4" d="M22 15.94C22 18.73 19.76 20.99 16.97 21H16.96H7.05C4.27 21 2 18.75 2 15.96V15.95C2 15.95 2.006 11.524 2.014 9.298C2.015 8.88 2.495 8.646 2.822 8.906C5.198 10.791 9.447 14.228 9.5 14.273C10.21 14.842 11.11 15.163 12.03 15.163C12.95 15.163 13.85 14.842 14.56 14.262C14.613 14.227 18.767 10.893 21.179 8.977C21.507 8.716 21.989 8.95 21.99 9.367C22 11.576 22 15.94 22 15.94Z" fill="currentColor"></path>
-                      <path d="M21.4759 5.67351C20.6099 4.04151 18.9059 2.99951 17.0299 2.99951H7.04988C5.17388 2.99951 3.46988 4.04151 2.60388 5.67351C2.40988 6.03851 2.50188 6.49351 2.82488 6.75151L10.2499 12.6905C10.7699 13.1105 11.3999 13.3195 12.0299 13.3195C12.0339 13.3195 12.0369 13.3195 12.0399 13.3195C12.0429 13.3195 12.0469 13.3195 12.0499 13.3195C12.6799 13.3195 13.3099 13.1105 13.8299 12.6905L21.2549 6.75151C21.5779 6.49351 21.6699 6.03851 21.4759 5.67351Z" fill="currentColor"></path>
-                    </svg>
-                    <span class="bg-primary count-mail"></span>
-                  </a>
-                  <div class="p-0 sub-drop dropdown-menu dropdown-menu-end" aria-labelledby="mail-drop">
-                      <div class="m-0 shadow-none card">
-                        <div class="py-3 card-header d-flex justify-content-between bg-primary">
-                            <div class="header-title">
-                              <h5 class="mb-0 text-white">All Message</h5>
-                            </div>
-                        </div>
-                        <div class="p-0 card-body ">
-                            <a href="#" class="iq-sub-card">
-                              <div class="d-flex align-items-center">
-                                  <div class="">
-                                    <img class="p-1 avatar-40 rounded-pill bg-soft-primary" src="./../assets/images/shapes/01.png" alt="">
-                                  </div>
-                                  <div class="ms-3">
-                                    <h6 class="mb-0 ">Bni Emma Watson</h6>
-                                    <small class="float-start font-size-12">13 Jun</small>
-                                  </div>
-                              </div>
-                            </a>
-                            <a href="#" class="iq-sub-card">
-                              <div class="d-flex align-items-center">
-                                  <div class="">
-                                    <img class="p-1 avatar-40 rounded-pill bg-soft-primary" src="./../assets/images/shapes/02.png" alt="">
-                                  </div>
-                                  <div class="ms-3">
-                                    <h6 class="mb-0 ">Lorem Ipsum Watson</h6>
-                                    <small class="float-start font-size-12">20 Apr</small>
-                                  </div>
-                              </div>
-                            </a>
-                            <a href="#" class="iq-sub-card">
-                              <div class="d-flex align-items-center">
-                                  <div class="">
-                                    <img class="p-1 avatar-40 rounded-pill bg-soft-primary" src="./../assets/images/shapes/03.png" alt="">
-                                  </div>
-                                  <div class="ms-3">
-                                    <h6 class="mb-0 ">Why do we use it?</h6>
-                                    <small class="float-start font-size-12">30 Jun</small>
-                                  </div>
-                              </div>
-                            </a>
-                            <a href="#" class="iq-sub-card">
-                              <div class="d-flex align-items-center">
-                                  <div class="">
-                                    <img class="p-1 avatar-40 rounded-pill bg-soft-primary" src="./../assets/images/shapes/04.png" alt="">
-                                  </div>
-                                  <div class="ms-3">
-                                    <h6 class="mb-0 ">Variations Passages</h6>
-                                    <small class="float-start font-size-12">12 Sep</small>
-                                  </div>
-                              </div>
-                            </a>
-                            <a href="#" class="iq-sub-card">
-                              <div class="d-flex align-items-center">
-                                  <div class="">
-                                    <img class="p-1 avatar-40 rounded-pill bg-soft-primary" src="./../assets/images/shapes/05.png" alt="">
-                                  </div>
-                                  <div class="ms-3">
-                                    <h6 class="mb-0 ">Lorem Ipsum generators</h6>
-                                    <small class="float-start font-size-12">5 Dec</small>
-                                  </div>
-                              </div>
-                            </a>
-                        </div>
-                      </div>
-                  </div>
-                </li>
-                <li class="nav-item dropdown">
-                  <a class="py-0 nav-link d-flex align-items-center" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    <img src="./../assets/images/avatars/01.png" alt="User-Profile" class="theme-color-default-img img-fluid avatar avatar-50 avatar-rounded">
-                    <img src="./../assets/images/avatars/avtar_1.png" alt="User-Profile" class="theme-color-purple-img img-fluid avatar avatar-50 avatar-rounded">
-                    <img src="./../assets/images/avatars/avtar_2.png" alt="User-Profile" class="theme-color-blue-img img-fluid avatar avatar-50 avatar-rounded">
-                    <img src="./../assets/images/avatars/avtar_4.png" alt="User-Profile" class="theme-color-green-img img-fluid avatar avatar-50 avatar-rounded">
-                    <img src="./../assets/images/avatars/avtar_5.png" alt="User-Profile" class="theme-color-yellow-img img-fluid avatar avatar-50 avatar-rounded">
-                    <img src="./../assets/images/avatars/avtar_3.png" alt="User-Profile" class="theme-color-pink-img img-fluid avatar avatar-50 avatar-rounded">
-                    <div class="caption ms-3 d-none d-md-block ">
-                        <h6 class="mb-0 caption-title">Austin Robertson</h6>
-                        <p class="mb-0 caption-sub-title">Marketing Administrator</p>
-                    </div>
-                  </a>
-                  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                    <li><a class="dropdown-item" href="./../dashboard/app/user-profile.html">Profile</a></li>
-                    <li><a class="dropdown-item" href="./../dashboard/app/user-privacy-setting.html">Privacy Setting</a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="./../dashboard/auth/sign-in.html">Logout</a></li>
-                  </ul>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </nav>          <!-- Nav Header Component Start -->
-          <div class="iq-navbar-header" style="height: 215px;">
-              <div class="container-fluid iq-container">
-                  <div class="row">
-                      <div class="col-md-12">
-                          <div class="flex-wrap d-flex justify-content-between align-items-center">
-                              <div>
-                                  <h1>Hello Devs!</h1>
-                                  <p>We are on a mission to help developers like you build successful projects for FREE.</p>
-                              </div>
-                              <div>
-                                  <a href="" class="btn btn-link btn-soft-light">
-                                      <svg class="icon-20" width="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                          <path d="M11.8251 15.2171H12.1748C14.0987 15.2171 15.731 13.985 16.3054 12.2764C16.3887 12.0276 16.1979 11.7713 15.9334 11.7713H14.8562C14.5133 11.7713 14.2362 11.4977 14.2362 11.16C14.2362 10.8213 14.5133 10.5467 14.8562 10.5467H15.9005C16.2463 10.5467 16.5263 10.2703 16.5263 9.92875C16.5263 9.58722 16.2463 9.31075 15.9005 9.31075H14.8562C14.5133 9.31075 14.2362 9.03619 14.2362 8.69849C14.2362 8.35984 14.5133 8.08528 14.8562 8.08528H15.9005C16.2463 8.08528 16.5263 7.8088 16.5263 7.46728C16.5263 7.12575 16.2463 6.84928 15.9005 6.84928H14.8562C14.5133 6.84928 14.2362 6.57472 14.2362 6.23606C14.2362 5.89837 14.5133 5.62381 14.8562 5.62381H15.9886C16.2483 5.62381 16.4343 5.3789 16.3645 5.13113C15.8501 3.32401 14.1694 2 12.1748 2H11.8251C9.42172 2 7.47363 3.92287 7.47363 6.29729V10.9198C7.47363 13.2933 9.42172 15.2171 11.8251 15.2171Z" fill="currentColor"></path>
-                                          <path opacity="0.4" d="M19.5313 9.82568C18.9966 9.82568 18.5626 10.2533 18.5626 10.7823C18.5626 14.3554 15.6186 17.2627 12.0005 17.2627C8.38136 17.2627 5.43743 14.3554 5.43743 10.7823C5.43743 10.2533 5.00345 9.82568 4.46872 9.82568C3.93398 9.82568 3.5 10.2533 3.5 10.7823C3.5 15.0873 6.79945 18.6413 11.0318 19.1186V21.0434C11.0318 21.5715 11.4648 22.0001 12.0005 22.0001C12.5352 22.0001 12.9692 21.5715 12.9692 21.0434V19.1186C17.2006 18.6413 20.5 15.0873 20.5 10.7823C20.5 10.2533 20.066 9.82568 19.5313 9.82568Z" fill="currentColor"></path>
-                                      </svg>
-                                      Announcements
-                                  </a>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-              <div class="iq-header-img">
-                  <img src="./../assets/images/dashboard/top-header.png" alt="header" class="theme-color-default-img img-fluid w-100 h-100 animated-scaleX">
-                  <img src="./../assets/images/dashboard/top-header1.png" alt="header" class="theme-color-purple-img img-fluid w-100 h-100 animated-scaleX">
-                  <img src="./../assets/images/dashboard/top-header2.png" alt="header" class="theme-color-blue-img img-fluid w-100 h-100 animated-scaleX">
-                  <img src="./../assets/images/dashboard/top-header3.png" alt="header" class="theme-color-green-img img-fluid w-100 h-100 animated-scaleX">
-                  <img src="./../assets/images/dashboard/top-header4.png" alt="header" class="theme-color-yellow-img img-fluid w-100 h-100 animated-scaleX">
-                  <img src="./../assets/images/dashboard/top-header5.png" alt="header" class="theme-color-pink-img img-fluid w-100 h-100 animated-scaleX">
-              </div>
-          </div>          <!-- Nav Header Component End -->
-        <!--Nav End-->
-      </div>
-      <div class="conatiner-fluid content-inner mt-n5 py-0">
+<style>
+   .employer-logo {
+      align-items: center;
+      background: #eef3f8;
+      border-radius: 8px;
+      display: flex;
+      height: 48px;
+      justify-content: center;
+      overflow: hidden;
+      width: 48px;
+   }
+   .employer-logo img {
+      height: 100%;
+      object-fit: cover;
+      width: 100%;
+   }
+   .employer-logo span {
+      color: #3a57e8;
+      font-weight: 700;
+      text-transform: uppercase;
+   }
+   .employer-company {
+      min-width: 220px;
+   }
+   .employer-actions {
+      min-width: 148px;
+   }
+</style>
+<script>
+jQuery(function($) {
+   $('.btn-link-employer').on('click', function(e) {
+      e.preventDefault();
+      var $btn = $(this);
+      var id = $btn.data('id');
+
+      Swal.fire({
+         icon: 'question',
+         title: 'Xác nhận liên kết',
+         text: 'Bạn muốn đánh dấu doanh nghiệp này là đã liên kết?',
+         showCancelButton: true,
+         confirmButtonText: 'Liên kết',
+         cancelButtonText: 'Hủy'
+      }).then(function(result) {
+         if (!result.isConfirmed) return;
+
+         $.ajax({
+            type: 'POST',
+            url: '<?php echo XC_URL; ?>/api/linkemployer',
+            data: { id: id },
+            dataType: 'json',
+            success: function(data) {
+               if (data.status == 200) {
+                  Swal.fire({ icon: 'success', title: 'Liên kết thành công', timer: 1400, showConfirmButton: false });
+                  setTimeout(function() { location.reload(); }, 1500);
+               } else {
+                  Swal.fire({ icon: 'error', title: 'Lỗi', text: data.message || 'Không thể liên kết doanh nghiệp' });
+               }
+            },
+            error: function() {
+               Swal.fire({ icon: 'error', title: 'Lỗi', text: 'Có lỗi xảy ra khi gọi API liên kết' });
+            }
+         });
+      });
+   });
+
+   $('.btn-delete-employer').on('click', function(e) {
+      e.preventDefault();
+      var id = $(this).data('id');
+
+      Swal.fire({
+         icon: 'warning',
+         title: 'Xác nhận xóa',
+         text: 'Bạn chắc chắn muốn xóa doanh nghiệp này?',
+         showCancelButton: true,
+         confirmButtonText: 'Xóa',
+         cancelButtonText: 'Hủy',
+         confirmButtonColor: '#dc3545'
+      }).then(function(result) {
+         if (!result.isConfirmed) return;
+
+         $.ajax({
+            type: 'POST',
+            url: '<?php echo XC_URL; ?>/api/deleteemployer',
+            data: { id: id },
+            dataType: 'json',
+            success: function(data) {
+               if (data.status == 200) {
+                  Swal.fire({ icon: 'success', title: 'Xóa thành công', timer: 1400, showConfirmButton: false });
+                  setTimeout(function() { location.reload(); }, 1500);
+               } else {
+                  Swal.fire({ icon: 'error', title: 'Lỗi', text: data.message || 'Không thể xóa doanh nghiệp' });
+               }
+            },
+            error: function() {
+               Swal.fire({ icon: 'error', title: 'Lỗi', text: 'Có lỗi xảy ra khi gọi API xóa' });
+            }
+         });
+      });
+   });
+});
+</script>
+
+<div class="conatiner-fluid content-inner mt-n5 py-0">
    <div class="row">
       <div class="col-sm-12">
          <div class="card">
-            <div class="card-header d-flex justify-content-between">
+            <div class="card-header d-flex justify-content-between align-items-center">
                <div class="header-title">
-                  <h4 class="card-title">Bootstrap Datatables</h4>
+                  <h4 class="card-title mb-0">Quản lý nhà tuyển dụng</h4>
                </div>
             </div>
             <div class="card-body">
-               <p>Images in Bootstrap are made responsive with <code>.img-fluid</code>. <code>max-width: 100%;</code> and <code>height: auto;</code> are applied to the image so that it scales with the parent element.</p>
+               <form class="row g-3 align-items-end mb-4" method="get" action="<?php echo XC_URL; ?>/admin/employers">
+                  <div class="col-lg-5 col-md-6">
+                     <label class="form-label">Tìm kiếm</label>
+                     <div class="input-group">
+                        <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
+                        <input type="text" class="form-control" name="keyword" value="<?php echo htmlspecialchars($keyword ?? ''); ?>" placeholder="Tên công ty, mã số thuế, người đại diện">
+                     </div>
+                  </div>
+                  <div class="col-lg-3 col-md-4">
+                     <label class="form-label">Trạng thái liên kết</label>
+                     <select class="form-select" name="linked_status">
+                        <option value="" <?php echo empty($linked_status) ? 'selected' : ''; ?>>Tất cả</option>
+                        <option value="linked" <?php echo (isset($linked_status) && $linked_status === 'linked') ? 'selected' : ''; ?>>Đã liên kết</option>
+                        <option value="unlinked" <?php echo (isset($linked_status) && $linked_status === 'unlinked') ? 'selected' : ''; ?>>Chưa liên kết</option>
+                     </select>
+                  </div>
+                  <div class="col-lg-4 col-md-2 d-flex gap-2">
+                     <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-filter me-1"></i> Lọc
+                     </button>
+                     <a href="<?php echo XC_URL; ?>/admin/employers" class="btn btn-light">
+                        <i class="fa-solid fa-rotate-left me-1"></i> Xóa lọc
+                     </a>
+                  </div>
+               </form>
+
                <div class="table-responsive">
-                  <table id="datatable" class="table table-striped" data-toggle="data-table">
+                  <table class="table table-bordered table-hover align-middle" role="grid">
                      <thead>
                         <tr>
-                           <th>Name</th>
-                           <th>Position</th>
-                           <th>Office</th>
-                           <th>Age</th>
-                           <th>Start date</th>
-                           <th>Salary</th>
+                           <th>Logo</th>
+                           <th>Tên công ty</th>
+                           <th>Mã số thuế</th>
+                           <th>Người đại diện</th>
+                           <th>Đã liên kết</th>
+                           <th class="employer-actions">Thao tác</th>
                         </tr>
                      </thead>
                      <tbody>
-                        <tr>
-                           <td>Tiger Nixon</td>
-                           <td>System Architect</td>
-                           <td>Edinburgh</td>
-                           <td>61</td>
-                           <td>2011/04/25</td>
-                           <td>$320,800</td>
-                        </tr>
-                        <tr>
-                           <td>Garrett Winters</td>
-                           <td>Accountant</td>
-                           <td>Tokyo</td>
-                           <td>63</td>
-                           <td>2011/07/25</td>
-                           <td>$170,750</td>
-                        </tr>
-                        <tr>
-                           <td>Ashton Cox</td>
-                           <td>Junior Technical Author</td>
-                           <td>San Francisco</td>
-                           <td>66</td>
-                           <td>2009/01/12</td>
-                           <td>$86,000</td>
-                        </tr>
-                        <tr>
-                           <td>Cedric Kelly</td>
-                           <td>Senior Javascript Developer</td>
-                           <td>Edinburgh</td>
-                           <td>22</td>
-                           <td>2012/03/29</td>
-                           <td>$433,060</td>
-                        </tr>
-                        <tr>
-                           <td>Airi Satou</td>
-                           <td>Accountant</td>
-                           <td>Tokyo</td>
-                           <td>33</td>
-                           <td>2008/11/28</td>
-                           <td>$162,700</td>
-                        </tr>
-                        <tr>
-                           <td>Brielle Williamson</td>
-                           <td>Integration Specialist</td>
-                           <td>New York</td>
-                           <td>61</td>
-                           <td>2012/12/02</td>
-                           <td>$372,000</td>
-                        </tr>
-                        <tr>
-                           <td>Herrod Chandler</td>
-                           <td>Sales Assistant</td>
-                           <td>San Francisco</td>
-                           <td>59</td>
-                           <td>2012/08/06</td>
-                           <td>$137,500</td>
-                        </tr>
-                        <tr>
-                           <td>Rhona Davidson</td>
-                           <td>Integration Specialist</td>
-                           <td>Tokyo</td>
-                           <td>55</td>
-                           <td>2010/10/14</td>
-                           <td>$327,900</td>
-                        </tr>
-                        <tr>
-                           <td>Colleen Hurst</td>
-                           <td>Javascript Developer</td>
-                           <td>San Francisco</td>
-                           <td>39</td>
-                           <td>2009/09/15</td>
-                           <td>$205,500</td>
-                        </tr>
-                        <tr>
-                           <td>Sonya Frost</td>
-                           <td>Software Engineer</td>
-                           <td>Edinburgh</td>
-                           <td>23</td>
-                           <td>2008/12/13</td>
-                           <td>$103,600</td>
-                        </tr>
-                        <tr>
-                           <td>Jena Gaines</td>
-                           <td>Office Manager</td>
-                           <td>London</td>
-                           <td>30</td>
-                           <td>2008/12/19</td>
-                           <td>$90,560</td>
-                        </tr>
-                        <tr>
-                           <td>Quinn Flynn</td>
-                           <td>Support Lead</td>
-                           <td>Edinburgh</td>
-                           <td>22</td>
-                           <td>2013/03/03</td>
-                           <td>$342,000</td>
-                        </tr>
-                        <tr>
-                           <td>Charde Marshall</td>
-                           <td>Regional Director</td>
-                           <td>San Francisco</td>
-                           <td>36</td>
-                           <td>2008/10/16</td>
-                           <td>$470,600</td>
-                        </tr>
-                        <tr>
-                           <td>Haley Kennedy</td>
-                           <td>Senior Marketing Designer</td>
-                           <td>London</td>
-                           <td>43</td>
-                           <td>2012/12/18</td>
-                           <td>$313,500</td>
-                        </tr>
-                        <tr>
-                           <td>Tatyana Fitzpatrick</td>
-                           <td>Regional Director</td>
-                           <td>London</td>
-                           <td>19</td>
-                           <td>2010/03/17</td>
-                           <td>$385,750</td>
-                        </tr>
-                        <tr>
-                           <td>Michael Silva</td>
-                           <td>Marketing Designer</td>
-                           <td>London</td>
-                           <td>66</td>
-                           <td>2012/11/27</td>
-                           <td>$198,500</td>
-                        </tr>
-                        <tr>
-                           <td>Paul Byrd</td>
-                           <td>Chief Financial Officer (CFO)</td>
-                           <td>New York</td>
-                           <td>64</td>
-                           <td>2010/06/09</td>
-                           <td>$725,000</td>
-                        </tr>
-                        <tr>
-                           <td>Gloria Little</td>
-                           <td>Systems Administrator</td>
-                           <td>New York</td>
-                           <td>59</td>
-                           <td>2009/04/10</td>
-                           <td>$237,500</td>
-                        </tr>
-                        <tr>
-                           <td>Bradley Greer</td>
-                           <td>Software Engineer</td>
-                           <td>London</td>
-                           <td>41</td>
-                           <td>2012/10/13</td>
-                           <td>$132,000</td>
-                        </tr>
-                        <tr>
-                           <td>Dai Rios</td>
-                           <td>Personnel Lead</td>
-                           <td>Edinburgh</td>
-                           <td>35</td>
-                           <td>2012/09/26</td>
-                           <td>$217,500</td>
-                        </tr>
-                        <tr>
-                           <td>Jenette Caldwell</td>
-                           <td>Development Lead</td>
-                           <td>New York</td>
-                           <td>30</td>
-                           <td>2011/09/03</td>
-                           <td>$345,000</td>
-                        </tr>
-                        <tr>
-                           <td>Yuri Berry</td>
-                           <td>Chief Marketing Officer (CMO)</td>
-                           <td>New York</td>
-                           <td>40</td>
-                           <td>2009/06/25</td>
-                           <td>$675,000</td>
-                        </tr>
-                        <tr>
-                           <td>Caesar Vance</td>
-                           <td>Pre-Sales Support</td>
-                           <td>New York</td>
-                           <td>21</td>
-                           <td>2011/12/12</td>
-                           <td>$106,450</td>
-                        </tr>
-                        <tr>
-                           <td>Doris Wilder</td>
-                           <td>Sales Assistant</td>
-                           <td>Sydney</td>
-                           <td>23</td>
-                           <td>2010/09/20</td>
-                           <td>$85,600</td>
-                        </tr>
-                        <tr>
-                           <td>Angelica Ramos</td>
-                           <td>Chief Executive Officer (CEO)</td>
-                           <td>London</td>
-                           <td>47</td>
-                           <td>2009/10/09</td>
-                           <td>$1,200,000</td>
-                        </tr>
-                        <tr>
-                           <td>Gavin Joyce</td>
-                           <td>Developer</td>
-                           <td>Edinburgh</td>
-                           <td>42</td>
-                           <td>2010/12/22</td>
-                           <td>$92,575</td>
-                        </tr>
-                        <tr>
-                           <td>Jennifer Chang</td>
-                           <td>Regional Director</td>
-                           <td>Singapore</td>
-                           <td>28</td>
-                           <td>2010/11/14</td>
-                           <td>$357,650</td>
-                        </tr>
-                        <tr>
-                           <td>Brenden Wagner</td>
-                           <td>Software Engineer</td>
-                           <td>San Francisco</td>
-                           <td>28</td>
-                           <td>2011/06/07</td>
-                           <td>$206,850</td>
-                        </tr>
-                        <tr>
-                           <td>Fiona Green</td>
-                           <td>Chief Operating Officer (COO)</td>
-                           <td>San Francisco</td>
-                           <td>48</td>
-                           <td>2010/03/11</td>
-                           <td>$850,000</td>
-                        </tr>
-                        <tr>
-                           <td>Shou Itou</td>
-                           <td>Regional Marketing</td>
-                           <td>Tokyo</td>
-                           <td>20</td>
-                           <td>2011/08/14</td>
-                           <td>$163,000</td>
-                        </tr>
-                        <tr>
-                           <td>Michelle House</td>
-                           <td>Integration Specialist</td>
-                           <td>Sydney</td>
-                           <td>37</td>
-                           <td>2011/06/02</td>
-                           <td>$95,400</td>
-                        </tr>
-                        <tr>
-                           <td>Suki Burks</td>
-                           <td>Developer</td>
-                           <td>London</td>
-                           <td>53</td>
-                           <td>2009/10/22</td>
-                           <td>$114,500</td>
-                        </tr>
-                        <tr>
-                           <td>Prescott Bartlett</td>
-                           <td>Technical Author</td>
-                           <td>London</td>
-                           <td>27</td>
-                           <td>2011/05/07</td>
-                           <td>$145,000</td>
-                        </tr>
-                        <tr>
-                           <td>Gavin Cortez</td>
-                           <td>Team Leader</td>
-                           <td>San Francisco</td>
-                           <td>22</td>
-                           <td>2008/10/26</td>
-                           <td>$235,500</td>
-                        </tr>
-                        <tr>
-                           <td>Martena Mccray</td>
-                           <td>Post-Sales support</td>
-                           <td>Edinburgh</td>
-                           <td>46</td>
-                           <td>2011/03/09</td>
-                           <td>$324,050</td>
-                        </tr>
-                        <tr>
-                           <td>Unity Butler</td>
-                           <td>Marketing Designer</td>
-                           <td>San Francisco</td>
-                           <td>47</td>
-                           <td>2009/12/09</td>
-                           <td>$85,675</td>
-                        </tr>
-                        <tr>
-                           <td>Howard Hatfield</td>
-                           <td>Office Manager</td>
-                           <td>San Francisco</td>
-                           <td>51</td>
-                           <td>2008/12/16</td>
-                           <td>$164,500</td>
-                        </tr>
-                        <tr>
-                           <td>Hope Fuentes</td>
-                           <td>Secretary</td>
-                           <td>San Francisco</td>
-                           <td>41</td>
-                           <td>2010/02/12</td>
-                           <td>$109,850</td>
-                        </tr>
-                        <tr>
-                           <td>Vivian Harrell</td>
-                           <td>Financial Controller</td>
-                           <td>San Francisco</td>
-                           <td>62</td>
-                           <td>2009/02/14</td>
-                           <td>$452,500</td>
-                        </tr>
-                        <tr>
-                           <td>Timothy Mooney</td>
-                           <td>Office Manager</td>
-                           <td>London</td>
-                           <td>37</td>
-                           <td>2008/12/11</td>
-                           <td>$136,200</td>
-                        </tr>
-                        <tr>
-                           <td>Jackson Bradshaw</td>
-                           <td>Director</td>
-                           <td>New York</td>
-                           <td>65</td>
-                           <td>2008/09/26</td>
-                           <td>$645,750</td>
-                        </tr>
-                        <tr>
-                           <td>Olivia Liang</td>
-                           <td>Support Engineer</td>
-                           <td>Singapore</td>
-                           <td>64</td>
-                           <td>2011/02/03</td>
-                           <td>$234,500</td>
-                        </tr>
-                        <tr>
-                           <td>Bruno Nash</td>
-                           <td>Software Engineer</td>
-                           <td>London</td>
-                           <td>38</td>
-                           <td>2011/05/03</td>
-                           <td>$163,500</td>
-                        </tr>
-                        <tr>
-                           <td>Sakura Yamamoto</td>
-                           <td>Support Engineer</td>
-                           <td>Tokyo</td>
-                           <td>37</td>
-                           <td>2009/08/19</td>
-                           <td>$139,575</td>
-                        </tr>
-                        <tr>
-                           <td>Thor Walton</td>
-                           <td>Developer</td>
-                           <td>New York</td>
-                           <td>61</td>
-                           <td>2013/08/11</td>
-                           <td>$98,540</td>
-                        </tr>
-                        <tr>
-                           <td>Finn Camacho</td>
-                           <td>Support Engineer</td>
-                           <td>San Francisco</td>
-                           <td>47</td>
-                           <td>2009/07/07</td>
-                           <td>$87,500</td>
-                        </tr>
-                        <tr>
-                           <td>Serge Baldwin</td>
-                           <td>Data Coordinator</td>
-                           <td>Singapore</td>
-                           <td>64</td>
-                           <td>2012/04/09</td>
-                           <td>$138,575</td>
-                        </tr>
-                        <tr>
-                           <td>Zenaida Frank</td>
-                           <td>Software Engineer</td>
-                           <td>New York</td>
-                           <td>63</td>
-                           <td>2010/01/04</td>
-                           <td>$125,250</td>
-                        </tr>
-                        <tr>
-                           <td>Zorita Serrano</td>
-                           <td>Software Engineer</td>
-                           <td>San Francisco</td>
-                           <td>56</td>
-                           <td>2012/06/01</td>
-                           <td>$115,000</td>
-                        </tr>
-                        <tr>
-                           <td>Jennifer Acosta</td>
-                           <td>Junior Javascript Developer</td>
-                           <td>Edinburgh</td>
-                           <td>43</td>
-                           <td>2013/02/01</td>
-                           <td>$75,650</td>
-                        </tr>
-                        <tr>
-                           <td>Cara Stevens</td>
-                           <td>Sales Assistant</td>
-                           <td>New York</td>
-                           <td>46</td>
-                           <td>2011/12/06</td>
-                           <td>$145,600</td>
-                        </tr>
-                        <tr>
-                           <td>Hermione Butler</td>
-                           <td>Regional Director</td>
-                           <td>London</td>
-                           <td>47</td>
-                           <td>2011/03/21</td>
-                           <td>$356,250</td>
-                        </tr>
-                        <tr>
-                           <td>Lael Greer</td>
-                           <td>Systems Administrator</td>
-                           <td>London</td>
-                           <td>21</td>
-                           <td>2009/02/27</td>
-                           <td>$103,500</td>
-                        </tr>
-                        <tr>
-                           <td>Jonas Alexander</td>
-                           <td>Developer</td>
-                           <td>San Francisco</td>
-                           <td>30</td>
-                           <td>2010/07/14</td>
-                           <td>$86,500</td>
-                        </tr>
-                        <tr>
-                           <td>Shad Decker</td>
-                           <td>Regional Director</td>
-                           <td>Edinburgh</td>
-                           <td>51</td>
-                           <td>2008/11/13</td>
-                           <td>$183,000</td>
-                        </tr>
-                        <tr>
-                           <td>Michael Bruce</td>
-                           <td>Javascript Developer</td>
-                           <td>Singapore</td>
-                           <td>29</td>
-                           <td>2011/06/27</td>
-                           <td>$183,000</td>
-                        </tr>
-                        <tr>
-                           <td>Donna Snider</td>
-                           <td>Customer Support</td>
-                           <td>New York</td>
-                           <td>27</td>
-                           <td>2011/01/25</td>
-                           <td>$112,000</td>
-                        </tr>
+                        <?php if(isset($employers) && is_array($employers) && count($employers) > 0): ?>
+                           <?php foreach($employers as $employer): ?>
+                              <?php
+                                 $company_name = $employer->company_name ?? '';
+                                 $logo_url = $employer->logo_url ?? '';
+                                 $logo_src = '';
+                                 if($logo_url != '') {
+                                    $logo_src = (strpos($logo_url, 'http') === 0) ? $logo_url : XC_URL . '/' . ltrim($logo_url, '/');
+                                 }
+                              ?>
+                              <tr>
+                                 <td>
+                                    <div class="employer-logo">
+                                       <?php if($logo_src != ''): ?>
+                                          <img src="<?php echo htmlspecialchars($logo_src); ?>" alt="<?php echo htmlspecialchars($company_name); ?>">
+                                       <?php else: ?>
+                                          <span><?php echo htmlspecialchars(substr($company_name, 0, 1)); ?></span>
+                                       <?php endif; ?>
+                                    </div>
+                                 </td>
+                                 <td class="employer-company">
+                                    <h6 class="mb-1"><?php echo htmlspecialchars($company_name); ?></h6>
+                                    <small class="text-muted"><?php echo htmlspecialchars($employer->website_url ?? ''); ?></small>
+                                 </td>
+                                 <td><?php echo htmlspecialchars($employer->tax_code ?? '-'); ?></td>
+                                 <td>
+                                    <div><?php echo htmlspecialchars($employer->representative_name ?: '-'); ?></div>
+                                    <small class="text-muted"><?php echo htmlspecialchars($employer->representative_phone ?: ''); ?></small>
+                                 </td>
+                                 <td>
+                                    <?php if((int)$employer->is_linked_school === 1): ?>
+                                       <span class="badge bg-success">Đã liên kết</span>
+                                    <?php else: ?>
+                                       <span class="badge bg-secondary">Chưa liên kết</span>
+                                    <?php endif; ?>
+                                 </td>
+                                 <td>
+                                    <div class="d-flex align-items-center gap-1 list-user-action">
+                                       <?php if((int)$employer->is_linked_school !== 1): ?>
+                                          <a class="btn btn-sm btn-icon btn-success btn-link-employer" href="#" data-id="<?php echo $employer->id; ?>" title="Liên kết" data-bs-toggle="tooltip">
+                                             <span class="btn-inner"><i class="fa-solid fa-link"></i></span>
+                                          </a>
+                                       <?php endif; ?>
+                                       <button type="button"
+                                               class="btn btn-sm btn-icon btn-info"
+                                               title="Xem chi tiết"
+                                               data-bs-toggle="modal"
+                                               data-bs-target="#employerDetailModal<?php echo $employer->id; ?>">
+                                          <span class="btn-inner"><i class="fa-solid fa-eye"></i></span>
+                                       </button>
+                                       <a class="btn btn-sm btn-icon btn-danger btn-delete-employer" href="#" data-id="<?php echo $employer->id; ?>" title="Xóa" data-bs-toggle="tooltip">
+                                          <span class="btn-inner"><i class="fa-solid fa-trash"></i></span>
+                                       </a>
+                                    </div>
+
+                                    <div class="modal fade" id="employerDetailModal<?php echo $employer->id; ?>" tabindex="-1" aria-hidden="true">
+                                       <div class="modal-dialog modal-dialog-centered modal-lg">
+                                          <div class="modal-content">
+                                             <div class="modal-header">
+                                                <h5 class="modal-title"><?php echo htmlspecialchars($company_name); ?></h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                             </div>
+                                             <div class="modal-body">
+                                                <div class="row g-3">
+                                                   <div class="col-md-6">
+                                                      <label class="form-label text-muted">Mã số thuế</label>
+                                                      <div><?php echo htmlspecialchars($employer->tax_code ?? '-'); ?></div>
+                                                   </div>
+                                                   <div class="col-md-6">
+                                                      <label class="form-label text-muted">Người đại diện</label>
+                                                      <div><?php echo htmlspecialchars($employer->representative_name ?: '-'); ?></div>
+                                                   </div>
+                                                   <div class="col-md-6">
+                                                      <label class="form-label text-muted">Email đại diện</label>
+                                                      <div><?php echo htmlspecialchars($employer->representative_email ?: '-'); ?></div>
+                                                   </div>
+                                                   <div class="col-md-6">
+                                                      <label class="form-label text-muted">Điện thoại đại diện</label>
+                                                      <div><?php echo htmlspecialchars($employer->representative_phone ?: '-'); ?></div>
+                                                   </div>
+                                                   <div class="col-md-12">
+                                                      <label class="form-label text-muted">Địa chỉ</label>
+                                                      <div><?php echo htmlspecialchars($employer->address_detail ?: '-'); ?></div>
+                                                   </div>
+                                                   <div class="col-md-12">
+                                                      <label class="form-label text-muted">Mô tả</label>
+                                                      <div><?php echo nl2br(htmlspecialchars($employer->description ?: '-')); ?></div>
+                                                   </div>
+                                                </div>
+                                             </div>
+                                             <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                                             </div>
+                                          </div>
+                                       </div>
+                                    </div>
+                                 </td>
+                              </tr>
+                           <?php endforeach; ?>
+                        <?php else: ?>
+                           <tr>
+                              <td colspan="6" class="text-center py-4">Không có nhà tuyển dụng phù hợp.</td>
+                           </tr>
+                        <?php endif; ?>
                      </tbody>
-                     <tfoot>
-                        <tr>
-                           <th>Name</th>
-                           <th>Position</th>
-                           <th>Office</th>
-                           <th>Age</th>
-                           <th>Start date</th>
-                           <th>Salary</th>
-                        </tr>
-                     </tfoot>
                   </table>
+               </div>
+               <?php
+                  $current_page = isset($page) ? (int)$page : 1;
+                  $page_count = isset($total_pages) ? (int)$total_pages : 1;
+                  $query_params = array();
+                  if(isset($keyword) && $keyword !== '') {
+                     $query_params['keyword'] = $keyword;
+                  }
+                  if(isset($linked_status) && $linked_status !== '') {
+                     $query_params['linked_status'] = $linked_status;
+                  }
+                  $from_record = isset($total_employers) && $total_employers > 0 ? (($current_page - 1) * 20) + 1 : 0;
+                  $to_record = isset($total_employers) ? min($current_page * 20, (int)$total_employers) : 0;
+               ?>
+               <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mt-3">
+                  <div class="text-muted">
+                     Hiển thị <?php echo $from_record; ?>-<?php echo $to_record; ?> / <?php echo (int)($total_employers ?? 0); ?> nhà tuyển dụng
+                  </div>
+                  <?php if($page_count > 1): ?>
+                     <nav aria-label="Phân trang nhà tuyển dụng">
+                        <ul class="pagination mb-0">
+                           <?php
+                              $prev_params = array_merge($query_params, array('page' => max(1, $current_page - 1)));
+                              $next_params = array_merge($query_params, array('page' => min($page_count, $current_page + 1)));
+                           ?>
+                           <li class="page-item <?php echo ($current_page <= 1) ? 'disabled' : ''; ?>">
+                              <a class="page-link" href="<?php echo XC_URL; ?>/admin/employers?<?php echo http_build_query($prev_params); ?>">Trước</a>
+                           </li>
+                           <?php for($i = max(1, $current_page - 2); $i <= min($page_count, $current_page + 2); $i++): ?>
+                              <?php $page_params = array_merge($query_params, array('page' => $i)); ?>
+                              <li class="page-item <?php echo ($i == $current_page) ? 'active' : ''; ?>">
+                                 <a class="page-link" href="<?php echo XC_URL; ?>/admin/employers?<?php echo http_build_query($page_params); ?>"><?php echo $i; ?></a>
+                              </li>
+                           <?php endfor; ?>
+                           <li class="page-item <?php echo ($current_page >= $page_count) ? 'disabled' : ''; ?>">
+                              <a class="page-link" href="<?php echo XC_URL; ?>/admin/employers?<?php echo http_build_query($next_params); ?>">Sau</a>
+                           </li>
+                        </ul>
+                     </nav>
+                  <?php endif; ?>
                </div>
             </div>
          </div>
       </div>
    </div>
-      </div>
-      <div class="btn-download">
-          <a class="btn btn-success px-3 py-2" href="https://iqonic.design/product/admin-templates/hope-ui-admin-free-open-source-bootstrap-admin-template/" target="_blank" >
-              <svg class="icon-24"  width="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path opacity="0.4" d="M17.554 7.29614C20.005 7.29614 22 9.35594 22 11.8876V16.9199C22 19.4453 20.01 21.5 17.564 21.5L6.448 21.5C3.996 21.5 2 19.4412 2 16.9096V11.8773C2 9.35181 3.991 7.29614 6.438 7.29614H7.378L17.554 7.29614Z" fill="currentColor"></path>
-                  <path d="M12.5464 16.0374L15.4554 13.0695C15.7554 12.7627 15.7554 12.2691 15.4534 11.9634C15.1514 11.6587 14.6644 11.6597 14.3644 11.9654L12.7714 13.5905L12.7714 3.2821C12.7714 2.85042 12.4264 2.5 12.0004 2.5C11.5754 2.5 11.2314 2.85042 11.2314 3.2821L11.2314 13.5905L9.63742 11.9654C9.33742 11.6597 8.85043 11.6587 8.54843 11.9634C8.39743 12.1168 8.32142 12.3168 8.32142 12.518C8.32142 12.717 8.39743 12.9171 8.54643 13.0695L11.4554 16.0374C11.6004 16.1847 11.7964 16.268 12.0004 16.268C12.2054 16.268 12.4014 16.1847 12.5464 16.0374Z" fill="currentColor"></path>
-              </svg>
-          </a>
-      </div>
-      <?php require "footer.php "; ?>
+</div>
+
+<?php require "footer.php"; ?>

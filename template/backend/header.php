@@ -29,10 +29,13 @@
       
       <!-- RTL Css -->
       <link rel="stylesheet" href="<?php echo $admintemplate_path; ?>/assets/css/rtl.min.css">
-      <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js' ></script>
-      <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+      
+    <script src="<?php echo $admintemplate_path; ?>/assets/js/core/libs.min.js"></script>
+     
+       <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
       <link rel='stylesheet' href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css">
-      <script src="<?php echo $admintemplate_path;?>/assets/js/core.js"></script>
+      <!-- <script src="<?php echo $admintemplate_path;?>/assets/js/core.js"></script> -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js"></script>
       
   </head>
   <body class="  ">
@@ -124,25 +127,25 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link "  href="#">
+                        <a class="nav-link <?php echo (isset($active_menu) && $active_menu == 'employers') ? 'active' : ''; ?>"  href="<?php echo XC_URL;?>/admin/employers">
                            <i class="fa-solid fa-city"></i>
                             <span class="item-name">Nhà tuyển dụng</span>
                         </a>
                     </li>
                      <li class="nav-item">
-                        <a class="nav-link "  href="#">
+                        <a class="nav-link "  href="<?php echo XC_URL;?>/admin/candidates">
                           <i class="fa-solid fa-chalkboard-user"></i>
                             <span class="item-name">Ứng viên</span>
                         </a>
                     </li>
                      <li class="nav-item">
-                        <a class="nav-link "  href="#">
+                        <a class="nav-link "  href="<?php echo XC_URL;?>/admin/students">
                          <i class="fa-solid fa-user-graduate"></i>
                             <span class="item-name">Sinh viên</span>
                         </a>
                     </li>
                      <li class="nav-item">
-                        <a class="nav-link "  href="#">
+                        <a class="nav-link "  href="<?php echo XC_URL;?>/admin/news">
                          <i class="fa-solid fa-calendar-plus"></i>
                             <span class="item-name">Tin tức & sự kiện</span>
                         </a>
@@ -180,13 +183,38 @@
                                     <span class="item-name <?php echo (isset($active_menu) && $active_menu == 'users') ? 'active' : ''; ?>">Quản lý Tài khoản</span>
                                 </a>
                             </li>
-                          
+                          <!-- <li class="nav-item">
+                                <a class="nav-link " href="<?php echo XC_URL;?>/admin/users/role">
+                                    <i class="icon">
+                                        <svg class="icon-10" xmlns="http://www.w3.org/2000/svg" width="10" viewBox="0 0 24 24" fill="currentColor">
+                                            <g>
+                                            <circle cx="12" cy="12" r="8" fill="currentColor"></circle>
+                                            </g>
+                                        </svg>
+                                    </i>
+                                    <i class="sidenav-mini-icon"> U </i>
+                                    <span class="item-name <?php echo (isset($active_menu) && $active_menu == 'users_role') ? 'active' : ''; ?>">Quản lý Quyền TK</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link " href="<?php echo XC_URL;?>/admin/groups">
+                                    <i class="icon">
+                                        <svg class="icon-10" xmlns="http://www.w3.org/2000/svg" width="10" viewBox="0 0 24 24" fill="currentColor">
+                                            <g>
+                                            <circle cx="12" cy="12" r="8" fill="currentColor"></circle>
+                                            </g>
+                                        </svg>
+                                    </i>
+                                    <i class="sidenav-mini-icon"> G </i>
+                                    <span class="item-name <?php echo (isset($active_menu) && $active_menu == 'groups') ? 'active' : ''; ?>">Quản lý Nhóm Quyền</span>
+                                </a>
+                            </li> -->
                             
                         </ul>
                     </li>
 
                     <li class="nav-item">
-                        <a class="nav-link" data-bs-toggle="collapse" href="#sidebar-trad" role="button" aria-expanded="false" aria-controls="sidebar-user">
+                        <a href="<?php echo XC_URL;?>/admin/trading" class="nav-link" data-bs-toggle="collapse" href="#sidebar-trad" role="button" aria-expanded="false" aria-controls="sidebar-user">
                             <i class="fa-solid fa-chart-line">
                                
                             </i>
@@ -199,7 +227,7 @@
                         </a>
                         <ul class="sub-nav collapse" id="sidebar-trad" data-bs-parent="#sidebar-menu">
                             <li class="nav-item">
-                                <a class="nav-link " href="#">
+                                <a href="<?php echo XC_URL;?>/admin/trading/introduction" class="nav-link">
                                     <i class="icon">
                                         <svg class="icon-10" xmlns="http://www.w3.org/2000/svg" width="10" viewBox="0 0 24 24" fill="currentColor">
                                             <g>
@@ -212,7 +240,7 @@
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link " href="../dashboard/app/user-add.html">
+                                <a href="<?php echo XC_URL;?>/admin/trading/process" class="nav-link">
                                     <i class="icon">
                                         <svg class="icon-10" xmlns="http://www.w3.org/2000/svg" width="10" viewBox="0 0 24 24" fill="currentColor">
                                             <g>
@@ -226,7 +254,7 @@
                             </li>
 
                              <li class="nav-item">
-                                <a class="nav-link " href="../dashboard/app/user-add.html">
+                                <a href="<?php echo XC_URL;?>/admin/trading/results" class="nav-link">
                                     <i class="icon">
                                         <svg class="icon-10" xmlns="http://www.w3.org/2000/svg" width="10" viewBox="0 0 24 24" fill="currentColor">
                                             <g>
@@ -242,8 +270,8 @@
                         </ul>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link "  href="#">
-                         <i class="fa-solid fa-circle-info"></i>
+                        <a href="<?php echo XC_URL;?>/admin/introduction" class="nav-link">
+                            <i class="fa-solid fa-circle-info"></i>
                             <span class="item-name">Giới thiệu</span>
                         </a>
                     </li>
@@ -256,30 +284,30 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
+                        <a class="nav-link" href="<?php echo XC_URL;?>/admin/media/images">
                             <i class="fa-solid fa-image">
                                 
                             </i>
-                            <span class="item-name">Hình ảnh</span>
+                            <span class="item-name">Thư viện hình ảnh</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
-                                 <i class="fa-solid fa-video">
+                        <a class="nav-link" href="<?php echo XC_URL;?>/admin/media/videos">
+                            <i class="fa-solid fa-video">
                             </i>
-                            <span class="item-name">Video</span>
+                            <span class="item-name">Thư viện video</span>
                         </a>
                     </li>
 
                     <li><hr class="hr-horizontal"></li>
                     <li class="nav-item static-item">
-                        <a class="nav-link static-item disabled" href="#" tabindex="-1">
+                        <a class="nav-link static-item disabled" href="<?php echo XC_URL;?>/admin/system" tabindex="-1">
                             <span class="default-icon">Cấu hình hệ thống</span>
                             <span class="mini-icon">-</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
+                        <a class="nav-link <?php echo (isset($active_menu) && $active_menu == 'config') ? 'active' : ''; ?>" href="<?php echo XC_URL;?>/admin/config">
                             <i class="fa-solid fa-gears">
                                 
                             </i>
@@ -287,8 +315,8 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
-                                 <i class="fa-solid fa-wrench">
+                        <a class="nav-link" href="<?php echo XC_URL;?>/admin/settings">
+                            <i class="fa-solid fa-wrench">
                             </i>
                             <span class="item-name">Cài đặt hệ thống</span>
                         </a>
