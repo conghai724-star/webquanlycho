@@ -26,6 +26,51 @@
 <script src="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/owl.carousel@2.3.4/dist/owl.carousel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+ <script>
+			$(document).ready(function(){
+				$("#btlogin").click(function(){
+					console.log('a');
+					var email = $('#email').val();
+					var password = $('#password').val();
+					$.ajax({
+						"type": "POST",
+						"url": "<?php echo XC_URL; ?>/api/login",
+						"data": {
+							'email': email,
+							'password': password
+						},
+						"dataType":'json',
+						success:function(data){
+							if(data.status == 200){
+                         Swal.fire({
+                          toast: true,
+                          // position: 'bottom-end',
+                          icon: 'success',
+                          title: data.message,
+                          showConfirmButton: false,
+                          timer: 1200,
+                          timerProgressBar: true,
+                          didOpen: (toast) => {
+                            toast.addEventListener('mouseenter', Swal.stopTimer);
+                            toast.addEventListener('mouseleave', Swal.resumeTimer);
+                          }
+                      }).then((result) => {
+                          window.location.href = data.return_url; });
+							}else{
+								Swal.fire({
+								  icon: 'error',
+								  title: "Đăng nhập thất bại!",
+								  text: data.message,
+								  footer: '<a href=""></a>'
+								})
+							}
+						}
+					
+					});
+					return false;
+				});
+			});
+	  </script>
 </head>
 <body>
 
@@ -60,33 +105,34 @@
   </a>
 
   <nav class="header-nav desktop-nav">
-    <a href="#">Trang chủ</a>
-    <a href="http://localhost/frontend/trang-gioi-thieu-vieclam.php">Giới thiệu</a>
-    <a href="http://localhost/frontend/tin-tuc.php">Tin tức</a>
+    <a href="<?php echo XC_URL; ?>">Trang chủ</a>
+    <a href="<?php echo XC_URL; ?>/gioi-thieu.html">Giới thiệu</a>
+    <a href="<?php echo XC_URL; ?>/tin-tuc-su-kien.html">Tin tức</a>
 
     <div class="nav-item">
       <a href="#">Việc làm <i class="ti ti-chevron-down"></i></a>
       <div class="dropdown-menu">
-          <a href="http://localhost/frontend/quan-ly-viec-lam.php" class="dropdown-item"><i class="ti ti-bolt"></i> Việc tìm người</a>
-          <a href="http://localhost/frontend/quan-ly-ung-vien.php" class="dropdown-item"><i class="ti ti-star"></i> Người tìm việc</a>
+          <a href="<?php echo XC_URL; ?>/quan-ly-viec-lam.html" class="dropdown-item"><i class="ti ti-bolt"></i> Việc tìm người</a>
+          <a href="<?php echo XC_URL; ?>/quan-ly-ung-vien.html" class="dropdown-item"><i class="ti ti-star"></i> Người tìm việc</a>
       </div>
     </div>
 
     <div class="nav-item">
       <a href="#">Sàn việc làm <i class="ti ti-chevron-down"></i></a>
       <div class="dropdown-menu">
-          <a href="http://localhost/frontend/gioi-thieu-san-viec-lam.php" class="dropdown-item"><i class="ti ti-building"></i> Giới thiệu sàn</a>
-          <a href="http://localhost/frontend/quy-trinh-san-viec-lam.php" class="dropdown-item"><i class="ti ti-list-details"></i> Quy trình sàn</a>
-          <a href="http://localhost/frontend/ket-qua-san-viec-lam.php" class="dropdown-item"><i class="ti ti-chart-bar"></i> Kết quả sàn</a>
-          <a href="http://localhost/frontend/san-viec-lam-online.php" class="dropdown-item"><i class="ti ti-broadcast"></i>Sàn việc làm Online</a>
+          <a href="<?php echo XC_URL; ?>/gioi-thieu-san-viec-lam.html" class="dropdown-item"><i class="ti ti-building"></i> Giới thiệu sàn</a>
+          <a href="<?php echo XC_URL; ?>/quy-trinh-san-viec-lam.html" class="dropdown-item"><i class="ti ti-list-details"></i> Quy trình sàn</a>
+          <a href="<?php echo XC_URL; ?>/ket-qua-san-viec-lam.html" class="dropdown-item"><i class="ti ti-chart-bar"></i> Kết quả sàn</a>
+          <a href="<?php echo XC_URL; ?>/san-viec-lam-online.html" class="dropdown-item"><i class="ti ti-broadcast"></i>Sàn việc làm Online</a>
       </div>
     </div>
 
-    <a href="http://localhost/frontend/huong-dan.php">Hướng dẫn</a>
-    <a href="http://localhost/frontend/lien-he.php">Liên hệ</a>
+    <a href="<?php echo XC_URL; ?>/huong-dan.html">Hướng dẫn</a>
+    <a href="<?php echo XC_URL; ?> /lien-he.html">Liên hệ</a>
   </nav>
 
   <div class="header-actions">
+        <!-- <a href="<?php echo XC_URL; ?>/dang-ky-tai-khoan.html"><button type="button" class="btn-register"><i class="ti ti-user-plus" style="margin-right:4px"></i> Đăng ký</button></a> -->
 
         <button type="button" class="btn-login js-login-open"><i class="ti ti-login-2" style="margin-right:4px"></i> Đăng nhập</button>
         <button class="btn-post js-employer-login-open"><i class="ti ti-building"></i>Nhà tuyển dụng</button>
@@ -121,7 +167,7 @@
           <label for="loginEmail">Email</label>
           <div class="login-input-wrap">
             <i class="ti ti-mail"></i>
-            <input type="email" id="loginEmail" name="email" placeholder="Nhập email của bạn" autocomplete="email" required>
+            <input type="email" id="email" name="email" placeholder="Nhập email của bạn" autocomplete="email" required>
           </div>
         </div>
 
@@ -129,16 +175,16 @@
           <label for="loginPassword">Mật khẩu</label>
           <div class="login-input-wrap">
             <i class="ti ti-lock"></i>
-            <input type="password" id="loginPassword" name="password" placeholder="Nhập mật khẩu" autocomplete="current-password" required>
+            <input type="password" id="password" name="password" placeholder="Nhập mật khẩu" autocomplete="current-password" required>
           </div>
         </div>
 
         <div class="login-options">
           <!-- <label class="login-remember"><input type="checkbox" name="remember"> Ghi nhớ đăng nhập</label> -->
-          <a href="http://localhost/frontend/quen-mat-khau.php" class="login-forgot">Quên mật khẩu?</a>
+          <a href="<?php echo XC_URL; ?>/quen-mat-khau.php" class="login-forgot">Quên mật khẩu?</a>
         </div>
 
-        <button type="submit" class="login-submit"><i class="ti ti-login-2"></i> Đăng nhập</button>
+        <button type="submit" class="login-submit" id='loginSubmitBtn'><i class="ti ti-login-2"></i> Đăng nhập</button>
 
         <div class="login-divider"><span>hoặc</span></div>
 
@@ -152,7 +198,7 @@
           Đăng nhập bằng Google
         </button>
 
-        <div class="login-register-note">Bạn chưa có tài khoản? <a href="#">Đăng ký miễn phí</a></div>
+        <div class="login-register-note">Bạn chưa có tài khoản? <a href="<?php echo XC_URL; ?>/dang-ky-tai-khoan.html">Đăng ký miễn phí</a></div>
       </form>
     </div>
   </div>
@@ -171,7 +217,7 @@
       <div class="mm-user-label">Sẵn sàng để bắt đầu công việc mơ ước?</div>
       <div class="mm-btn-group">
           <button type="button" class="mm-btn-login js-login-open">Đăng nhập</button>
-          <button class="mm-btn-ntd" style="background:#333">Đăng ký</button>
+          <button class="mm-btn-ntd" style="background:#333"><a href="<?php echo XC_URL; ?>/dang-ky-tai-khoan.html" style="color: #fff; text-decoration: none;">Đăng ký</a></button>
       </div>
       <div class="mobile-quick-actions">
         <button class="mm-btn-login"><i class="ti ti-user-plus"></i> Đăng ký</button>

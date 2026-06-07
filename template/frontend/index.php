@@ -2,12 +2,237 @@
 <?php require "header.php"; ?>
 
 <!-- HERO -->
-<section class="hero">
+<style>
+  .hero-slider {
+    position: relative;
+    z-index: 10;
+    isolation: isolate;
+    overflow: visible;
+    min-height: 390px;
+    background: #0d4e96;
+  }
+  .hero-slider.location-dropdown-open {
+    z-index: 10000;
+  }
+  .hero-slider-backgrounds,
+  .hero-slider-background,
+  .hero-slider-overlay {
+    position: absolute;
+    inset: 0;
+  }
+  .hero-slider-backgrounds {
+    z-index: -3;
+    overflow: hidden;
+  }
+  .hero-slider-background {
+    background-position: center;
+    background-size: cover;
+    opacity: 0;
+    transform: scale(1.04);
+    transition: opacity .8s ease, transform 7s ease;
+  }
+  .hero-slider-background.active {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .hero-slider-overlay {
+    z-index: -2;
+    pointer-events: none;
+    background: linear-gradient(90deg, rgba(4, 30, 61, .58) 0%, rgba(13, 78, 150, .28) 55%, rgba(4, 30, 61, .2) 100%);
+  }
+  .hero-slider .hero-inner {
+    position: relative;
+    z-index: 2;
+  }
+  .hero-slider h1,
+  .hero-slider .hero-sub {
+    color: rgba(255, 255, 255, .94);
+    text-shadow: 0 2px 14px rgba(0, 0, 0, .55);
+  }
+  .hero-slider .hero-badge {
+    color: #fff;
+    background: rgba(4, 30, 61, .25);
+    border-color: rgba(255, 255, 255, .42);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, .12);
+    backdrop-filter: blur(6px);
+  }
+  .hero-slider .search-wrap {
+    background: rgba(255, 255, 255, .28);
+    border-color: rgba(255, 255, 255, .55);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, .16);
+    backdrop-filter: blur(10px);
+  }
+  .hero-slider .search-wrap:focus-within {
+    background: rgba(255, 255, 255, .4);
+    border-color: rgba(255, 255, 255, .9);
+  }
+  .hero-slider .search-input {
+    background: transparent;
+    color: #fff;
+  }
+  .hero-slider .search-input::placeholder {
+    color: rgba(255, 255, 255, .78);
+  }
+  .hero-slider .search-icon,
+  .hero-slider .search-location,
+  .hero-slider .search-location i.pin,
+  .hero-slider .search-location i.chevron {
+    color: rgba(255, 255, 255, .92);
+  }
+  .hero-slider .search-divider {
+    background: rgba(255, 255, 255, .42);
+  }
+  .hero-slider .search-btn {
+    background: rgba(13, 78, 150, .68);
+    border-left: 1px solid rgba(255, 255, 255, .28);
+    backdrop-filter: blur(8px);
+  }
+  .hero-slider .search-btn:hover {
+    background: rgba(13, 78, 150, .9);
+  }
+  .hero-slider .hero-login-card {
+    background: rgba(255, 255, 255, .3);
+    border-color: rgba(255, 255, 255, .48);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .18);
+    backdrop-filter: blur(10px);
+  }
+  .hero-slider .hero-login-card p,
+  .hero-slider .hero-login-card span {
+    color: rgba(255, 255, 255, .94);
+    text-shadow: 0 1px 8px rgba(0, 0, 0, .42);
+  }
+  .hero-slider .btn-google {
+    color: #fff;
+    background: rgba(255, 255, 255, .18);
+    border-color: rgba(255, 255, 255, .5);
+    backdrop-filter: blur(7px);
+  }
+  .hero-slider .btn-google:hover {
+    background: rgba(255, 255, 255, .3);
+    border-color: rgba(255, 255, 255, .85);
+  }
+  .hero-slider .btn-login-hero {
+    background: rgba(13, 78, 150, .68);
+    border: 1px solid rgba(255, 255, 255, .36);
+    backdrop-filter: blur(7px);
+  }
+  .hero-slider .btn-login-hero:hover {
+    background: rgba(13, 78, 150, .9);
+  }
+  .hero-slider .location-dropdown {
+    z-index: 500;
+    background: rgba(255, 255, 255, .88);
+    backdrop-filter: blur(14px);
+  }
+  .hero-slider-nav {
+    position: absolute;
+    z-index: 5;
+    top: 50%;
+    width: 44px;
+    height: 44px;
+    border: 1px solid rgba(255, 255, 255, .55);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: rgba(4, 30, 61, .46);
+    color: #fff;
+    cursor: pointer;
+    transform: translateY(-50%);
+    transition: background .2s ease, transform .2s ease;
+  }
+  .hero-slider-nav:hover,
+  .hero-slider-nav:focus-visible {
+    background: #0d4e96;
+    transform: translateY(-50%) scale(1.08);
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+  .hero-slider-prev { left: 16px; }
+  .hero-slider-next { right: 16px; }
+  .hero-slider-dots {
+    position: absolute;
+    z-index: 5;
+    bottom: 14px;
+    left: 50%;
+    display: flex;
+    gap: 8px;
+    transform: translateX(-50%);
+  }
+  .hero-slider-dot {
+    width: 9px;
+    height: 9px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, .8);
+    border-radius: 99px;
+    background: rgba(255, 255, 255, .42);
+    cursor: pointer;
+    transition: width .25s ease, background .25s ease;
+  }
+  .hero-slider-dot.active {
+    width: 28px;
+    background: #fff;
+  }
+  @media (max-width: 768px) {
+    .hero-slider { min-height: 350px; }
+    .hero-slider-nav { width: 36px; height: 36px; }
+    .hero-slider-prev { left: 6px; }
+    .hero-slider-next { right: 6px; }
+    .hero-slider .hero-inner { padding-left: 34px; padding-right: 34px; }
+  }
+  @media (max-width: 480px) {
+    .hero-slider .search-wrap {
+      position: relative;
+    }
+    .hero-slider .search-location-box {
+      position: static;
+    }
+    .hero-slider .location-dropdown.open {
+      display: flex;
+      flex-direction: column;
+      top: calc(100% + 8px);
+      right: 0;
+      bottom: auto;
+      left: 0;
+      width: 100%;
+      max-height: min(55dvh, 420px);
+      padding-bottom: 10px;
+      border-radius: 14px;
+      background: #fff;
+      backdrop-filter: none;
+      box-shadow: 0 18px 50px rgba(4, 30, 61, .28);
+    }
+    .hero-slider .location-dropdown-search {
+      flex: 0 0 auto;
+    }
+    .hero-slider .location-list {
+      flex: 1 1 auto;
+      min-height: 0;
+      max-height: none;
+      overscroll-behavior: contain;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-slider-background { transition: opacity .2s ease; transform: none; }
+  }
+</style>
+<section class="hero hero-slider" id="heroSlider" aria-roledescription="carousel" aria-label="Banner việc làm nổi bật">
+  <div class="hero-slider-backgrounds" aria-hidden="true">
+    <div class="hero-slider-background active" style="background-image:url('https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=2000&q=85')"></div>
+    <div class="hero-slider-background" style="background-image:url('https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=2000&q=85')"></div>
+    <div class="hero-slider-background" style="background-image:url('https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=2000&q=85')"></div>
+  </div>
+  <div class="hero-slider-overlay" aria-hidden="true"></div>
+  <button type="button" class="hero-slider-nav hero-slider-prev" id="heroSliderPrev" aria-label="Slider trước">
+    <i class="ti ti-chevron-left" aria-hidden="true"></i>
+  </button>
+  <button type="button" class="hero-slider-nav hero-slider-next" id="heroSliderNext" aria-label="Slider tiếp theo">
+    <i class="ti ti-chevron-right" aria-hidden="true"></i>
+  </button>
   <div class="hero-inner">
     <div class="hero-left">
-      <div class="hero-badge"><i class="ti ti-award"></i> Website đăng tin tuyển dụng uy tín</div>
-      <h1>Vieclam<br><span>670.000+</span> người đã ứng tuyển thành công!</h1>
-      <p class="hero-sub">Nhanh hơn. Dễ dàng hơn.</p>
+      <div class="hero-badge"><i class="ti ti-award"></i> Hệ thống cổng thông tin việc làm</div>
+      <h1>Trường Cao đẳng Kon Tum<br>Hệ thống kết nối sinh viên - doanh nghiệp</h1>
+      <p class="hero-sub">Tìm việc nhanh chóng. Ứng tuyển dễ dàng.</p>
 
       <div class="search-wrap" id="heroSearchWrap">
         <i class="ti ti-search search-icon"></i>
@@ -31,7 +256,7 @@
         <button type="button" class="search-btn"><i class="ti ti-search" style="margin-right:6px;vertical-align:-2px"></i> Tìm việc</button>
       </div>
 
-      <div class="quick-links">
+      <!-- <div class="quick-links">
         <a href="https://vieclam.vn/viec-lam-ha-noi-p73.html" class="quick-link">Việc làm Hà Nội</a>
         <a href="https://vieclam.vn/viec-lam-tp-hcm-p122.html" class="quick-link">Việc làm TPHCM</a>
         <a href="https://vieclam.vn/viec-lam-marketing-o12.html" class="quick-link">Việc làm Marketing</a>
@@ -40,7 +265,7 @@
         <a href="https://vieclam.vn/viec-lam-nhan-su-o22.html" class="quick-link">Tuyển dụng nhân sự</a>
         <a href="https://vieclam.vn/viec-lam-tuyen-nhanh.html" class="quick-link special">⚡ Việc đi làm ngay</a>
         <a href="https://vieclam.vn/tim-kiem-viec-lam-nhanh?is_cv_optional=1" class="quick-link special2">✅ Việc không cần CV</a>
-      </div>
+      </div> -->
     </div>
 
     <div style="width:300px;flex-shrink:0">
@@ -55,10 +280,77 @@
       </div>
     </div>
   </div>
+  <div class="hero-slider-dots" id="heroSliderDots" aria-label="Chọn slider"></div>
 </section>
 
+<script>
+  (function () {
+    var slider = document.getElementById('heroSlider');
+    if (!slider) return;
+
+    var slides = Array.prototype.slice.call(slider.querySelectorAll('.hero-slider-background'));
+    var dotsWrap = document.getElementById('heroSliderDots');
+    var prev = document.getElementById('heroSliderPrev');
+    var next = document.getElementById('heroSliderNext');
+    var current = 0;
+    var timer = null;
+    var interval = 7000;
+
+    function showSlide(index) {
+      current = (index + slides.length) % slides.length;
+      slides.forEach(function (slide, slideIndex) {
+        slide.classList.toggle('active', slideIndex === current);
+      });
+      Array.prototype.slice.call(dotsWrap.children).forEach(function (dot, dotIndex) {
+        var isActive = dotIndex === current;
+        dot.classList.toggle('active', isActive);
+        dot.setAttribute('aria-current', isActive ? 'true' : 'false');
+      });
+    }
+
+    function startAutoPlay() {
+      window.clearInterval(timer);
+      timer = window.setInterval(function () {
+        showSlide(current + 1);
+      }, interval);
+    }
+
+    slides.forEach(function (_, index) {
+      var dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = index === 0 ? 'hero-slider-dot active' : 'hero-slider-dot';
+      dot.setAttribute('aria-label', 'Hiển thị slider ' + (index + 1));
+      dot.setAttribute('aria-current', index === 0 ? 'true' : 'false');
+      dot.addEventListener('click', function () {
+        showSlide(index);
+        startAutoPlay();
+      });
+      dotsWrap.appendChild(dot);
+    });
+
+    prev.addEventListener('click', function () {
+      showSlide(current - 1);
+      startAutoPlay();
+    });
+    next.addEventListener('click', function () {
+      showSlide(current + 1);
+      startAutoPlay();
+    });
+    slider.addEventListener('mouseenter', function () { window.clearInterval(timer); });
+    slider.addEventListener('mouseleave', startAutoPlay);
+    slider.addEventListener('focusin', function () { window.clearInterval(timer); });
+    slider.addEventListener('focusout', startAutoPlay);
+    slider.addEventListener('keydown', function (event) {
+      if (event.key === 'ArrowLeft') prev.click();
+      if (event.key === 'ArrowRight') next.click();
+    });
+
+    startAutoPlay();
+  }());
+</script>
+
 <!-- INDUSTRY TABS -->
-<div class="industry-bar">
+<!-- <div class="industry-bar">
   <div class="industry-bar-inner">
     <div class="ind-tab active">Bán sỉ - Bán lẻ - Quản lý cửa hàng</div>
     <div class="ind-tab">Bán hàng - Kinh doanh</div>
@@ -67,7 +359,7 @@
     <div class="ind-tab">Kiểm toán</div>
     <div class="ind-more">Tất cả các ngành &rsaquo;</div>
   </div>
-</div>
+</div> -->
 
 <!-- BANNER -->
 <div class="banner-section">

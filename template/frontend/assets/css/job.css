@@ -5,8 +5,16 @@
     padding: 24px 0 42px;
   }
   .jobs-manage-inner {
-    width: min(1180px, calc(100% - 28px));
+    width: 100%;
+    max-width: none;
     margin: 0 auto;
+    padding: 0 20px;
+  }
+  @media (min-width: 1280px) {
+    .jobs-manage-inner {
+      padding-left: var(--site-content-padding, 80px);
+      padding-right: var(--site-content-padding, 80px);
+    }
   }
   .job-search-panel {
     border-radius: 12px;
@@ -348,7 +356,8 @@
       padding-top: 14px;
     }
     .jobs-manage-inner {
-      width: min(100% - 20px, 1180px);
+      padding-left: 10px;
+      padding-right: 10px;
     }
     .job-search-panel {
       padding: 6px;

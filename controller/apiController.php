@@ -5443,6 +5443,358 @@ public function addstudent()
 		echo json_encode($result);
 	}
 
+	private function employerDashboardApiResponse($result){
+		header('Content-Type: application/json; charset=utf-8');
+		echo json_encode($result);
+	}
+
+	private function employerDashboardApiContext(){
+		global $db;
+		$user = null;
+		$employer = null;
+
+		if(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != ""){
+			$uid = $db->escapestring($_SESSION['user']['id']);
+			$db->query("SELECT * FROM hicrm_users WHERE id = '".$uid."' AND user_group = '2' LIMIT 1");
+			if($db->num_row() > 0){
+				$user = $db->fetch_object(true);
+			}
+		}
+
+		if(!$user){
+			$db->query("SELECT * FROM hicrm_users WHERE user_group = '2' ORDER BY employee_id DESC, id ASC LIMIT 1");
+			if($db->num_row() > 0){
+				$user = $db->fetch_object(true);
+			}
+		}
+
+		if($user && intval($user->employee_id) > 0){
+			$db->query("SELECT * FROM hicrm_employers WHERE id = '".intval($user->employee_id)."' LIMIT 1");
+			if($db->num_row() > 0){
+				$employer = $db->fetch_object(true);
+			}
+		}
+
+		if(!$employer){
+			$db->query("SELECT * FROM hicrm_employers ORDER BY id ASC LIMIT 1");
+			if($db->num_row() > 0){
+				$employer = $db->fetch_object(true);
+			}
+		}
+
+		return array('user' => $user, 'employer' => $employer);
+	}
+
+	private function employerDashboardApiTableExists($table_name){
+		global $db;
+		$table_name = $db->escapestring($table_name);
+		$db->query("SHOW TABLES LIKE '".$table_name."'");
+		return $db->num_row() > 0;
+	}
+
+	private function employerDashboardUploadImage($field_name, $max_size = 4194304){
+		if(!isset($_FILES[$field_name]) || $_FILES[$field_name]['error'] == 4){
+			return array('status' => 204, 'path' => '');
+		}
+
+		if($_FILES[$field_name]['error'] != 0){
+			return array('status' => 400, 'message' => 'File tải lên không hợp lệ');
+		}
+
+		if($_FILES[$field_name]['size'] > $max_size){
+			return array('status' => 400, 'message' => 'Dung lượng ảnh vượt quá giới hạn cho phép');
+		}
+
+		$file_ext = strtolower(pathinfo($_FILES[$field_name]['name'], PATHINFO_EXTENSION));
+		$allowed = array('jpg', 'jpeg', 'png', 'webp', 'gif');
+		if(!in_array($file_ext, $allowed)){
+			return array('status' => 400, 'message' => 'Chỉ cho phép upload ảnh JPG, PNG, WEBP hoặc GIF');
+		}
+
+		if(!@getimagesize($_FILES[$field_name]['tmp_name'])){
+			return array('status' => 400, 'message' => 'File tải lên không phải hình ảnh hợp lệ');
+		}
+
+		$upload_dir = './uploads/employers/';
+		if(!is_dir($upload_dir)){
+			mkdir($upload_dir, 0777, true);
+		}
+
+		$file_name = $field_name.'_'.date('YmdHis').'_'.rand(1000, 9999).'.'.$file_ext;
+		$target = $upload_dir.$file_name;
+		if(!move_uploaded_file($_FILES[$field_name]['tmp_name'], $target)){
+			return array('status' => 500, 'message' => 'Không thể lưu file ảnh');
+		}
+
+		return array('status' => 200, 'path' => 'uploads/employers/'.$file_name);
+	}
+
+	public function employeraccountupdate(){
+		global $db;
+		$context = $this->employerDashboardApiContext();
+		$user = $context['user'];
+
+		if(!$user){
+			$this->employerDashboardApiResponse(array('status' => 404, 'message' => 'Không tìm thấy tài khoản nhà tuyển dụng'));
+			return;
+		}
+
+		$user_username = isset($_POST['user_username']) ? trim($_POST['user_username']) : '';
+		$full_name = isset($_POST['full_name']) ? trim($_POST['full_name']) : '';
+		$user_email = isset($_POST['user_email']) ? trim($_POST['user_email']) : '';
+		$user_phone = isset($_POST['user_phone']) ? trim($_POST['user_phone']) : '';
+		$user_is_subscribed = isset($_POST['user_is_subscribed']) && intval($_POST['user_is_subscribed']) == 1 ? 1 : 0;
+
+		if($full_name == ''){
+			$this->employerDashboardApiResponse(array('status' => 400, 'message' => 'Vui lòng nhập họ và tên'));
+			return;
+		}
+
+		if($user_email == '' || !filter_var($user_email, FILTER_VALIDATE_EMAIL)){
+			$this->employerDashboardApiResponse(array('status' => 400, 'message' => 'Email không hợp lệ'));
+			return;
+		}
+
+		$current_user_id = intval($user->id);
+		$db->query("SELECT id FROM hicrm_users WHERE user_email = '".$db->escapestring($user_email)."' AND id <> '".$current_user_id."' LIMIT 1");
+		if($db->num_row() > 0){
+			$this->employerDashboardApiResponse(array('status' => 409, 'message' => 'Email này đã được sử dụng bởi tài khoản khác'));
+			return;
+		}
+
+		if($user_username != ''){
+			$db->query("SELECT id FROM hicrm_users WHERE user_username = '".$db->escapestring($user_username)."' AND id <> '".$current_user_id."' LIMIT 1");
+			if($db->num_row() > 0){
+				$this->employerDashboardApiResponse(array('status' => 409, 'message' => 'Tên đăng nhập này đã được sử dụng'));
+				return;
+			}
+		}
+
+		$fields = array(
+			"user_username = '".$db->escapestring($user_username)."'",
+			"full_name = '".$db->escapestring($full_name)."'",
+			"user_email = '".$db->escapestring($user_email)."'",
+			"user_phone = '".$db->escapestring($user_phone)."'",
+			"user_is_subscribed = '".$user_is_subscribed."'",
+			"user_updated_at = NOW()"
+		);
+
+		$db->query("UPDATE hicrm_users SET ".implode(',', $fields)." WHERE id = '".$current_user_id."' LIMIT 1");
+
+		if(isset($_SESSION['user']['id']) && intval($_SESSION['user']['id']) == $current_user_id){
+			$_SESSION['user']['email'] = $user_email;
+			$_SESSION['user']['full_name'] = $full_name;
+			$_SESSION['user']['user_username'] = $user_username;
+		}
+
+		$this->employerDashboardApiResponse(array('status' => 200, 'message' => 'Cập nhật tài khoản thành công'));
+	}
+
+	public function employercompanyupdate(){
+		global $db;
+		$context = $this->employerDashboardApiContext();
+		$employer = $context['employer'];
+
+		if(!$employer){
+			$this->employerDashboardApiResponse(array('status' => 404, 'message' => 'Không tìm thấy nhà tuyển dụng'));
+			return;
+		}
+
+		$company_name = isset($_POST['company_name']) ? trim($_POST['company_name']) : '';
+		if($company_name == ''){
+			$this->employerDashboardApiResponse(array('status' => 400, 'message' => 'Vui lòng nhập tên công ty'));
+			return;
+		}
+
+		$fields = array(
+			"company_name = '".$db->escapestring($company_name)."'",
+			"tax_code = '".$db->escapestring(isset($_POST['tax_code']) ? $_POST['tax_code'] : '')."'",
+			"job_category_id = ".(isset($_POST['job_category_id']) && $_POST['job_category_id'] !== '' ? "'".intval($_POST['job_category_id'])."'" : "NULL"),
+			"company_size = '".$db->escapestring(isset($_POST['company_size']) ? $_POST['company_size'] : '')."'",
+			"address_detail = '".$db->escapestring(isset($_POST['address_detail']) ? $_POST['address_detail'] : '')."'",
+			"website_url = '".$db->escapestring(isset($_POST['website_url']) ? $_POST['website_url'] : '')."'",
+			"fanpage_url = '".$db->escapestring(isset($_POST['fanpage_url']) ? $_POST['fanpage_url'] : '')."'",
+			"description = '".$db->escapestring(isset($_POST['description']) ? $_POST['description'] : '')."'",
+			"updated_at = NOW()"
+		);
+
+		$db->query("UPDATE hicrm_employers SET ".implode(',', $fields)." WHERE id = '".intval($employer->id)."' LIMIT 1");
+		$this->employerDashboardApiResponse(array('status' => 200, 'message' => 'Cập nhật thông tin công ty thành công'));
+	}
+
+	public function employerimagesupdate(){
+		global $db;
+		$context = $this->employerDashboardApiContext();
+		$employer = $context['employer'];
+
+		if(!$employer){
+			$this->employerDashboardApiResponse(array('status' => 404, 'message' => 'Không tìm thấy nhà tuyển dụng'));
+			return;
+		}
+
+		$fields = array();
+		$logo = $this->employerDashboardUploadImage('logo_file', 2097152);
+		if($logo['status'] == 200){
+			$fields[] = "logo_url = '".$db->escapestring($logo['path'])."'";
+		}elseif($logo['status'] != 204){
+			$this->employerDashboardApiResponse($logo);
+			return;
+		}
+
+		$cover = $this->employerDashboardUploadImage('cover_file', 4194304);
+		if($cover['status'] == 200){
+			$fields[] = "cover_url = '".$db->escapestring($cover['path'])."'";
+		}elseif($cover['status'] != 204){
+			$this->employerDashboardApiResponse($cover);
+			return;
+		}
+
+		if(count($fields) == 0){
+			$this->employerDashboardApiResponse(array('status' => 400, 'message' => 'Vui lòng chọn logo hoặc ảnh bìa để upload'));
+			return;
+		}
+
+		$fields[] = "updated_at = NOW()";
+		$db->query("UPDATE hicrm_employers SET ".implode(',', $fields)." WHERE id = '".intval($employer->id)."' LIMIT 1");
+		$this->employerDashboardApiResponse(array('status' => 200, 'message' => 'Upload hình ảnh thành công'));
+	}
+
+	public function employerjobsave(){
+		global $db;
+		$context = $this->employerDashboardApiContext();
+		$employer = $context['employer'];
+
+		if(!$employer){
+			$this->employerDashboardApiResponse(array('status' => 404, 'message' => 'Không tìm thấy nhà tuyển dụng'));
+			return;
+		}
+
+		$title = isset($_POST['title']) ? trim($_POST['title']) : '';
+		$job_description = isset($_POST['job_description']) ? trim($_POST['job_description']) : '';
+		$deadline = isset($_POST['deadline']) ? trim($_POST['deadline']) : '';
+		if($title == '' || $job_description == '' || $deadline == ''){
+			$this->employerDashboardApiResponse(array('status' => 400, 'message' => 'Vui lòng nhập tên vị trí, mô tả công việc và hạn nộp hồ sơ'));
+			return;
+		}
+
+		$job_id = isset($_POST['job_id']) ? intval($_POST['job_id']) : 0;
+		$status = isset($_POST['status']) && $_POST['status'] != '' ? $_POST['status'] : 'pending';
+		$allowed_status = array('draft', 'pending', 'published', 'closed', 'rejected');
+		if(!in_array($status, $allowed_status)){
+			$status = 'pending';
+		}
+
+		$data = array(
+			"employer_id = '".intval($employer->id)."'",
+			"job_category_id = ".(isset($_POST['job_category_id']) && $_POST['job_category_id'] !== '' ? "'".intval($_POST['job_category_id'])."'" : "NULL"),
+			"province_id = ".(isset($_POST['province_id']) && $_POST['province_id'] !== '' ? "'".intval($_POST['province_id'])."'" : "NULL"),
+			"title = '".$db->escapestring($title)."'",
+			"quantity = '".(isset($_POST['quantity']) ? intval($_POST['quantity']) : 1)."'",
+			"job_description = '".$db->escapestring($job_description)."'",
+			"experience_years = '".(isset($_POST['experience_years']) ? intval($_POST['experience_years']) : 0)."'",
+			"degree_required = '".$db->escapestring(isset($_POST['degree_required']) ? $_POST['degree_required'] : '')."'",
+			"professional_skills = '".$db->escapestring(isset($_POST['professional_skills']) ? $_POST['professional_skills'] : '')."'",
+			"soft_skills = '".$db->escapestring(isset($_POST['soft_skills']) ? $_POST['soft_skills'] : '')."'",
+			"other_requirements = '".$db->escapestring(isset($_POST['other_requirements']) ? $_POST['other_requirements'] : '')."'",
+			"salary_id = ".(isset($_POST['salary_id']) && $_POST['salary_id'] !== '' ? "'".intval($_POST['salary_id'])."'" : "NULL"),
+			"benefits_description = '".$db->escapestring(isset($_POST['benefits_description']) ? $_POST['benefits_description'] : '')."'",
+			"rewards_description = '".$db->escapestring(isset($_POST['rewards_description']) ? $_POST['rewards_description'] : '')."'",
+			"work_environment = '".$db->escapestring(isset($_POST['work_environment']) ? $_POST['work_environment'] : '')."'",
+			"work_type = '".$db->escapestring(isset($_POST['work_type']) ? $_POST['work_type'] : '')."'",
+			"address_detail = '".$db->escapestring(isset($_POST['address_detail']) ? $_POST['address_detail'] : '')."'",
+			"working_time = '".$db->escapestring(isset($_POST['working_time']) ? $_POST['working_time'] : '')."'",
+			"deadline = '".$db->escapestring($deadline)."'",
+			"status = '".$db->escapestring($status)."'",
+			"updated_at = NOW()"
+		);
+
+		if($job_id > 0){
+			$db->query("SELECT id FROM hicrm_job_posts WHERE id = '".$job_id."' AND employer_id = '".intval($employer->id)."' LIMIT 1");
+			if(!$db->num_row()){
+				$this->employerDashboardApiResponse(array('status' => 404, 'message' => 'Bài đăng không tồn tại'));
+				return;
+			}
+			$db->query("UPDATE hicrm_job_posts SET ".implode(',', $data)." WHERE id = '".$job_id."' LIMIT 1");
+			$message = 'Cập nhật bài đăng thành công';
+		}else{
+			$insert_columns = array('employer_id','job_category_id','province_id','title','quantity','job_description','experience_years','degree_required','professional_skills','soft_skills','other_requirements','salary_id','benefits_description','rewards_description','work_environment','work_type','address_detail','working_time','deadline','status','created_at','updated_at');
+			$insert_values = array(
+				"'".intval($employer->id)."'",
+				(isset($_POST['job_category_id']) && $_POST['job_category_id'] !== '' ? "'".intval($_POST['job_category_id'])."'" : "NULL"),
+				(isset($_POST['province_id']) && $_POST['province_id'] !== '' ? "'".intval($_POST['province_id'])."'" : "NULL"),
+				"'".$db->escapestring($title)."'",
+				"'".(isset($_POST['quantity']) ? intval($_POST['quantity']) : 1)."'",
+				"'".$db->escapestring($job_description)."'",
+				"'".(isset($_POST['experience_years']) ? intval($_POST['experience_years']) : 0)."'",
+				"'".$db->escapestring(isset($_POST['degree_required']) ? $_POST['degree_required'] : '')."'",
+				"'".$db->escapestring(isset($_POST['professional_skills']) ? $_POST['professional_skills'] : '')."'",
+				"'".$db->escapestring(isset($_POST['soft_skills']) ? $_POST['soft_skills'] : '')."'",
+				"'".$db->escapestring(isset($_POST['other_requirements']) ? $_POST['other_requirements'] : '')."'",
+				(isset($_POST['salary_id']) && $_POST['salary_id'] !== '' ? "'".intval($_POST['salary_id'])."'" : "NULL"),
+				"'".$db->escapestring(isset($_POST['benefits_description']) ? $_POST['benefits_description'] : '')."'",
+				"'".$db->escapestring(isset($_POST['rewards_description']) ? $_POST['rewards_description'] : '')."'",
+				"'".$db->escapestring(isset($_POST['work_environment']) ? $_POST['work_environment'] : '')."'",
+				"'".$db->escapestring(isset($_POST['work_type']) ? $_POST['work_type'] : '')."'",
+				"'".$db->escapestring(isset($_POST['address_detail']) ? $_POST['address_detail'] : '')."'",
+				"'".$db->escapestring(isset($_POST['working_time']) ? $_POST['working_time'] : '')."'",
+				"'".$db->escapestring($deadline)."'",
+				"'".$db->escapestring($status)."'",
+				"NOW()",
+				"NOW()"
+			);
+			$db->query("INSERT INTO hicrm_job_posts (".implode(',', $insert_columns).") VALUES (".implode(',', $insert_values).")");
+			$message = 'Đăng tin tuyển dụng thành công';
+		}
+
+		$this->employerDashboardApiResponse(array('status' => 200, 'message' => $message));
+	}
+
+	public function employerjobdelete(){
+		global $db;
+		$context = $this->employerDashboardApiContext();
+		$employer = $context['employer'];
+		$job_id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+
+		if(!$employer || $job_id <= 0){
+			$this->employerDashboardApiResponse(array('status' => 400, 'message' => 'Dữ liệu xóa bài đăng không hợp lệ'));
+			return;
+		}
+
+		$db->query("UPDATE hicrm_job_posts SET status = 99 WHERE id = '".$job_id."' LIMIT 1");
+		$this->employerDashboardApiResponse(array('status' => 200, 'message' => 'Xóa bài đăng thành công'));
+	}
+
+	public function employerstudents(){
+		global $db;
+		$keyword = isset($_GET['keyword']) ? $db->escapestring($_GET['keyword']) : '';
+		$where = array("1=1");
+		if($keyword != ''){
+			$where[] = "(s.student_name LIKE '%".$keyword."%' OR s.student_code LIKE '%".$keyword."%' OR s.student_email LIKE '%".$keyword."%' OR s.student_phone LIKE '%".$keyword."%')";
+		}
+
+		$db->query("SELECT s.*, c.job_category_name FROM hicrm_student_profile s LEFT JOIN hicrm_job_categories c ON s.student_major_id = c.id WHERE ".implode(' AND ', $where)." ORDER BY s.student_gpa DESC, s.id DESC LIMIT 60");
+		$this->employerDashboardApiResponse(array('status' => 200, 'data' => $db->fetch_object()));
+	}
+
+	public function employerapplicants(){
+		global $db;
+		$keyword = isset($_GET['keyword']) ? $db->escapestring($_GET['keyword']) : '';
+		$where = array("1=1");
+
+		if($this->employerDashboardApiTableExists('hicrm_candidates')){
+			if($keyword != ''){
+				$where[] = "(ca.full_name LIKE '%".$keyword."%' OR ca.desired_position LIKE '%".$keyword."%' OR u.user_email LIKE '%".$keyword."%' OR u.user_phone LIKE '%".$keyword."%')";
+			}
+			$db->query("SELECT ca.*, u.user_email, u.user_phone, jc.job_category_name FROM hicrm_candidates ca LEFT JOIN hicrm_users u ON ca.user_id = u.id LEFT JOIN hicrm_job_categories jc ON ca.major = jc.id WHERE ".implode(' AND ', $where)." ORDER BY ca.updated_at DESC, ca.id DESC LIMIT 60");
+		}else{
+			if($keyword != ''){
+				$where[] = "(full_name LIKE '%".$keyword."%' OR user_email LIKE '%".$keyword."%' OR user_phone LIKE '%".$keyword."%')";
+			}
+			$db->query("SELECT id, full_name, user_email, user_phone, user_created_at AS updated_at FROM hicrm_users WHERE user_group = '4' AND ".implode(' AND ', $where)." ORDER BY id DESC LIMIT 60");
+		}
+		$this->employerDashboardApiResponse(array('status' => 200, 'data' => $db->fetch_object()));
+	}
+
 	// Xóa nhóm quyền
 	public function deletegroup(){
 		global $db;

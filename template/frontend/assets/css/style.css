@@ -1495,6 +1495,9 @@ body.employer-modal-open{overflow:hidden}
 .jobfair-container,
 .guide-container,
 .contact-main,
+.contact-hero-inner,
+.forgot-shell,
+.mr-container,
 .mp-container,
 .online-container {
   width: 100% !important;
@@ -1529,6 +1532,9 @@ body.employer-modal-open{overflow:hidden}
   .jobfair-container,
   .guide-container,
   .contact-main,
+  .contact-hero-inner,
+  .forgot-shell,
+  .mr-container,
   .mp-container,
   .online-container {
     padding-left: var(--site-content-padding) !important;

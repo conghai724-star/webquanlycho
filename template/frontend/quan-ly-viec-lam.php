@@ -28,17 +28,7 @@ $jobFilters = [
       ['value' => '20+', 'label' => 'Trên 20 triệu'],
     ],
   ],
-  'experience' => [
-    'label' => 'Kinh nghiệm',
-    'icon' => 'ti ti-user-check',
-    'items' => [
-      ['value' => 'all', 'label' => 'Tất cả'],
-      ['value' => 'none', 'label' => 'Chưa có kinh nghiệm'],
-      ['value' => '1-2', 'label' => '1 - 2 năm'],
-      ['value' => '3-5', 'label' => '3 - 5 năm'],
-      ['value' => '5+', 'label' => 'Trên 5 năm'],
-    ],
-  ],
+  
   'industry' => [
     'label' => 'Ngành nghề',
     'icon' => 'ti ti-briefcase',
@@ -220,13 +210,7 @@ $jobs = [
           </select>
         </label>
         <!--  -->
-        <label class="job-filter-select">
-          <select id="topExperienceFilter" aria-label="Kinh nghiệm">
-            <option value="all">Tất cả kinh nghiệm</option>
-            <?php foreach ($jobFilters['experience']['items'] as $item): ?>
-            <option value="<?= htmlspecialchars($item['value'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8') ?></option>
-            <?php endforeach; ?>
-          </select>
+        
         </label>
         <label class="job-filter-select">
           <select id="postTypeFilter" aria-label="Loại tin"><option value="all">Tất cả loại tin</option><option value="urgent">Tuyển gấp</option></select>

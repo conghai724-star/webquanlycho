@@ -164,8 +164,8 @@ private function getController() {
 		elseif($parts[0] == "lien-he.html")
 		{
 			// echo $parts[0];
-			$this->controller = "page";
-			$this->action = "lienhe";
+			$this->controller = "home";
+			$this->action = "contact";
 			if(isset( $parts[1]))
 			{
 				$count_args = count($parts);
@@ -220,11 +220,11 @@ private function getController() {
 				$this->args = $args;
 			}
 		}
-		elseif($parts[0] == "dang-ky-lich-kham.html")
+		elseif($parts[0] == "quan-ly-viec-lam.html")
 		{
 			// echo $parts[0];
-			$this->controller = "page";
-			$this->action = "booking";
+			$this->controller = "home";
+			$this->action = "manage_jobs";
 			if(isset( $parts[1]))
 			{
 				$count_args = count($parts);
@@ -235,11 +235,11 @@ private function getController() {
 				$this->args = $args;
 			}
 		}
-		elseif($parts[0] == "nha-thuoc.html")
+		elseif($parts[0] == "quan-ly-ung-vien.html")
 		{
 			// echo $parts[0];
-			$this->controller = "page";
-			$this->action = "products";
+			$this->controller = "home";
+			$this->action = "manage_applicants";
 			if(isset( $parts[1]))
 			{
 				$count_args = count($parts);
@@ -249,11 +249,11 @@ private function getController() {
 					$args[$k++] = $parts[$i]; 
 				$this->args = $args;
 			}
-		}elseif($parts[0] == "nha-thuoc")
+		}elseif($parts[0] == "gioi-thieu-san-viec-lam.html")
 		{
 			// echo $parts[0];
-			$this->controller = "page";
-			$this->action = "products";
+			$this->controller = "home";
+			$this->action = "introduce_jobs";
 			if(isset( $parts[1]))
 			{
 				$count_args = count($parts);
@@ -266,7 +266,7 @@ private function getController() {
 		}elseif($parts[0] == "tin-tuc-su-kien.html")
 		{
 			// echo $parts[0];
-			$this->controller = "page";
+			$this->controller = "home";
 			$this->action = "events";
 			if(isset( $parts[1]))
 			{
@@ -280,7 +280,7 @@ private function getController() {
 		}elseif($parts[0] == "tin-tuc-su-kien")
 		{
 			// echo $parts[0];
-			$this->controller = "page";
+			$this->controller = "home";
 			$this->action = "events";
 			if(isset( $parts[1]))
 			{
@@ -291,11 +291,11 @@ private function getController() {
 					$args[$k++] = $parts[$i]; 
 				$this->args = $args;
 			}
-		}elseif($parts[0] == "lich-cong-tac.html")
+		}elseif($parts[0] == "quy-trinh-san-viec-lam.html")
 		{
 			// echo $parts[0];
-			$this->controller = "page";
-			$this->action = "lichcongtac";
+			$this->controller = "home";
+			$this->action = "introduce_process";
 			if(isset( $parts[1]))
 			{
 				$count_args = count($parts);
@@ -305,11 +305,11 @@ private function getController() {
 					$args[$k++] = $parts[$i]; 
 				$this->args = $args;
 			}
-		}elseif($parts[0] == "lich-cong-tac")
+		}elseif($parts[0] == "ket-qua-san-viec-lam.html")
 		{
 			// echo $parts[0];
-			$this->controller = "page";
-			$this->action = "lichcongtac_filter";
+			$this->controller = "home";
+			$this->action = "results_jobs";
 			if(isset( $parts[1]))
 			{
 				$count_args = count($parts);
@@ -319,11 +319,11 @@ private function getController() {
 					$args[$k++] = $parts[$i]; 
 				$this->args = $args;
 			}
-		}elseif($parts[0] == "doi-ngu-bac-si.html")
+		}elseif($parts[0] == "san-viec-lam-online.html")
 		{
 			// echo $parts[0];
-			$this->controller = "page";
-			$this->action = "doctors";
+			$this->controller = "home";
+			$this->action = "online_jobs";
 			if(isset( $parts[1]))
 			{
 				$count_args = count($parts);
@@ -333,11 +333,11 @@ private function getController() {
 					$args[$k++] = $parts[$i]; 
 				$this->args = $args;
 			}
-		}elseif($parts[0] == "doi-ngu-bac-si")
+		}elseif($parts[0] == "huong-dan.html")
 		{
 			// echo $parts[0];
-			$this->controller = "page";
-			$this->action = "doctors";
+			$this->controller = "home";
+			$this->action = "guidelines";
 			if(isset( $parts[1]))
 			{
 				$count_args = count($parts);
