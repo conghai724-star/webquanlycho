@@ -3,6 +3,67 @@
 <?php require "header.php"; ?>
 <script>
 $(document).ready(function () {
+   var $userTable = $('#user-list-table');
+
+   if ($.fn.DataTable && $userTable.length) {
+      var userTable = $userTable.DataTable({
+         dom: '<"row align-items-center mb-3"<"col-md-6"l><"col-md-6"f>><"table-responsive border-bottom"rt><"row align-items-center mt-3"<"col-md-6"i><"col-md-6"p>><"clear">',
+         pageLength: 10,
+         order: [[1, 'asc']],
+         orderCellsTop: true,
+         columnDefs: [
+            { targets: [0, 5], orderable: false },
+            { targets: 5, searchable: false }
+         ],
+         language: {
+            search: 'T\u00ecm ki\u1ebfm:',
+            lengthMenu: 'Hi\u1ec3n th\u1ecb _MENU_ t\u00e0i kho\u1ea3n',
+            info: 'Hi\u1ec3n th\u1ecb _START_ - _END_ trong _TOTAL_ t\u00e0i kho\u1ea3n',
+            infoEmpty: 'Kh\u00f4ng c\u00f3 t\u00e0i kho\u1ea3n',
+            infoFiltered: '(l\u1ecdc t\u1eeb _MAX_ t\u00e0i kho\u1ea3n)',
+            zeroRecords: 'Kh\u00f4ng t\u00ecm th\u1ea5y t\u00e0i kho\u1ea3n ph\u00f9 h\u1ee3p',
+            paginate: {
+               first: '\u0110\u1ea7u',
+               last: 'Cu\u1ed1i',
+               next: 'Sau',
+               previous: 'Tr\u01b0\u1edbc'
+            }
+         },
+         initComplete: function () {
+            var api = this.api();
+
+            api.columns([3, 4]).every(function () {
+               var column = this;
+               var $select = $('#user-list-table thead .user-filter-row th')
+                  .eq(column.index())
+                  .find('select');
+
+               column.data().unique().sort().each(function (value) {
+                  var text = $('<div>').html(value).text().trim();
+                  if (text) {
+                     $select.append($('<option>').val(text).text(text));
+                  }
+               });
+
+               $select.on('change', function () {
+                  var value = $.fn.dataTable.util.escapeRegex(this.value);
+                  column.search(value ? '^' + value + '$' : '', true, false).draw();
+               });
+            });
+         }
+      });
+
+      $('#user-list-table thead').on('keyup change', '.user-column-search', function () {
+         userTable.column($(this).data('column')).search(this.value).draw();
+      });
+
+      userTable.on('order.dt search.dt draw.dt', function () {
+         userTable.column(0, { search: 'applied', order: 'applied' }).nodes().each(function (cell, index) {
+            cell.innerHTML = index + 1;
+         });
+      }).draw();
+   }
+
 ///-----------Users action-----------
    // Add user
 
@@ -150,7 +211,7 @@ $(document).ready(function () {
            </div>
             <div class="card-body px-0">
                <div class="table-responsive">
-                  <table id="user-list-table" class="table table-bordered table-hover" role="grid" data-bs-toggle="data-table">
+                  <table id="user-list-table" class="table table-bordered table-hover" role="grid">
                      <thead>
                         <tr class="ligth">
                            <th>STT</th>
@@ -159,6 +220,26 @@ $(document).ready(function () {
                            <th>Loại tài khoản</th>
                            <th>Trạng thái</th>
                            <th style="min-width: 100px">Thao tác</th>
+                        </tr>
+                        <tr class="user-filter-row">
+                           <th></th>
+                           <th>
+                              <input type="search" class="form-control form-control-sm user-column-search" data-column="1" placeholder="Lọc họ và tên">
+                           </th>
+                           <th>
+                              <input type="search" class="form-control form-control-sm user-column-search" data-column="2" placeholder="Lọc email">
+                           </th>
+                           <th>
+                              <select class="form-select form-select-sm">
+                                 <option value="">Tất cả loại</option>
+                              </select>
+                           </th>
+                           <th>
+                              <select class="form-select form-select-sm">
+                                 <option value="">Tất cả trạng thái</option>
+                              </select>
+                           </th>
+                           <th></th>
                         </tr>
                      </thead>
                      <tbody>

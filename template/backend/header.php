@@ -126,11 +126,48 @@
                             <span class="mini-icon">-</span>
                         </a>
                     </li>
+                   
+
                     <li class="nav-item">
-                        <a class="nav-link <?php echo (isset($active_menu) && $active_menu == 'employers') ? 'active' : ''; ?>"  href="<?php echo XC_URL;?>/admin/employers">
-                           <i class="fa-solid fa-city"></i>
-                            <span class="item-name">Nhà tuyển dụng</span>
+                        <a class="nav-link" data-bs-toggle="collapse" href="#sidebar-employee" role="button" aria-expanded="false" aria-controls="sidebar-user">
+                              <i class="fa-solid fa-city"></i>
+                            <span class="item-name ">Nhà tuyển dụng</span>
+                            <i class="right-icon">
+                                <svg class="icon-18" xmlns="http://www.w3.org/2000/svg" width="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </i>
                         </a>
+                        <ul class="sub-nav collapse" id="sidebar-employee" data-bs-parent="#sidebar-menu">
+                            <li class="nav-item">
+                                <a class="nav-link " href="<?php echo XC_URL;?>/admin/employers">
+                                    <i class="icon">
+                                        <svg class="icon-10" xmlns="http://www.w3.org/2000/svg" width="10" viewBox="0 0 24 24" fill="currentColor">
+                                            <g>
+                                            <circle cx="12" cy="12" r="8" fill="currentColor"></circle>
+                                            </g>
+                                        </svg>
+                                    </i>
+                                    <i class="sidenav-mini-icon"> U </i>
+                                    <span class="item-name <?php echo (isset($active_menu) && $active_menu == 'employers') ? 'active' : ''; ?>">Quản lý nhà tuyển dụng</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link " href="<?php echo XC_URL;?>/admin/employers/posts">
+                                    <i class="icon">
+                                        <svg class="icon-10" xmlns="http://www.w3.org/2000/svg" width="10" viewBox="0 0 24 24" fill="currentColor">
+                                            <g>
+                                            <circle cx="12" cy="12" r="8" fill="currentColor"></circle>
+                                            </g>
+                                        </svg>
+                                    </i>
+                                    <i class="sidenav-mini-icon"> U </i>
+                                    <span class="item-name <?php echo (isset($active_menu) && $active_menu == 'post_employers') ? 'active' : ''; ?>">Quản lý bài đăng</span>
+                                </a>
+                            </li>
+                         
+                            
+                        </ul>
                     </li>
                      <li class="nav-item">
                         <a class="nav-link "  href="<?php echo XC_URL;?>/admin/candidates">
@@ -150,6 +187,7 @@
                             <span class="item-name">Tin tức & sự kiện</span>
                         </a>
                     </li>
+                    
                     <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="collapse" href="#sidebar-user" role="button" aria-expanded="false" aria-controls="sidebar-user">
                             <i class="icon">
@@ -236,7 +274,7 @@
                                         </svg>
                                     </i>
                                     <i class="sidenav-mini-icon"> U </i>
-                                    <span class="item-name">Giới thiệu sàn</span>
+                                    <span class="item-name">Quản lý bình lu</span>
                                 </a>
                             </li>
                             <li class="nav-item">
