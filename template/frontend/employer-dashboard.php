@@ -29,6 +29,27 @@ function employer_dash_asset($path){
   if(strpos($path, 'http://') === 0 || strpos($path, 'https://') === 0) return $path;
   return XC_URL.'/'.ltrim($path, '/');
 }
+function employer_dash_excerpt($value, $limit = 180){
+  $value = trim(strip_tags((string)$value));
+  if($value == '') return '';
+  if(function_exists('mb_strlen') && function_exists('mb_substr')){
+    return mb_strlen($value, 'UTF-8') > $limit ? mb_substr($value, 0, $limit, 'UTF-8').'...' : $value;
+  }
+  return strlen($value) > $limit ? substr($value, 0, $limit).'...' : $value;
+}
+function employer_dash_lower($value){
+  $value = (string)$value;
+  return function_exists('mb_strtolower') ? mb_strtolower($value, 'UTF-8') : strtolower($value);
+}
+function employer_dash_is_student_candidate($candidate){
+  if(isset($candidate->is_student_candidate)){
+    return intval($candidate->is_student_candidate) === 1;
+  }
+  if(isset($candidate->linked_student_profile_id) && intval($candidate->linked_student_profile_id) > 0){
+    return true;
+  }
+  return isset($candidate->school_name) && trim((string)$candidate->school_name) != '';
+}
 $employer = isset($employer) && $employer ? $employer : (object)array();
 $job_posts = isset($job_posts) && is_array($job_posts) ? $job_posts : array();
 $job_categories = isset($job_categories) && is_array($job_categories) ? $job_categories : array();
@@ -49,10 +70,17 @@ $company_initials = employer_dash_initials($company_name);
 $logo_src = isset($employer->logo_url) ? employer_dash_asset($employer->logo_url) : '';
 $cover_src = isset($employer->cover_url) ? employer_dash_asset($employer->cover_url) : '';
 $linked_label = isset($employer->is_linked_school) && intval($employer->is_linked_school) == 1 ? 'Đã liên kết CĐ Kon Tum' : 'Chưa liên kết CĐ Kon Tum';
+$is_linked_school = isset($employer->is_linked_school) && intval($employer->is_linked_school) == 1;
 $active_jobs_count = isset($job_stats['published']) ? intval($job_stats['published']) : 0;
 $pending_jobs_count = isset($job_stats['pending']) ? intval($job_stats['pending']) : 0;
 $closed_jobs_count = isset($job_stats['closed']) ? intval($job_stats['closed']) : 0;
+$recent_job_posts = array_slice($job_posts, 0, 5);
 $job_edit_payloads = array();
+$job_detail_payloads = array();
+$candidate_directory_payload = array();
+$candidate_directory_category_ids = array();
+$candidate_directory_province_ids = array();
+$candidate_directory_salary_ids = array();
 foreach($job_posts as $job){
   $job_id = isset($job->id) ? intval($job->id) : 0;
   if($job_id <= 0) continue;
@@ -73,15 +101,40 @@ foreach($job_posts as $job){
     'rewards_description' => isset($job->rewards_description) ? $job->rewards_description : '',
     'work_environment' => isset($job->work_environment) ? $job->work_environment : '',
     'work_type' => isset($job->work_type) ? $job->work_type : '',
+    'salary_id' => isset($job->salary_id) ? (string)intval($job->salary_id) : '',
     'address_detail' => isset($job->address_detail) ? $job->address_detail : '',
     'working_time' => isset($job->working_time) ? $job->working_time : '',
     'deadline' => $deadline_value,
     'status' => isset($job->status) ? $job->status : 'pending'
   );
+
+  $job_detail_payloads[$job_id] = array(
+    'id' => $job_id,
+    'title' => isset($job->title) ? $job->title : '',
+    'status' => isset($job->status) ? employer_dash_status_label($job->status) : '',
+    'job_category_id' => isset($job->job_category_id) ? intval($job->job_category_id) : 0,
+    'job_category_name' => isset($job->job_category_name) ? $job->job_category_name : '',
+    'salary_name' => isset($job->salary_name) ? $job->salary_name : '',
+    'province_name' => isset($job->province_name) ? $job->province_name : '',
+    'address_detail' => isset($job->address_detail) ? $job->address_detail : '',
+    'work_type' => employer_dash_work_type_label(isset($job->work_type) ? $job->work_type : ''),
+    'quantity' => isset($job->quantity) ? intval($job->quantity) : 0,
+    'deadline' => employer_dash_date(isset($job->deadline) ? $job->deadline : ''),
+    'created_at' => employer_dash_date(isset($job->created_at) ? $job->created_at : ''),
+    'views_count' => isset($job->views_count) ? intval($job->views_count) : 0,
+    'job_description' => isset($job->job_description) ? $job->job_description : '',
+    'professional_skills' => isset($job->professional_skills) ? $job->professional_skills : '',
+    'soft_skills' => isset($job->soft_skills) ? $job->soft_skills : '',
+    'other_requirements' => isset($job->other_requirements) ? $job->other_requirements : '',
+    'benefits_description' => isset($job->benefits_description) ? $job->benefits_description : '',
+    'rewards_description' => isset($job->rewards_description) ? $job->rewards_description : '',
+    'work_environment' => isset($job->work_environment) ? $job->work_environment : ''
+  );
 }
 $applicant_payload = array();
 foreach($candidates as $candidate){
   $full_name = isset($candidate->full_name) ? $candidate->full_name : '';
+  $is_student_candidate = employer_dash_is_student_candidate($candidate);
   $applicant_payload[] = array(
     'name' => $full_name,
     'color' => '#0d4e96',
@@ -89,7 +142,40 @@ foreach($candidates as $candidate){
     'position' => isset($candidate->desired_position) && $candidate->desired_position != '' ? $candidate->desired_position : 'Ứng viên tự do',
     'submitted' => isset($candidate->updated_at) ? date('d/m/Y H:i', strtotime($candidate->updated_at)) : '',
     'exp' => isset($candidate->degree) && $candidate->degree != '' ? $candidate->degree : 'Chưa cập nhật',
-    'status' => 'new'
+    'status' => 'new',
+    'is_student' => $is_student_candidate ? 1 : 0
+  );
+
+  $candidate_id = isset($candidate->id) ? intval($candidate->id) : 0;
+  $candidate_url = $candidate_id > 0 ? general::getInstance()->permalink($candidate_id, 'candidate_profile') : '#';
+  $candidate_avatar = isset($candidate->avatar_url) ? employer_dash_asset($candidate->avatar_url) : '';
+  $candidate_category_id = isset($candidate->major) ? intval($candidate->major) : 0;
+  $candidate_province_id = isset($candidate->desired_province_id) ? intval($candidate->desired_province_id) : 0;
+  $candidate_salary_id = isset($candidate->desired_salary) ? intval($candidate->desired_salary) : 0;
+  if($candidate_category_id > 0){ $candidate_directory_category_ids[$candidate_category_id] = true; }
+  if($candidate_province_id > 0){ $candidate_directory_province_ids[$candidate_province_id] = true; }
+  if($candidate_salary_id > 0){ $candidate_directory_salary_ids[$candidate_salary_id] = true; }
+  $candidate_directory_payload[] = array(
+    'id' => $candidate_id,
+    'full_name' => $full_name,
+    'initials' => employer_dash_initials($full_name),
+    'avatar_url' => $candidate_avatar,
+    'candidate_url' => $candidate_url,
+    'desired_position' => isset($candidate->desired_position) && $candidate->desired_position != '' ? $candidate->desired_position : 'Ứng viên tự do',
+    'job_category_id' => $candidate_category_id,
+    'job_category_name' => isset($candidate->job_category_name) ? $candidate->job_category_name : '',
+    'desired_province_id' => $candidate_province_id,
+    'desired_province_name' => isset($candidate->desired_province_name) ? $candidate->desired_province_name : '',
+    'desired_salary' => $candidate_salary_id,
+    'salary_name' => isset($candidate->salary_name) ? $candidate->salary_name : '',
+    'school_name' => isset($candidate->school_name) ? $candidate->school_name : '',
+    'degree' => isset($candidate->degree) ? $candidate->degree : '',
+    'cv_url' => isset($candidate->cv_url) ? employer_dash_asset($candidate->cv_url) : '',
+    'updated_at' => isset($candidate->updated_at) ? date('d/m/Y H:i', strtotime($candidate->updated_at)) : '',
+    'is_student' => $is_student_candidate ? 1 : 0,
+    'student_note' => $is_student_candidate ? 'Sinh viên' : '',
+    'student_gpa' => isset($candidate->student_gpa) ? $candidate->student_gpa : '',
+    'student_rank' => isset($candidate->student_rank) ? $candidate->student_rank : ''
   );
 }
 $student_payload = array();
@@ -131,22 +217,24 @@ foreach($students as $student){
       <div class="nav-item" onclick="showPage('profile')">
         <i class="ti ti-building"></i> Thông tin công ty
       </div>
-      <div class="nav-item" onclick="showPage('profile');showProfileTab('link')">
+      <!-- <div class="nav-item" onclick="showPage('profile');showProfileTab('link')">
         <i class="ti ti-link"></i> Liên kết trường CĐ
-      </div>
+      </div> -->
       <div class="nav-section-label">Tuyển dụng</div>
       <div class="nav-item" onclick="showPage('jobs')">
         <i class="ti ti-news"></i> Bài đăng tuyển dụng
         <span class="nav-badge"><?php echo count($job_posts); ?></span>
       </div>
-      <div class="nav-item" onclick="showPage('applicants')">
+      <!-- <div class="nav-item" onclick="showPage('applicants')">
         <i class="ti ti-user-check"></i> Danh sách ứng viên
         <span class="nav-badge"><?php echo count($candidates); ?></span>
-      </div>
+      </div> -->
+      <?php if($is_linked_school){ ?>
       <div class="nav-section-label">Sinh viên</div>
       <div class="nav-item" onclick="showPage('students')">
         <i class="ti ti-school"></i> Kho dữ liệu sinh viên
       </div>
+      <?php } ?>
     </nav>
     <div class="sidebar-bottom">
       <div class="sidebar-bottom-link" onclick="showPage('account')"><i class="ti ti-settings"></i> Cài đặt tài khoản</div>
@@ -162,7 +250,7 @@ foreach($students as $student){
       <div class="page-header">
         <div>
           <div class="page-title"><i class="ti ti-layout-dashboard"></i> Bảng điều khiển</div>
-          <div class="page-subtitle">Chào buổi sáng! Đây là tổng quan hoạt động của bạn hôm nay.</div>
+          <div class="page-subtitle">Xin chào! Đây là tổng quan hoạt động của bạn.</div>
         </div>
         <button class="btn-primary" onclick="showPage('jobs');openJobModal()"><i class="ti ti-plus"></i> Đăng tin mới</button>
       </div>
@@ -205,20 +293,24 @@ foreach($students as $student){
               <div class="card-title"><i class="ti ti-news"></i> Bài đăng gần đây</div>
               <button class="btn-secondary btn-sm" onclick="showPage('jobs')">Xem tất cả</button>
             </div>
-            <div class="card-body" style="padding:0">
-              <div style="padding:14px 20px;border-bottom:1px solid #f0f4fa;display:flex;align-items:center;gap:12px">
-                <div class="job-post-status active"></div>
-                <div style="flex:1"><div style="font-size:14px;font-weight:700">Nhân viên Kế toán tổng hợp</div><div style="font-size:11px;color:#aaa;margin-top:2px">5 người · 10 - 15 tr/tháng · Hạn: 30/06/2025</div></div>
+              <div class="card-body" style="padding:0">
+                <?php if(count($recent_job_posts) > 0){ foreach($recent_job_posts as $index => $job){ ?>
+                <div style="padding:14px 20px;<?php echo $index < count($recent_job_posts) - 1 ? 'border-bottom:1px solid #f0f4fa;' : ''; ?>display:flex;align-items:center;gap:12px">
+                  <div class="job-post-status <?php echo $job->status == 'published' ? 'active' : 'pending'; ?>"></div>
+                  <div style="flex:1;min-width:0">
+                    <div style="font-size:14px;font-weight:700;color:#162033;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><?php echo employer_dash_h($job->title); ?></div>
+                    <div style="font-size:11px;color:#7b8794;margin-top:2px">
+                      <?php echo intval($job->quantity); ?> người
+                      · <?php echo employer_dash_h(isset($job->salary_name) && $job->salary_name != '' ? $job->salary_name : 'Thỏa thuận'); ?>
+                      · Hạn: <?php echo employer_dash_h(employer_dash_date($job->deadline)); ?>
+                    </div>
+                  </div>
+                  <button class="btn-secondary btn-sm" type="button" onclick="openJobDetailModal(<?php echo intval($job->id); ?>)">Xem</button>
+                </div>
+                <?php }}else{ ?>
+                <div style="padding:18px 20px;color:#7b8794;font-size:13px">Chưa có bài đăng tuyển dụng nào.</div>
+                <?php } ?>
               </div>
-              <div style="padding:14px 20px;border-bottom:1px solid #f0f4fa;display:flex;align-items:center;gap:12px">
-                <div class="job-post-status active"></div>
-                <div style="flex:1"><div style="font-size:14px;font-weight:700">Kỹ thuật viên CNC</div><div style="font-size:11px;color:#aaa;margin-top:2px">3 người · Thỏa thuận · Hạn: 15/07/2025</div></div>
-              </div>
-              <div style="padding:14px 20px;display:flex;align-items:center;gap:12px">
-                <div class="job-post-status pending"></div>
-                <div style="flex:1"><div style="font-size:14px;font-weight:700">Nhân viên Marketing Online</div><div style="font-size:11px;color:#aaa;margin-top:2px">2 người · 8 - 12 tr/tháng · Hạn: 20/06/2025</div></div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -441,11 +533,11 @@ foreach($students as $student){
         <select class="form-control">
           <option>Sắp xếp: Mới nhất</option>
           <option>Cũ nhất</option>
-          <option>Nhiều ứng viên nhất</option>
+          <!-- <option>Nhiều ứng viên nhất</option> -->
         </select>
       </div>
 
-      <div class="job-posts-list">
+      <div class="job-posts-list" id="employerJobPostsList">
         <?php if(count($job_posts) > 0){ foreach($job_posts as $job){ ?>
         <div class="job-post-card dynamic-job-card">
           <div class="job-post-status <?php echo $job->status == 'published' ? 'active' : 'pending'; ?>" style="margin-top:8px"></div>
@@ -459,14 +551,15 @@ foreach($students as $student){
             </div>
             <div class="job-post-footer">
               <span><i class="ti ti-calendar" style="font-size:11px"></i> Đăng ngày <?php echo employer_dash_h(employer_dash_date($job->created_at)); ?></span>
+              <!-- <span>·</span> -->
+              <!-- <span style="color:#2e7d32;font-weight:600"><i class="ti ti-eye" style="font-size:11px"></i> <?php echo intval($job->views_count); ?> lượt xem</span> -->
               <span>·</span>
-              <span style="color:#2e7d32;font-weight:600"><i class="ti ti-eye" style="font-size:11px"></i> <?php echo intval($job->views_count); ?> lượt xem</span>
-              <span>·</span>
-              <span style="color:#0d4e96;font-weight:600">â— <?php echo employer_dash_h(employer_dash_status_label($job->status)); ?></span>
+              <span style="color:#0d4e96;font-weight:600">— <?php echo employer_dash_h(employer_dash_status_label($job->status)); ?></span>
             </div>
           </div>
           <div class="job-post-actions">
-            <div class="action-btn" title="Xem ứng viên" onclick="showPage('applicants')"><i class="ti ti-user-check"></i></div>
+            <div class="action-btn" title="Xem chi tiết" onclick="openJobDetailModal(<?php echo intval($job->id); ?>)"><i class="ti ti-eye"></i></div>
+            <!-- <div class="action-btn" title="Xem ứng viên" onclick="showPage('applicants')"><i class="ti ti-user-check"></i></div> -->
             <div class="action-btn" title="Chỉnh sửa" onclick="openJobModal(<?php echo intval($job->id); ?>)"><i class="ti ti-edit"></i></div>
             <div class="action-btn danger" title="Xóa" onclick="deleteEmployerJob(<?php echo intval($job->id); ?>)"><i class="ti ti-trash"></i></div>
           </div>
@@ -480,97 +573,8 @@ foreach($students as $student){
         </div>
         <?php } ?>
       </div>
-      <?php /*
-        <!-- Job 1 -->
-        <div class="job-post-card">
-          <div class="job-post-status active" style="margin-top:8px"></div>
-          <div class="job-post-info">
-            <div class="job-post-title">Nhân viên Kế toán tổng hợp</div>
-            <div class="job-post-meta">
-              <span class="jpm-tag qty"><i class="ti ti-users"></i> 5 người</span>
-              <span class="jpm-tag salary"><i class="ti ti-coin"></i> 10 - 15 triệu/tháng</span>
-              <span class="jpm-tag loc"><i class="ti ti-map-pin"></i> Kon Tum</span>
-              <span class="jpm-tag type"><i class="ti ti-clock"></i> Full-time · Vển phòng</span>
-              <span class="jpm-tag deadline"><i class="ti ti-calendar"></i> Hạn: 30/06/2025</span>
-            </div>
-            <div class="job-post-footer">
-              <span><i class="ti ti-calendar" style="font-size:11px"></i> Đăng ngày 01/06/2025</span>
-              <span>·</span>
-              <span style="color:#2e7d32;font-weight:600"><i class="ti ti-user-check" style="font-size:11px"></i> 18 ứng viên</span>
-              <span>·</span>
-              <span style="color:#22c55e;font-weight:600">● Đang hoạt động</span>
-            </div>
-          </div>
-          <div class="job-post-actions">
-            <div class="action-btn" title="Xem ứng viên" onclick="showPage('applicants')"><i class="ti ti-user-check"></i></div>
-            <div class="action-btn" title="Chỉnh sửa" onclick="openJobModal()"><i class="ti ti-edit"></i></div>
-            <div class="action-btn" title="Nhân bản"><i class="ti ti-copy"></i></div>
-            <div class="action-btn danger" title="Xóa"><i class="ti ti-trash"></i></div>
-          </div>
-        </div>
-        <!-- Job 2 -->
-        <div class="job-post-card">
-          <div class="job-post-status active" style="margin-top:8px"></div>
-          <div class="job-post-info">
-            <div class="job-post-title">Kỹ thuật viên CNC - Gia công cơ khí chính xác</div>
-            <div class="job-post-meta">
-              <span class="jpm-tag qty"><i class="ti ti-users"></i> 3 người</span>
-              <span class="jpm-tag salary"><i class="ti ti-coin"></i> Thỏa thuận</span>
-              <span class="jpm-tag loc"><i class="ti ti-map-pin"></i> Kon Tum</span>
-              <span class="jpm-tag type"><i class="ti ti-clock"></i> Full-time · Tại xưởng</span>
-              <span class="jpm-tag deadline"><i class="ti ti-calendar"></i> Hạn: 15/07/2025</span>
-            </div>
-            <div class="job-post-footer">
-              <span><i class="ti ti-calendar" style="font-size:11px"></i> Đăng ngày 28/05/2025</span>
-              <span>·</span>
-              <span style="color:#2e7d32;font-weight:600"><i class="ti ti-user-check" style="font-size:11px"></i> 22 ứng viên</span>
-              <span>·</span>
-              <span style="color:#22c55e;font-weight:600">● Đang hoạt động</span>
-            </div>
-          </div>
-          <div class="job-post-actions">
-            <div class="action-btn" title="Xem ứng viên" onclick="showPage('applicants')"><i class="ti ti-user-check"></i></div>
-            <div class="action-btn" title="Chỉnh sửa" onclick="openJobModal()"><i class="ti ti-edit"></i></div>
-            <div class="action-btn" title="Nhân bản"><i class="ti ti-copy"></i></div>
-            <div class="action-btn danger" title="Xóa"><i class="ti ti-trash"></i></div>
-          </div>
-        </div>
-        <!-- Job 3 -->
-        <div class="job-post-card">
-          <div class="job-post-status pending" style="margin-top:8px"></div>
-          <div class="job-post-info">
-            <div class="job-post-title">Nhân viên Marketing Online - Quản lý mạng xã hội</div>
-            <div class="job-post-meta">
-              <span class="jpm-tag qty"><i class="ti ti-users"></i> 2 người</span>
-              <span class="jpm-tag salary"><i class="ti ti-coin"></i> 8 - 12 triệu/tháng</span>
-              <span class="jpm-tag loc"><i class="ti ti-map-pin"></i> Kon Tum / Remote</span>
-              <span class="jpm-tag type"><i class="ti ti-clock"></i> Full-time</span>
-              <span class="jpm-tag deadline"><i class="ti ti-calendar"></i> Hạn: 20/06/2025</span>
-            </div>
-            <div class="job-post-footer">
-              <span><i class="ti ti-calendar" style="font-size:11px"></i> Đăng ngày 05/06/2025</span>
-              <span>·</span>
-              <span style="color:#e65100;font-weight:600"><i class="ti ti-user-check" style="font-size:11px"></i> 7 ứng viên</span>
-              <span>·</span>
-              <span style="color:#f59e0b;font-weight:600">● Chờ duyệt</span>
-            </div>
-          </div>
-          <div class="job-post-actions">
-            <div class="action-btn" title="Xem ứng viên" onclick="showPage('applicants')"><i class="ti ti-user-check"></i></div>
-            <div class="action-btn" title="Chỉnh sửa" onclick="openJobModal()"><i class="ti ti-edit"></i></div>
-            <div class="action-btn" title="Nhân bản"><i class="ti ti-copy"></i></div>
-            <div class="action-btn danger" title="Xóa"><i class="ti ti-trash"></i></div>
-          </div>
-        </div>
-      </div>
-
-      <?php */ ?>
-      <div class="pagination" style="margin-top:24px">
-        <div class="page-btn disabled"><i class="ti ti-chevron-left" style="font-size:13px"></i></div>
-        <div class="page-btn active">1</div>
-        <div class="page-btn">2</div>
-        <div class="page-btn"><i class="ti ti-chevron-right" style="font-size:13px"></i></div>
-      </div>
+      
+      <div class="pagination" id="employerJobsPagination" style="margin-top:24px;display:none"></div>
     </div>
 
     <!-- ===== PAGE: APPLICANTS ===== -->
@@ -663,82 +667,97 @@ foreach($students as $student){
       <div class="page-header">
         <div>
           <div class="page-title"><i class="ti ti-school"></i> Kho dữ liệu sinh viên</div>
-          <div class="page-subtitle">Tra cứu sinh viên Trường CĐ Kon Tum - Ưu tiên tuyển dụng</div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <!-- <button class="btn-secondary"><i class="ti ti-download"></i> Xuất danh sách</button> -->
-          <button class="btn-primary" onclick="showPage('applicants')"><i class="ti ti-mail"></i> Tìm kiếm</button>
+          <div class="page-subtitle">Hiển thị toàn bộ ứng viên, ưu tiên sinh viên lên đầu và hỗ trợ lọc nhanh theo nhu cầu tuyển dụng.</div>
         </div>
       </div>
 
-      <div class="student-filter-bar">
-        <input class="form-control" type="text" placeholder="Tìm tên sinh viên..." style="flex:1;min-width:180px"/>
-        <select class="form-control" style="min-width:140px">
-          <option>Tất cả ngành</option>
-          <option>Kế toán</option>
-          <option>CNTT</option>
-          <option>Cơ khí</option>
-          <option>Marketing</option>
-          <option>Nhân sự</option>
-          <option>Tài chính</option>
-          <option>Du lịch</option>
+      <?php if($is_linked_school){ ?>
+      <div class="student-filter-bar student-directory-filter-bar">
+        <input class="form-control" id="studentKeywordFilter" type="text" placeholder="Lọc theo họ và tên..." style="flex:1;min-width:220px"/>
+        <select class="form-control" id="studentTypeFilter" style="min-width:170px">
+          <option value="">Tất cả đối tượng</option>
+          <option value="1">Sinh viên</option>
+          <option value="0">Ứng viên tự do</option>
         </select>
-        <select class="form-control" style="min-width:120px">
-          <option>Tất cả năm học</option>
-          <option>Năm 1</option>
-          <option>Năm 2</option>
-          <option>Năm 3 (Ra trường)</option>
+        <select class="form-control" id="studentCategoryFilter" style="min-width:170px">
+          <option value="">Tất cả ngành nghề</option>
+          <?php foreach($job_categories as $category){ if(!isset($candidate_directory_category_ids[intval($category->id)])) continue; ?>
+          <option value="<?php echo intval($category->id); ?>"><?php echo employer_dash_h($category->job_category_name); ?></option>
+          <?php } ?>
         </select>
-        <!-- <select class="form-control" style="min-width:140px">
-          <option>GPA: Tất cả</option>
-          <option>Xuất sắc (≥ 3.6)</option>
-          <option>Giỏi (3.2 - 3.59)</option>
-          <option>Khá (2.5 - 3.19)</option>
-          <option>Trung bình (&lt; 2.5)</option>
-        </select> -->
-        <select class="form-control" style="min-width:140px">
-          <option>Học lực: Tất cả</option>
-          <option>Xuất sắc</option>
-          <option>Giỏi</option>
-          <option>Khá</option>
-          <option>Trung bình</option>
+        <select class="form-control" id="studentProvinceFilter" style="min-width:170px">
+          <option value="">Tất cả địa điểm</option>
+          <?php foreach($job_provinces as $province){ if(!isset($candidate_directory_province_ids[intval($province->id)])) continue; ?>
+          <option value="<?php echo intval($province->id); ?>"><?php echo employer_dash_h($province->province_name); ?></option>
+          <?php } ?>
         </select>
-       
+        <select class="form-control" id="studentSalaryFilter" style="min-width:180px">
+          <option value="">Tất cả mức lương</option>
+          <?php foreach($salary as $salary_item){ if(!isset($candidate_directory_salary_ids[intval($salary_item->id)])) continue; ?>
+          <option value="<?php echo intval($salary_item->id); ?>"><?php echo employer_dash_h($salary_item->salary_name); ?></option>
+          <?php } ?>
+        </select>
+        <button class="btn-secondary" type="button" id="studentFilterReset"><i class="ti ti-refresh"></i> Xóa lọc</button>
       </div>
 
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <div style="font-size:13px;color:#888">Hiển thị <strong style="color:#111">36</strong> sinh viên</div>
-        <div style="display:flex;gap:6px">
-          <div class="action-btn" title="Dạng lưới" style="background:#0d4e96;border-color:#0d4e96;color:#fff"><i class="ti ti-layout-grid"></i></div>
-          <div class="action-btn" title="Dạng danh sách"><i class="ti ti-list"></i></div>
+      <div class="student-directory-summary">
+        <div style="font-size:13px;color:#5b6777">Đang hiển thị <strong id="studentVisibleCount" style="color:#111"><?php echo count($candidate_directory_payload); ?></strong> / <?php echo count($candidate_directory_payload); ?> ứng viên <span id="studentPageSummary" style="margin-left:8px;color:#7b8794"></span></div>
+        <div class="student-directory-legend">
+          <span class="candidate-note student"><i class="ti ti-school"></i> Sinh viên</span>
+          <span class="candidate-note"><i class="ti ti-briefcase"></i> Ứng viên tự do</span>
         </div>
       </div>
 
-      <div class="student-grid" id="studentGrid">
-        <?php if(count($students) > 0){ foreach($students as $student){
-          $student_name = isset($student->student_name) ? $student->student_name : '';
-          $student_gpa = isset($student->student_gpa) ? floatval($student->student_gpa) : 0;
-          $gpa_class = $student_gpa >= 3.6 ? 'high' : ($student_gpa >= 3.2 ? 'mid' : 'low');
-          $tag_class = $student_gpa >= 3.6 ? 'gpa-high' : ($student_gpa >= 3.2 ? 'gpa-mid' : 'gpa-low');
-        ?>
-        <div class="student-card">
-          <div class="student-card-avatar" style="background:#0d4e96"><?php echo employer_dash_h(employer_dash_initials($student_name)); ?></div>
-          <div class="student-card-name"><?php echo employer_dash_h($student_name); ?></div>
-          <div class="student-card-meta"><?php echo employer_dash_h(isset($student->student_birthday) ? date('Y', strtotime($student->student_birthday)) : ''); ?> · <?php echo employer_dash_h(isset($student->job_category_name) ? $student->job_category_name : ''); ?></div>
-          <div class="student-card-info">
-            <div class="student-gpa <?php echo $gpa_class; ?>">GPA <?php echo employer_dash_h($student_gpa); ?></div>
-            <span class="student-rank <?php echo $tag_class; ?>"><?php echo employer_dash_h(isset($student->student_rank) && $student->student_rank != '' ? $student->student_rank : 'Chưa xếp loại'); ?></span>
+      <div class="student-grid student-directory-grid" id="studentGrid">
+        <?php if(count($candidate_directory_payload) > 0){ foreach($candidate_directory_payload as $candidate_item){ ?>
+        <a
+          class="student-card student-directory-card"
+          href="<?php echo employer_dash_h($candidate_item['candidate_url']); ?>"
+          data-name="<?php echo employer_dash_h(employer_dash_lower($candidate_item['full_name'])); ?>"
+          data-category="<?php echo intval($candidate_item['job_category_id']); ?>"
+          data-province="<?php echo intval($candidate_item['desired_province_id']); ?>"
+          data-salary="<?php echo intval($candidate_item['desired_salary']); ?>"
+          data-student="<?php echo intval($candidate_item['is_student']); ?>"
+        >
+          <div class="student-card-avatar" style="background:#0d4e96">
+            <?php if($candidate_item['avatar_url'] != ''){ ?>
+            <img src="<?php echo employer_dash_h($candidate_item['avatar_url']); ?>" alt="<?php echo employer_dash_h($candidate_item['full_name']); ?>" style="width:100%;height:100%;object-fit:cover;border-radius:50%">
+            <?php }else{ ?>
+            <?php echo employer_dash_h($candidate_item['initials']); ?>
+            <?php } ?>
           </div>
-          <button class="btn-primary btn-sm" style="width:100%;justify-content:center;font-size:11px;padding:6px" type="button">
-            <i class="ti ti-mail" style="font-size:12px"></i> Mời ứng tuyển
-          </button>
-        </div>
+          <div class="student-card-name"><?php echo employer_dash_h($candidate_item['full_name']); ?></div>
+          <div class="student-card-meta" style="font-size:12px">
+            <strong><i class="ti ti-briefcase"></i></strong> <?php echo employer_dash_h($candidate_item['job_category_name'] != '' ? $candidate_item['job_category_name'] : $candidate_item['desired_position']); ?>
+          </div>
+          <div class="student-card-meta" style="font-size:12px">
+            <strong><i class="ti ti-map-pin"></i></strong> <?php echo employer_dash_h($candidate_item['desired_province_name'] != '' ? $candidate_item['desired_province_name'] : 'Chưa cập nhật'); ?>
+          </div>
+          <span class="btn-primary btn-sm" style="width:100%;justify-content:center;font-size:11px;padding:6px">
+            <i class="ti ti-eye" style="font-size:12px"></i> Xem hồ sơ
+          </span>
+        </a>
         <?php }}else{ ?>
-        <div class="student-card"><div class="student-card-name">Chưa có sinh viên</div></div>
+        <div class="student-card"><div class="student-card-name">Chưa có ứng viên để hiển thị</div></div>
         <?php } ?>
       </div>
-
-      
+      <div class="empty-state" id="studentEmptyState" style="display:none">
+        <i class="ti ti-user-search"></i>
+        <h3>Không có ứng viên phù hợp</h3>
+        <p>Hãy điều chỉnh lại bộ lọc họ tên, ngành nghề, địa điểm hoặc mức lương mong đợi.</p>
+      </div>
+      <div class="student-directory-pagination" id="studentPagination" style="display:none"></div>
+      <?php }else{ ?>
+      <div class="card">
+        <div class="card-body" style="padding:30px">
+          <div class="empty-state" style="border:none;background:transparent;padding:0">
+            <i class="ti ti-lock-access"></i>
+            <h3>Chức năng chỉ dành cho doanh nghiệp đã liên kết trường</h3>
+            <p>Khi `is_linked_school = 1`, doanh nghiệp mới có thể truy cập kho dữ liệu sinh viên và danh sách ứng viên ưu tiên.</p>
+          </div>
+        </div>
+      </div>
+      <?php } ?>
     </div>
 
     <!-- ===== PAGE: ACCOUNT ===== -->
@@ -843,7 +862,24 @@ foreach($students as $student){
     align-items: center;
     gap: 8px;
   }
+  #jobModal .modal {
+    max-height: min(90vh, 860px);
+  }
+  #jobModal .modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: #fff;
+  }
+  #jobModal .modal-body {
+    padding-bottom: 26px;
+  }
   #jobModal .modal-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    background: #fff;
+    box-shadow: 0 -10px 24px rgba(15, 23, 42, .06);
     justify-content: space-between;
   }
   .job-category-native,
@@ -963,6 +999,282 @@ foreach($students as $student){
     color: #6b7280;
     font-size: 13px;
     text-align: center;
+  }
+  .student-directory-filter-bar {
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .student-directory-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .student-directory-legend {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .candidate-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    border: 1px solid #dbe4ef;
+    background: #fff;
+    color: #556274;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .candidate-note.student {
+    border-color: #cce4ff;
+    background: #eef6ff;
+    color: #0d4e96;
+  }
+  .student-directory-card {
+    color: inherit;
+    text-decoration: none;
+    border: 1px solid #e5edf7;
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .student-directory-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .student-directory-card:hover {
+    transform: translateY(-3px);
+    border-color: #bdd7f4;
+    box-shadow: 0 12px 28px rgba(13, 78, 150, .08);
+  }
+  .student-directory-card[style*="display: none"] {
+    display: none !important;
+  }
+  .job-detail-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(280px, .7fr);
+    gap: 18px;
+  }
+  .job-detail-block {
+    padding: 16px;
+    border: 1px solid #edf2f7;
+    border-radius: 12px;
+    background: #f8fbff;
+  }
+  .job-detail-block h4 {
+    margin: 0 0 10px;
+    font-size: 14px;
+    color: #162033;
+  }
+  .job-detail-block p {
+    margin: 0;
+    color: #546274;
+    line-height: 1.7;
+    white-space: pre-line;
+    font-size: 13px;
+  }
+  .job-detail-facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .job-detail-fact {
+    padding: 12px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid #e7eef6;
+  }
+  .job-detail-fact span {
+    display: block;
+    font-size: 11px;
+    color: #7a8797;
+    margin-bottom: 3px;
+  }
+  .job-detail-fact strong {
+    color: #17243a;
+    font-size: 13px;
+  }
+  .job-detail-slider-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .job-detail-slider-head p {
+    margin: 4px 0 0;
+    color: #718095;
+    font-size: 12px;
+  }
+  .job-detail-slider-controls {
+    display: flex;
+    gap: 8px;
+  }
+  .job-detail-slider-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    border: 1px solid #d5e2f1;
+    background: #fff;
+    color: #0d4e96;
+    cursor: pointer;
+  }
+  .job-detail-slider-btn:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+  }
+  .job-detail-slider-wrap {
+    overflow: hidden;
+  }
+  .job-detail-slider-track {
+    display: flex;
+    gap: 14px;
+    transition: transform .28s ease;
+  }
+  .job-detail-candidate-card {
+    min-width: calc((100% - 28px) / 3);
+    max-width: calc((100% - 28px) / 3);
+    border: 1px solid #e5edf7;
+    border-radius: 16px;
+    background: #fff;
+    text-decoration: none;
+    color: inherit;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .job-detail-candidate-top {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .job-detail-candidate-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #0d4e96;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    overflow: hidden;
+    flex: 0 0 auto;
+  }
+  .job-detail-candidate-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .job-detail-candidate-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #152136;
+    margin-bottom: 3px;
+  }
+  .job-detail-candidate-role,
+  .job-detail-candidate-meta {
+    font-size: 12px;
+    color: #6a7686;
+    line-height: 1.5;
+  }
+  .job-detail-candidate-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .job-detail-candidate-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    background: #f4f8fc;
+    color: #566375;
+  }
+  .job-detail-candidate-badge.student {
+    background: #eef6ff;
+    color: #0d4e96;
+  }
+  .job-detail-empty {
+    padding: 18px;
+    border: 1px dashed #d7e4f3;
+    border-radius: 14px;
+    background: #f9fbfd;
+    color: #6f7d8d;
+    font-size: 13px;
+    text-align: center;
+  }
+  .student-directory-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+  }
+  .student-page-btn {
+    min-width: 38px;
+    height: 38px;
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    border: 1px solid #dbe4ef;
+    background: #fff;
+    color: #425466;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .student-page-btn.active {
+    background: #0d4e96;
+    border-color: #0d4e96;
+    color: #fff;
+  }
+  .student-page-btn:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+  }
+  .student-card-meta strong {
+    color: #17243a;
+  }
+  @media(max-width:1024px){
+    .student-directory-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .job-detail-layout {
+      grid-template-columns: 1fr;
+    }
+    .job-detail-candidate-card {
+      min-width: calc((100% - 14px) / 2);
+      max-width: calc((100% - 14px) / 2);
+    }
+  }
+  @media(max-width:640px){
+    .student-directory-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .job-detail-facts {
+      grid-template-columns: 1fr;
+    }
+    .job-detail-candidate-card {
+      min-width: 100%;
+      max-width: 100%;
+    }
+  }
+  @media(max-width:480px){
+    .student-directory-grid {
+      grid-template-columns: 1fr;
+    }
   }
 </style>
 
@@ -1151,6 +1463,66 @@ foreach($students as $student){
     </form>
   </div>
 </div>
+<div class="modal-overlay" id="jobDetailModal">
+  <div class="modal" style="max-width:1100px">
+    <div class="modal-header">
+      <div class="modal-title" id="jobDetailModalTitle"><i class="ti ti-eye" style="color:#0d4e96;margin-right:6px"></i> Chi tiết bài đăng</div>
+      <button class="modal-close" type="button" onclick="closeJobDetailModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="job-detail-layout">
+        <div>
+          <div class="job-detail-block">
+            <div class="job-detail-facts" id="jobDetailFacts"></div>
+          </div>
+          <div class="job-detail-block" style="margin-top:14px">
+            <h4>Mô tả công việc</h4>
+            <p id="jobDetailDescription">Đang cập nhật.</p>
+          </div>
+          <div class="job-detail-block" style="margin-top:14px">
+            <h4>Yêu cầu ứng viên</h4>
+            <p id="jobDetailRequirements">Đang cập nhật.</p>
+          </div>
+          <div class="job-detail-block" style="margin-top:14px">
+            <h4>Quyền lợi</h4>
+            <p id="jobDetailBenefits">Đang cập nhật.</p>
+          </div>
+        </div>
+        <div>
+          <div class="job-detail-block">
+            <h4>Kỹ năng chuyên môn</h4>
+            <p id="jobDetailSkills">Đang cập nhật.</p>
+          </div>
+          <div class="job-detail-block" style="margin-top:14px">
+            <h4>Kỹ năng mềm</h4>
+            <p id="jobDetailSoftSkills">Đang cập nhật.</p>
+          </div>
+          <div class="job-detail-block" style="margin-top:14px">
+            <h4>Môi trường làm việc</h4>
+            <p id="jobDetailEnvironment">Đang cập nhật.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="job-detail-block" style="margin-top:18px">
+        <div class="job-detail-slider-head">
+          <div>
+            <h4 style="margin:0">Ứng viên gợi ý cùng ngành nghề</h4>
+            <p id="jobDetailSuggestText">Ưu tiên hiển thị sinh viên ở đầu danh sách.</p>
+          </div>
+          <div class="job-detail-slider-controls">
+            <button class="job-detail-slider-btn" type="button" id="jobDetailPrevBtn" onclick="moveJobCandidateSlide(-1)"><i class="ti ti-chevron-left"></i></button>
+            <button class="job-detail-slider-btn" type="button" id="jobDetailNextBtn" onclick="moveJobCandidateSlide(1)"><i class="ti ti-chevron-right"></i></button>
+          </div>
+        </div>
+        <div class="job-detail-slider-wrap">
+          <div class="job-detail-slider-track" id="jobDetailCandidateTrack"></div>
+        </div>
+        <div class="job-detail-empty" id="jobDetailCandidateEmpty" style="display:none">Chưa có ứng viên phù hợp với ngành nghề này.</div>
+      </div>
+    </div>
+  </div>
+</div>
 <!-- ===== CHANGE PASSWORD MODAL ===== -->
 <div class="modal-overlay password-modal-overlay" id="changePasswordModal" aria-hidden="true">
   <div class="modal password-modal" role="dialog" aria-modal="true" aria-labelledby="changePasswordTitle">
@@ -1203,6 +1575,12 @@ foreach($students as $student){
 </div>
 <script>
 var employerJobPayloads = <?php echo json_encode($job_edit_payloads, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+var employerJobDetailPayloads = <?php echo json_encode($job_detail_payloads, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
+var employerCandidateDirectory = <?php echo json_encode($candidate_directory_payload, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
+var currentJobCandidateSlide = 0;
+var currentJobCandidateStep = 1;
+var currentStudentDirectoryPage = 1;
+var currentEmployerJobsPage = 1;
 
 // ===== NAVIGATION =====
 function showPage(id) {
@@ -1528,6 +1906,7 @@ function fillJobPostForm(job) {
   setJobFormValue('job_title', job.title || '');
   setJobFormValue('job_quantity', job.quantity || 1);
   setJobFormValue('job_category_id', job.job_category_id || '');
+  setJobFormValue('salaryType', job.salary_id || '');
   setJobFormValue('job_description', job.job_description || '');
   setJobFormValue('experience_years', job.experience_years || '');
   setJobFormValue('degree_required', job.degree_required || '');
@@ -1579,6 +1958,288 @@ function closeJobModal() {
 }
 document.getElementById('jobModal').addEventListener('click', function(e) {
   if (e.target === this) closeJobModal();
+});
+
+function employerEscapeHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function employerJobDetailText(value, fallback) {
+  var text = String(value == null ? '' : value).trim();
+  return text !== '' ? text : (fallback || 'Đang cập nhật.');
+}
+
+function renderJobDetailFacts(job) {
+  var facts = [
+    { label: 'Trạng thái', value: job.status || 'Đang cập nhật' },
+    { label: 'Ngành nghề', value: job.job_category_name || 'Chưa phân loại' },
+    { label: 'Mức lương', value: job.salary_name || 'Thỏa thuận' },
+    { label: 'Địa điểm', value: job.province_name || 'Đang cập nhật' },
+    { label: 'Số lượng tuyển', value: (job.quantity || 0) + ' người' },
+    { label: 'Hình thức', value: job.work_type || 'Đang cập nhật' },
+    { label: 'Hạn nộp', value: job.deadline || 'Đang cập nhật' },
+    { label: 'Lượt xem', value: String(job.views_count || 0) }
+  ];
+  var html = '';
+  facts.forEach(function(item){
+    html += '<div class="job-detail-fact"><span>' + employerEscapeHtml(item.label) + '</span><strong>' + employerEscapeHtml(item.value) + '</strong></div>';
+  });
+  document.getElementById('jobDetailFacts').innerHTML = html;
+}
+
+function updateJobCandidateSlider() {
+  var track = document.getElementById('jobDetailCandidateTrack');
+  var cards = track ? track.querySelectorAll('.job-detail-candidate-card') : [];
+  var prevBtn = document.getElementById('jobDetailPrevBtn');
+  var nextBtn = document.getElementById('jobDetailNextBtn');
+  var width = window.innerWidth;
+  currentJobCandidateStep = width <= 640 ? 1 : (width <= 1024 ? 2 : 3);
+  if (!track || !cards.length) {
+    if (prevBtn) prevBtn.disabled = true;
+    if (nextBtn) nextBtn.disabled = true;
+    return;
+  }
+  var card = cards[0];
+  var style = window.getComputedStyle(track);
+  var gap = parseFloat(style.columnGap || style.gap || 14) || 14;
+  var step = Math.max(1, currentJobCandidateStep);
+  var maxIndex = Math.max(0, cards.length - step);
+  if (currentJobCandidateSlide > maxIndex) currentJobCandidateSlide = maxIndex;
+  var offset = currentJobCandidateSlide * (card.offsetWidth + gap);
+  track.style.transform = 'translateX(-' + offset + 'px)';
+  if (prevBtn) prevBtn.disabled = currentJobCandidateSlide <= 0;
+  if (nextBtn) nextBtn.disabled = currentJobCandidateSlide >= maxIndex;
+}
+
+function moveJobCandidateSlide(direction) {
+  var track = document.getElementById('jobDetailCandidateTrack');
+  var cards = track ? track.querySelectorAll('.job-detail-candidate-card') : [];
+  if (!cards.length) return;
+  var step = Math.max(1, currentJobCandidateStep);
+  var maxIndex = Math.max(0, cards.length - step);
+  currentJobCandidateSlide += direction * step;
+  if (currentJobCandidateSlide < 0) currentJobCandidateSlide = 0;
+  if (currentJobCandidateSlide > maxIndex) currentJobCandidateSlide = maxIndex;
+  updateJobCandidateSlider();
+}
+
+function renderJobDetailCandidates(job) {
+  var track = document.getElementById('jobDetailCandidateTrack');
+  var empty = document.getElementById('jobDetailCandidateEmpty');
+  var suggestText = document.getElementById('jobDetailSuggestText');
+  if (!track || !empty || !suggestText) return;
+
+  var candidates = employerCandidateDirectory.filter(function(candidate){
+    return String(candidate.job_category_id || '') === String(job.job_category_id || '');
+  }).sort(function(a, b){
+    if ((b.is_student || 0) !== (a.is_student || 0)) return (b.is_student || 0) - (a.is_student || 0);
+    return (a.full_name || '').localeCompare(b.full_name || '', 'vi');
+  });
+
+  if (!candidates.length) {
+    track.innerHTML = '';
+    empty.style.display = 'block';
+    suggestText.textContent = 'Chưa có ứng viên nào cùng ngành nghề với bài đăng này.';
+    currentJobCandidateSlide = 0;
+    updateJobCandidateSlider();
+    return;
+  }
+
+  empty.style.display = 'none';
+  suggestText.textContent = 'Có ' + candidates.length + ' ứng viên cùng ngành nghề, sinh viên được ưu tiên hiển thị trước.';
+  track.innerHTML = candidates.map(function(candidate){
+    var avatarHtml = candidate.avatar_url
+      ? '<img src="' + employerEscapeHtml(candidate.avatar_url) + '" alt="' + employerEscapeHtml(candidate.full_name) + '">'
+      : employerEscapeHtml(candidate.initials || '');
+    var badges = [];
+    if (candidate.is_student) badges.push('<span class="job-detail-candidate-badge student"><i class="ti ti-school"></i> Sinh viên</span>');
+    if (candidate.salary_name) badges.push('<span class="job-detail-candidate-badge"><i class="ti ti-wallet"></i> ' + employerEscapeHtml(candidate.salary_name) + '</span>');
+    if (candidate.desired_province_name) badges.push('<span class="job-detail-candidate-badge"><i class="ti ti-map-pin"></i> ' + employerEscapeHtml(candidate.desired_province_name) + '</span>');
+    return '<a class="job-detail-candidate-card" href="' + employerEscapeHtml(candidate.candidate_url || '#') + '">' +
+      '<div class="job-detail-candidate-top">' +
+        '<div class="job-detail-candidate-avatar">' + avatarHtml + '</div>' +
+        '<div>' +
+          '<div class="job-detail-candidate-name">' + employerEscapeHtml(candidate.full_name) + '</div>' +
+          '<div class="job-detail-candidate-role">' + employerEscapeHtml(candidate.desired_position || 'Ứng viên tự do') + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="job-detail-candidate-meta">' + employerEscapeHtml(candidate.job_category_name || 'Chưa cập nhật ngành nghề') + '</div>' +
+      (candidate.school_name ? '<div class="job-detail-candidate-meta">Trường: ' + employerEscapeHtml(candidate.school_name) + '</div>' : '') +
+      '<div class="job-detail-candidate-badges">' + badges.join('') + '</div>' +
+    '</a>';
+  }).join('');
+
+  currentJobCandidateSlide = 0;
+  updateJobCandidateSlider();
+}
+
+function openJobDetailModal(jobId) {
+  var job = employerJobDetailPayloads[String(jobId)];
+  if (!job) return;
+  document.getElementById('jobDetailModalTitle').innerHTML = '<i class="ti ti-eye" style="color:#0d4e96;margin-right:6px"></i> ' + employerEscapeHtml(job.title || 'Chi tiết bài đăng');
+  renderJobDetailFacts(job);
+  document.getElementById('jobDetailDescription').textContent = employerJobDetailText(job.job_description);
+  document.getElementById('jobDetailRequirements').textContent = employerJobDetailText(job.other_requirements);
+  document.getElementById('jobDetailBenefits').textContent = employerJobDetailText((job.benefits_description || '') + ((job.rewards_description || '') ? '\n\n' + job.rewards_description : ''));
+  document.getElementById('jobDetailSkills').textContent = employerJobDetailText(job.professional_skills);
+  document.getElementById('jobDetailSoftSkills').textContent = employerJobDetailText(job.soft_skills);
+  document.getElementById('jobDetailEnvironment').textContent = employerJobDetailText(job.work_environment);
+  renderJobDetailCandidates(job);
+  document.getElementById('jobDetailModal').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeJobDetailModal() {
+  document.getElementById('jobDetailModal').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+document.getElementById('jobDetailModal').addEventListener('click', function(e) {
+  if (e.target === this) closeJobDetailModal();
+});
+
+function applyStudentDirectoryFilters() {
+  var cards = Array.prototype.slice.call(document.querySelectorAll('#studentGrid .student-directory-card'));
+  var emptyState = document.getElementById('studentEmptyState');
+  var countEl = document.getElementById('studentVisibleCount');
+  var pageSummary = document.getElementById('studentPageSummary');
+  var pagination = document.getElementById('studentPagination');
+  var grid = document.getElementById('studentGrid');
+  if (!cards.length) return;
+  var keyword = (document.getElementById('studentKeywordFilter') || {}).value || '';
+  var type = (document.getElementById('studentTypeFilter') || {}).value || '';
+  var category = (document.getElementById('studentCategoryFilter') || {}).value || '';
+  var province = (document.getElementById('studentProvinceFilter') || {}).value || '';
+  var salary = (document.getElementById('studentSalaryFilter') || {}).value || '';
+  keyword = keyword.trim().toLowerCase();
+  var filtered = [];
+  cards.forEach(function(card){
+    var match = (!keyword || (card.getAttribute('data-name') || '').indexOf(keyword) !== -1)
+      && (!type || card.getAttribute('data-student') === type)
+      && (!category || card.getAttribute('data-category') === category)
+      && (!province || card.getAttribute('data-province') === province)
+      && (!salary || card.getAttribute('data-salary') === salary);
+    if (match) filtered.push(card);
+    card.style.display = 'none';
+  });
+
+  var columns = 1;
+  if (grid) {
+    var template = window.getComputedStyle(grid).gridTemplateColumns || '';
+    var matches = template.match(/[^ ]+/g);
+    columns = matches && matches.length ? matches.length : 1;
+  }
+  var perPage = Math.max(1, columns * 4);
+  var totalItems = filtered.length;
+  var totalPages = Math.max(1, Math.ceil(totalItems / perPage));
+  if (currentStudentDirectoryPage > totalPages) currentStudentDirectoryPage = totalPages;
+  if (currentStudentDirectoryPage < 1) currentStudentDirectoryPage = 1;
+
+  var start = (currentStudentDirectoryPage - 1) * perPage;
+  var end = start + perPage;
+  filtered.slice(start, end).forEach(function(card){
+    card.style.display = '';
+  });
+
+  if (countEl) countEl.textContent = String(totalItems);
+  if (pageSummary) pageSummary.textContent = totalItems > 0 ? '(Trang ' + currentStudentDirectoryPage + '/' + totalPages + ')' : '';
+  if (emptyState) emptyState.style.display = totalItems > 0 ? 'none' : 'block';
+  if (pagination) {
+    if (totalItems <= 0) {
+      pagination.style.display = 'none';
+      pagination.innerHTML = '';
+    } else {
+      var html = '<button type="button" class="student-page-btn" ' + (currentStudentDirectoryPage <= 1 ? 'disabled' : '') + ' data-page="' + (currentStudentDirectoryPage - 1) + '"><i class="ti ti-chevron-left"></i></button>';
+      for (var i = 1; i <= totalPages; i++) {
+        html += '<button type="button" class="student-page-btn ' + (i === currentStudentDirectoryPage ? 'active' : '') + '" data-page="' + i + '">' + i + '</button>';
+      }
+      html += '<button type="button" class="student-page-btn" ' + (currentStudentDirectoryPage >= totalPages ? 'disabled' : '') + ' data-page="' + (currentStudentDirectoryPage + 1) + '"><i class="ti ti-chevron-right"></i></button>';
+      pagination.innerHTML = html;
+      pagination.style.display = totalPages > 1 ? 'flex' : 'none';
+      pagination.querySelectorAll('[data-page]').forEach(function(button){
+        button.addEventListener('click', function(){
+          if (button.disabled) return;
+          currentStudentDirectoryPage = parseInt(button.getAttribute('data-page'), 10) || 1;
+          applyStudentDirectoryFilters();
+        });
+      });
+    }
+  }
+}
+
+function bindStudentDirectoryFilters() {
+  ['studentKeywordFilter', 'studentTypeFilter', 'studentCategoryFilter', 'studentProvinceFilter', 'studentSalaryFilter'].forEach(function(id){
+    var field = document.getElementById(id);
+    if (!field) return;
+    field.addEventListener(field.tagName === 'SELECT' ? 'change' : 'input', function(){
+      currentStudentDirectoryPage = 1;
+      applyStudentDirectoryFilters();
+    });
+  });
+  var resetBtn = document.getElementById('studentFilterReset');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', function(){
+      ['studentKeywordFilter', 'studentTypeFilter', 'studentCategoryFilter', 'studentProvinceFilter', 'studentSalaryFilter'].forEach(function(id){
+        var field = document.getElementById(id);
+        if (field) field.value = '';
+      });
+      currentStudentDirectoryPage = 1;
+      applyStudentDirectoryFilters();
+    });
+  }
+}
+
+function applyEmployerJobsPagination() {
+  var cards = Array.prototype.slice.call(document.querySelectorAll('#employerJobPostsList .dynamic-job-card'));
+  var emptyCard = document.querySelector('#employerJobPostsList .dynamic-empty-job-card');
+  var pagination = document.getElementById('employerJobsPagination');
+  if (!pagination) return;
+
+  if (!cards.length) {
+    pagination.style.display = 'none';
+    pagination.innerHTML = '';
+    if (emptyCard) emptyCard.style.display = '';
+    return;
+  }
+
+  var perPage = 15;
+  var totalPages = Math.max(1, Math.ceil(cards.length / perPage));
+  if (currentEmployerJobsPage > totalPages) currentEmployerJobsPage = totalPages;
+  if (currentEmployerJobsPage < 1) currentEmployerJobsPage = 1;
+
+  cards.forEach(function(card, index) {
+    var start = (currentEmployerJobsPage - 1) * perPage;
+    var end = start + perPage;
+    card.style.display = index >= start && index < end ? '' : 'none';
+  });
+
+  var html = '<button type="button" class="page-btn" ' + (currentEmployerJobsPage <= 1 ? 'disabled' : '') + ' data-page="' + (currentEmployerJobsPage - 1) + '"><i class="ti ti-chevron-left" style="font-size:13px"></i></button>';
+  for (var i = 1; i <= totalPages; i++) {
+    html += '<button type="button" class="page-btn ' + (i === currentEmployerJobsPage ? 'active' : '') + '" data-page="' + i + '">' + i + '</button>';
+  }
+  html += '<button type="button" class="page-btn" ' + (currentEmployerJobsPage >= totalPages ? 'disabled' : '') + ' data-page="' + (currentEmployerJobsPage + 1) + '"><i class="ti ti-chevron-right" style="font-size:13px"></i></button>';
+
+  pagination.innerHTML = html;
+  pagination.style.display = totalPages > 1 ? 'flex' : 'none';
+  pagination.querySelectorAll('[data-page]').forEach(function(button){
+    button.addEventListener('click', function(){
+      if (button.disabled) return;
+      currentEmployerJobsPage = parseInt(button.getAttribute('data-page'), 10) || 1;
+      applyEmployerJobsPagination();
+    });
+  });
+}
+
+window.addEventListener('resize', function(){
+  var width = window.innerWidth;
+  currentJobCandidateStep = width <= 640 ? 1 : (width <= 1024 ? 2 : 3);
+  updateJobCandidateSlider();
+  applyStudentDirectoryFilters();
 });
 
 function showEmployerAjaxResult(data, successTitle, errorTitle) {
@@ -1740,6 +2401,9 @@ $(document).ready(function(){
   bindJobCategorySearch();
   bindJobProvinceSearch();
   bindJobValidationCleanup();
+  applyEmployerJobsPagination();
+  bindStudentDirectoryFilters();
+  applyStudentDirectoryFilters();
 });
 
 function deleteEmployerJob(id) {
@@ -1802,74 +2466,6 @@ sidebarOverlay.addEventListener('click', closeSidebar);
 
 </script>
 
-<script>
-(function(){
-  document.body.classList.add('employer-logged-in');
-
-  function closeAllUserMenus(except){
-    document.querySelectorAll('.employer-user-menu.open').forEach(function(menu){
-      if(menu !== except) menu.classList.remove('open');
-    });
-  }
-
-  function buildUserMenu(){
-    var actions = document.querySelector('.header-actions');
-    if(!actions || actions.querySelector('.employer-user-menu')) return;
-    actions.querySelectorAll('.btn-login,.btn-post,.js-login-open,.js-employer-login-open').forEach(function(el){
-      el.style.display = 'none';
-    });
-
-    var menu = document.createElement('div');
-    menu.className = 'employer-user-menu';
-    menu.innerHTML = ''+
-      '<button type="button" class="employer-user-button" aria-haspopup="true" aria-expanded="false">'+
-        '<span class="employer-user-avatar"><i class="ti ti-user"></i></span>'+
-        '<span><?php echo isset($_SESSION['user']['full_name']) ? $_SESSION['user']['full_name'] : 'Người dùng'; ?></span>'+
-        '<i class="ti ti-chevron-down employer-user-chevron"></i>'+
-      '</button>'+
-      '<div class="employer-user-dropdown">'+
-        '<div class="employer-user-head"><strong><?php echo isset($_SESSION['user']['full_name']) ? $_SESSION['user']['full_name'] : 'Người dùng'; ?></strong><span>Nhà tuyển dụng</span></div>'+
-        '<a href="#" class="employer-user-link" data-account-open><i class="ti ti-user-circle"></i> Tài khoản</a>'+
-        '<a href="#" class="employer-user-link" data-change-password-open><i class="ti ti-key"></i> Đổi mật khẩu</a>'+
-        '<a href="<?php echo XC_URL; ?>/home/logout" class="employer-user-link logout"><i class="ti ti-logout-2"></i> Đăng xuất</a>'+
-      '</div>';
-    actions.appendChild(menu);
-
-    var button = menu.querySelector('.employer-user-button');
-    button.addEventListener('click', function(e){
-      e.stopPropagation();
-      var open = !menu.classList.contains('open');
-      closeAllUserMenus(menu);
-      menu.classList.toggle('open', open);
-      button.setAttribute('aria-expanded', open ? 'true' : 'false');
-    });
-  }
-
-  function patchMobileMenu(){
-    var userSection = document.querySelector('.mobile-menu .mm-user-section');
-    if(!userSection || userSection.dataset.employerPatched === '1') return;
-    userSection.dataset.employerPatched = '1';
-    userSection.innerHTML = ''+
-      '<div class="employer-mobile-user">'+
-        '<span class="employer-user-avatar"><i class="ti ti-user"></i></span>'+
-        '<div><strong><?php echo isset($_SESSION['user']['full_name']) ? $_SESSION['user']['full_name'] : 'Người dùng'; ?></strong><span>Nhà tuyển dụng</span></div>'+
-      '</div>'+
-      '<div class="mm-btn-group">'+
-        '<a class="mm-btn-login" href="#" data-account-open><i class="ti ti-user-circle"></i> Tài khoản</a>'+
-        '<a class="mm-btn-login" href="#" data-change-password-open><i class="ti ti-key"></i> Đổi mật khẩu</a>'+
-        '<a class="mm-btn-ntd" href="logout.php"><i class="ti ti-logout-2"></i> Đăng xuất</a>'+
-      '</div>';
-  }
-
-  document.addEventListener('click', function(){ closeAllUserMenus(null); });
-  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeAllUserMenus(null); });
-  if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', function(){ buildUserMenu(); patchMobileMenu(); });
-  } else {
-    buildUserMenu(); patchMobileMenu();
-  }
-})();
-</script>
 <script>
 (function(){
   var modal = document.getElementById('changePasswordModal');

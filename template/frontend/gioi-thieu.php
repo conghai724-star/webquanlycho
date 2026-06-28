@@ -22,13 +22,13 @@
           </div>
         </div>
         <div class="about-mini-grid">
-          <div class="about-mini"><i class="ti ti-briefcase"></i><strong>1.200+</strong><span>Cơ hội việc làm được cập nhật</span></div>
-          <div class="about-mini"><i class="ti ti-users-group"></i><strong>8.500+</strong><span>Ứng viên, sinh viên quan tâm</span></div>
-          <div class="about-mini"><i class="ti ti-building"></i><strong>300+</strong><span>Doanh nghiệp đồng hành</span></div>
-          <div class="about-mini"><i class="ti ti-file-cv"></i><strong>CV</strong><span>Hỗ trợ tạo hồ sơ trực tuyến</span></div>
+          <div class="about-mini"><i class="ti ti-briefcase"></i><strong>100+</strong><span>Cơ hội việc làm được cập nhật</span></div>
+          <div class="about-mini"><i class="ti ti-users-group"></i><strong>100+</strong><span>Ứng viên, sinh viên quan tâm</span></div>
+          <div class="about-mini"><i class="ti ti-building"></i><strong>150+</strong><span>Doanh nghiệp đồng hành</span></div>
+          <!-- <div class="about-mini"><i class="ti ti-file-cv"></i><strong>CV</strong><span>Hỗ trợ tạo hồ sơ trực tuyến</span></div> -->
         </div>
         <div class="about-flow">
-          <p>Tối ưu hành trình: Tìm việc → Tạo CV → Ứng tuyển → Kết nối doanh nghiệp</p>
+          <p>Tối ưu hành trình: Tìm việc → Ứng tuyển → Kết nối doanh nghiệp</p>
           <div class="about-flow-bar"><span></span></div>
         </div>
       </div>

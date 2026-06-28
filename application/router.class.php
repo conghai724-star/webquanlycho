@@ -249,6 +249,32 @@ private function getController() {
 					$args[$k++] = $parts[$i]; 
 				$this->args = $args;
 			}
+		}elseif($parts[0] == "chi-tiet-viec-lam")
+		{
+			$this->controller = "home";
+			$this->action = "job_detail";
+			if(isset($parts[1]))
+			{
+				$count_args = count($parts);
+				$k = 1;
+				$args = array();
+				for($i = 1; $i < $count_args; $i++)
+					$args[$k++] = $parts[$i];
+				$this->args = $args;
+			}
+		}elseif($parts[0] == "chi-tiet-ung-vien")
+		{
+			$this->controller = "home";
+			$this->action = "candidate_detail";
+			if(isset($parts[1]))
+			{
+				$count_args = count($parts);
+				$k = 1;
+				$args = array();
+				for($i = 1; $i < $count_args; $i++)
+					$args[$k++] = $parts[$i];
+				$this->args = $args;
+			}
 		}elseif($parts[0] == "gioi-thieu-san-viec-lam.html")
 		{
 			// echo $parts[0];
@@ -352,6 +378,20 @@ private function getController() {
 			// echo $parts[0];
 			$this->controller = "home";
 			$this->action = "employers";
+			if(isset( $parts[1]))
+			{
+				$count_args = count($parts);
+				$k = 1;
+				$args = array();
+				for($i = 1; $i < $count_args; $i++)
+					$args[$k++] = $parts[$i]; 
+				$this->args = $args;
+			}
+		}elseif($parts[0] == "quan-ly-ho-so-ung-vien.html")
+		{
+			// echo $parts[0];
+			$this->controller = "home";
+			$this->action = "candidateDashboard";
 			if(isset( $parts[1]))
 			{
 				$count_args = count($parts);

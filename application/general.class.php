@@ -499,11 +499,32 @@ Class general{
                 $fs = $id."-".$this->bodau($bst->tenbst);
                 break;
             }
-            case "schoollevel":
+			case "schoollevel":
             {
                 $db->query("SELECT * FROM xiaob_school_level WHERE id = ".$id);
                 $bst = $db->fetch_object($first_row = true);
                 $fs = $id."-".$this->bodau($bst->levelname);
+                break;
+            }
+            case "job_post":
+            {
+                $db->query("SELECT id, title FROM hicrm_job_posts WHERE id = '".$id."' LIMIT 1");
+                $bl = $db->fetch_object(true);
+                $slug = isset($bl->title) ? $this->bodau($bl->title) : 'chi-tiet-viec-lam';
+                $fs = XC_URL."/chi-tiet-viec-lam/".$id."-".$slug.".html";
+                break;
+            }
+            case "candidate_profile":
+            {
+                $db->query("SELECT id, full_name FROM hicrm_candidates WHERE id = '".$id."' LIMIT 1");
+                $bl = $db->fetch_object(true);
+                $slug = isset($bl->full_name) ? $this->bodau($bl->full_name) : 'chi-tiet-ung-vien';
+                $fs = XC_URL."/chi-tiet-ung-vien/".$id."-".$slug.".html";
+                break;
+            }
+            case "manage_jobs_page":
+            {
+                $fs = XC_URL."/quan-ly-viec-lam.html/page/".intval($id);
                 break;
             }
             case "grade":

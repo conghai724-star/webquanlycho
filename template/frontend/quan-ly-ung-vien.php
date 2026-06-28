@@ -1,142 +1,112 @@
 <?php require "header.php"; ?>
 <?php
-if (!isset($candidates) || !is_array($candidates)) {
-  $candidates = [
-    [
-      'id' => 1,
-      'name' => 'Nguyễn Thị Lan',
-      'role' => 'Lập trình viên Java',
-      'industry' => 'it',
-      'city' => 'Hà Nội',
-      'exp' => '3 năm',
-      'exp_years' => 3,
-      'is_student' => true,
-      'salary' => '12-18tr',
-      'applied' => '2 giờ trước',
-      'status' => 'new',
-      'score' => '4.8',
-      'skills' => ['Java', 'Spring', 'MySQL'],
-      'online' => true,
-      'color' => '#0d4e96',
-    ],
-    [
-      'id' => 2,
-      'name' => 'Trần Văn Hùng',
-      'role' => 'Senior ReactJS',
-      'industry' => 'it',
-      'city' => 'TP.HCM',
-      'exp' => '5 năm',
-      'exp_years' => 5,
-      'is_student' => false,
-      'salary' => '20-30tr',
-      'applied' => '5 giờ trước',
-      'status' => 'review',
-      'score' => '4.6',
-      'skills' => ['React', 'TypeScript', 'Redux'],
-      'online' => false,
-      'color' => '#1565c0',
-    ],
-    [
-      'id' => 3,
-      'name' => 'Lê Thị Mai',
-      'role' => 'UI/UX Designer',
-      'industry' => 'design',
-      'city' => 'Đà Nẵng',
-      'exp' => '2 năm',
-      'exp_years' => 2,
-      'is_student' => true,
-      'salary' => '10-15tr',
-      'applied' => '1 ngày trước',
-      'status' => 'interview',
-      'score' => '4.4',
-      'skills' => ['Figma', 'CSS', 'HTML'],
-      'online' => true,
-      'color' => '#6a1b9a',
-    ],
-    [
-      'id' => 4,
-      'name' => 'Phạm Quốc Bảo',
-      'role' => 'Data Engineer',
-      'industry' => 'data',
-      'city' => 'Bình Dương',
-      'exp' => '4 năm',
-      'exp_years' => 4,
-      'is_student' => false,
-      'salary' => '18-25tr',
-      'applied' => '2 ngày trước',
-      'status' => 'pass',
-      'score' => '4.7',
-      'skills' => ['Spark', 'Kafka', 'SQL'],
-      'online' => false,
-      'color' => '#00695c',
-    ],
-    [
-      'id' => 5,
-      'name' => 'Hoàng Thị Thu',
-      'role' => 'QA Engineer',
-      'industry' => 'qa',
-      'city' => 'Cần Thơ',
-      'exp' => '1 năm',
-      'exp_years' => 1,
-      'is_student' => true,
-      'salary' => '8-12tr',
-      'applied' => '3 ngày trước',
-      'status' => 'reject',
-      'score' => '4.1',
-      'skills' => ['Selenium', 'JIRA', 'Agile'],
-      'online' => true,
-      'color' => '#c62828',
-    ],
-    [
-      'id' => 6,
-      'name' => 'Vũ Minh Khoa',
-      'role' => 'Product Manager',
-      'industry' => 'product',
-      'city' => 'Đồng Nai',
-      'exp' => '6+ năm',
-      'exp_years' => 6,
-      'is_student' => false,
-      'salary' => '25-35tr',
-      'applied' => '1 tuần trước',
-      'status' => 'review',
-      'score' => '4.9',
-      'skills' => ['Scrum', 'OKR', 'Jira'],
-      'online' => false,
-      'color' => '#e65100',
-    ],
-  ];
-}
+$candidates = isset($candidates) && is_array($candidates) ? $candidates : array();
+$candidate_provinces = isset($candidate_provinces) && is_array($candidate_provinces) ? $candidate_provinces : array();
+$candidate_categories = isset($candidate_categories) && is_array($candidate_categories) ? $candidate_categories : array();
+$candidate_salaries = isset($candidate_salaries) && is_array($candidate_salaries) ? $candidate_salaries : array();
+$candidate_degrees = isset($candidate_degrees) && is_array($candidate_degrees) ? $candidate_degrees : array();
+$candidate_work_types = isset($candidate_work_types) && is_array($candidate_work_types) ? $candidate_work_types : array();
+$candidate_filters = isset($candidate_filters) && is_array($candidate_filters) ? $candidate_filters : array();
+$candidate_page = isset($candidate_page) ? (int)$candidate_page : 1;
+$candidate_total_pages = isset($candidate_total_pages) ? (int)$candidate_total_pages : 1;
+$candidate_total = isset($candidate_total) ? (int)$candidate_total : count($candidates);
 
-$statusLabels = [
-  'new' => 'Mới nộp',
-  'review' => 'Đang xét',
-  'interview' => 'Phỏng vấn',
-  'pass' => 'Đã nhận',
-  'reject' => 'Từ chối',
-];
-$statusClasses = [
-  'new' => 'status-new',
-  'review' => 'status-review',
-  'interview' => 'status-interview',
-  'pass' => 'status-pass',
-  'reject' => 'status-reject',
-];
-
-$totalCandidates = count($candidates);
-$studentCandidates = count(array_filter($candidates, function ($candidate) { return !empty($candidate['is_student']); }));
-$experiencedCandidates = count(array_filter($candidates, function ($candidate) { return (int)($candidate['exp_years'] ?? 0) > 2; }));
-
-function h($value) {
+function candidatePageH($value){
   return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
 }
 
-function candidate_initials($name) {
-  $parts = preg_split('/\s+/u', trim((string)$name));
-  if (!$parts || !count($parts)) return '';
-  $first = mb_substr($parts[0], 0, 1, 'UTF-8');
-  $last = mb_substr($parts[count($parts) - 1], 0, 1, 'UTF-8');
-  return mb_strtoupper($first . $last, 'UTF-8');
+function candidatePageUrl($targetPage){
+  $params = $_GET;
+  $params['page'] = $targetPage;
+  return XC_URL.'/quan-ly-ung-vien.html?'.http_build_query($params);
 }
+
+function candidatePagePaginationItems($currentPage, $totalPages){
+  $currentPage = max(1, (int)$currentPage);
+  $totalPages = max(1, (int)$totalPages);
+  if($totalPages <= 7){
+    return range(1, $totalPages);
+  }
+  if($currentPage <= 3){
+    $pages = range(1, 5);
+  }elseif($currentPage >= $totalPages - 2){
+    $pages = range($totalPages - 4, $totalPages);
+  }else{
+    $pages = range($currentPage - 2, $currentPage + 1);
+  }
+  if(end($pages) < $totalPages - 1){
+    $pages[] = '...';
+  }
+  if(!in_array($totalPages, $pages, true)){
+    $pages[] = $totalPages;
+  }
+  return $pages;
+}
+
+function getCandidateName($candidate) {
+  return $candidate->full_name ?? 'Ứng viên';
+}
+
+function getCandidateRole($candidate) {
+  return $candidate->desired_position ?? 'Người tìm việc';
+}
+
+function getCandidateCity($candidate) {
+  return $candidate->desired_province_name ?: $candidate->province_name ?: 'Toàn quốc';
+}
+
+function getCandidateSalary($candidate) {
+  return $candidate->salary_name ?: 'Thỏa thuận';
+}
+
+function getCandidateExpText($candidate) {
+  $years = intval($candidate->experience_years ?? 0);
+  return $years > 0 ? $years . ' năm' : 'Chưa có';
+}
+
+function getCandidateInitials($name) {
+  $name = trim((string)$name);
+  if ($name === '') return 'UV';
+  $parts = preg_split('/\s+/u', $name);
+  $letters = '';
+  foreach ($parts as $part) {
+    if ($part !== '') $letters .= mb_substr($part, 0, 1, 'UTF-8');
+    if (mb_strlen($letters, 'UTF-8') >= 2) break;
+  }
+  return mb_strtoupper($letters ?: mb_substr($name, 0, 2, 'UTF-8'), 'UTF-8');
+}
+
+function getCandidateColor($candidate) {
+  $colors = ['#0d4e96', '#1565c0', '#6a1b9a', '#00695c', '#c62828', '#e65100'];
+  return $colors[intval($candidate->id ?? 1) % count($colors)];
+}
+
+function getCandidateApplied($candidate) {
+  $date = $candidate->created_at ?? null;
+  if (!$date) return 'Mới nộp';
+  $time = strtotime($date);
+  if (!$time) return 'Mới nộp';
+  $seconds = max(0, time() - $time);
+  $minutes = floor($seconds / 60);
+  if ($minutes < 1) return 'Vừa xong';
+  if ($minutes < 60) return $minutes.' phút trước';
+  $hours = floor($minutes / 60);
+  if ($hours < 24) return $hours.' giờ trước';
+  $days = floor($hours / 24);
+  return $days.' ngày trước';
+}
+
+global $db;
+$db->query("SELECT COUNT(id) AS total FROM hicrm_candidates WHERE status = 3 AND is_seeking = 1");
+$dbTotal = intval($db->fetch_object(true)->total);
+
+$db->query("SELECT COUNT(id) AS total FROM hicrm_candidates WHERE status = 3 AND is_seeking = 1 AND is_student_candidate = 1");
+$dbStudents = intval($db->fetch_object(true)->total);
+
+$db->query("SELECT COUNT(ca.id) AS total FROM hicrm_candidates ca WHERE ca.status = 3 AND ca.is_seeking = 1 AND 
+            COALESCE((SELECT FLOOR(SUM(DATEDIFF(COALESCE(ce.end_date, CURDATE()), ce.start_date)) / 365)
+                      FROM hicrm_candidate_experiences ce WHERE ce.candidate_id = ca.id), 0) > 2");
+$dbExperienced = intval($db->fetch_object(true)->total);
 ?>
 
 <!-- PAGE HERO -->
@@ -148,234 +118,193 @@ function candidate_initials($name) {
     </div>
     <div class="page-hero-stats">
       <div class="hero-stat">
-        <div class="hero-stat-num"><?= $totalCandidates ?></div>
+        <div class="hero-stat-num"><?= $dbTotal ?></div>
         <div class="hero-stat-label">Tổng ứng viên</div>
       </div>
       <div class="hero-stat">
-        <div class="hero-stat-num"><?= $studentCandidates ?></div>
+        <div class="hero-stat-num"><?= $dbStudents ?></div>
         <div class="hero-stat-label">Ứng viên là sinh viên</div>
       </div>
       <div class="hero-stat">
-        <div class="hero-stat-num"><?= $experiencedCandidates ?></div>
-        <div class="hero-stat-label">Ứng viên trên 2 năm kinh nghiệm</div>
+        <div class="hero-stat-num"><?= $dbExperienced ?></div>
+        <div class="hero-stat-label">Ứng viên > 2 năm KN</div>
       </div>
     </div>
   </div>
 </div>
-<!-- TOOLBAR -->
-<div class="toolbar">
-  <div class="toolbar-inner">
-    <div class="toolbar-search">
-      <i class="ti ti-search"></i>
-      <input type="text" placeholder="Tìm tên, email, kỹ năng..." id="searchInput"/>
-    </div>
-    <div class="toolbar-filter">
-      <select class="filter-select" id="filterLocation">
-        <option value="">Tất cả địa điểm</option>
-        <option value="TP.HCM">TP.HCM</option>
-        <option value="Hà Nội">Hà Nội</option>
-        <option value="Đà Nẵng">Đà Nẵng</option>
-        <option value="Bình Dương">Bình Dương</option>
-        <option value="Cần Thơ">Cần Thơ</option>
-        <option value="Đồng Nai">Đồng Nai</option>
-      </select>
-      <select class="filter-select" id="filterExp">
-        <option value="">Kinh nghiệm</option>
-        <option value="0">Fresher (0-1 năm)</option>
-        <option value="2">Junior (1-3 năm)</option>
-        <option value="4">Senior (3-5 năm)</option>
-        <option value="6">Expert (5+ năm)</option>
-      </select>
-      <button class="btn-filter" id="applyFilter"><i class="ti ti-filter"></i> Lọc</button>
-    </div>
-    <div class="result-count" id="resultCount"><strong><?= $totalCandidates ?></strong> ứng viên</div>
-  </div>
-</div>
 
-<!-- MAIN -->
-<div class="main-wrap">
-  <!-- INDUSTRY TABS -->
-  <div class="industry-slider" aria-label="Bộ lọc ngành nghề">
-    <button type="button" class="industry-slide-btn" id="industryPrev" aria-label="Cuộn ngành nghề sang trái"><i class="ti ti-chevron-left"></i></button>
-    <div class="industry-slider-viewport">
-      <div class="status-tabs" id="industryTabs">
-        <button class="status-tab active" data-industry="all">Tất cả <span class="tab-count" data-industry-count="all">0</span></button>
-        <button class="status-tab" data-industry="it">CNTT - Phần mềm <span class="tab-count" data-industry-count="it">0</span></button>
-        <button class="status-tab" data-industry="design">Thiết kế UI/UX <span class="tab-count" data-industry-count="design">0</span></button>
-        <button class="status-tab" data-industry="data">Dữ liệu <span class="tab-count" data-industry-count="data">0</span></button>
-        <button class="status-tab" data-industry="qa">Kiểm thử phần mềm <span class="tab-count" data-industry-count="qa">0</span></button>
-        <button class="status-tab" data-industry="product">Quản lý sản phẩm <span class="tab-count" data-industry-count="product">0</span></button>
-        <button class="status-tab" data-industry="marketing">Marketing <span class="tab-count" data-industry-count="marketing">0</span></button>
-        <button class="status-tab" data-industry="sales">Kinh doanh <span class="tab-count" data-industry-count="sales">0</span></button>
-        <button class="status-tab" data-industry="hr">Nhân sự <span class="tab-count" data-industry-count="hr">0</span></button>
-        <button class="status-tab" data-industry="accounting">Kế toán <span class="tab-count" data-industry-count="accounting">0</span></button>
+<!-- TOOLBAR & FILTERS -->
+<form class="candidate-search-panel" method="get" action="<?php echo XC_URL; ?>/quan-ly-ung-vien.html" id="candidateFilterForm">
+  <!-- Hidden input for category -->
+  <input type="hidden" name="job_category_id" id="jobCategoryIdInput" value="<?php echo (int)($candidate_filters['job_category_id'] ?? 0); ?>"/>
+
+  <div class="toolbar">
+    <div class="toolbar-inner">
+      <div class="toolbar-search">
+        <i class="ti ti-search"></i>
+        <input type="text" name="keyword" value="<?php echo candidatePageH($candidate_filters['keyword'] ?? ''); ?>" placeholder="Tìm tên, email, kỹ năng..." id="searchInput"/>
       </div>
+      <div class="toolbar-filter">
+        <select class="filter-select" name="province_id" id="filterLocation">
+          <option value="">Tất cả địa điểm</option>
+          <?php foreach ($candidate_provinces as $province): ?>
+            <option value="<?php echo (int)$province->id; ?>" <?php echo (int)($candidate_filters['province_id'] ?? 0) === (int)$province->id ? 'selected' : ''; ?>><?php echo candidatePageH($province->province_name); ?></option>
+          <?php endforeach; ?>
+        </select>
+        <select class="filter-select" name="degree" id="filterDegree">
+          <option value="">Tất cả học vấn</option>
+          <?php foreach ($candidate_degrees as $deg): ?>
+            <option value="<?php echo candidatePageH($deg->degree); ?>" <?php echo ($candidate_filters['degree'] ?? '') === $deg->degree ? 'selected' : ''; ?>><?php echo candidatePageH($deg->degree); ?></option>
+          <?php endforeach; ?>
+        </select>
+        <select class="filter-select" name="work_type" id="filterWorkType">
+          <option value="">Tất cả hình thức</option>
+          <?php foreach ($candidate_work_types as $wt): ?>
+            <option value="<?php echo candidatePageH($wt->desired_work_type); ?>" <?php echo ($candidate_filters['work_type'] ?? '') === $wt->desired_work_type ? 'selected' : ''; ?>><?php echo candidatePageH($wt->desired_work_type); ?></option>
+          <?php endforeach; ?>
+        </select>
+        <button type="submit" class="btn-filter" id="applyFilter"><i class="ti ti-filter"></i> Lọc</button>
+      </div>
+      <div class="result-count" id="resultCount"><strong><?php echo $candidate_total; ?></strong> ứng viên</div>
     </div>
-    <button type="button" class="industry-slide-btn" id="industryNext" aria-label="Cuộn ngành nghề sang phải"><i class="ti ti-chevron-right"></i></button>
   </div>
 
-  <!-- CANDIDATE GRID -->
-  <div class="cand-grid" id="candGrid">
-    <?php if (empty($candidates)): ?>
-      <div class="empty-state" style="grid-column:1/-1">
-        <i class="ti ti-user-search"></i>
-        <h3>Không tìm thấy ứng viên</h3>
-        <p>Chưa có dữ liệu ứng viên để hiển thị.</p>
+  <!-- MAIN -->
+  <div class="main-wrap">
+    <!-- INDUSTRY TABS -->
+    <div class="industry-slider" aria-label="Bộ lọc ngành nghề">
+      <button type="button" class="industry-slide-btn" id="industryPrev" aria-label="Cuộn ngành nghề sang trái"><i class="ti ti-chevron-left"></i></button>
+      <div class="industry-slider-viewport">
+        <div class="status-tabs" id="industryTabs">
+          <button type="button" class="status-tab<?php echo (int)($candidate_filters['job_category_id'] ?? 0) === 0 ? ' active' : ''; ?>" data-category-id="0">Tất cả</button>
+          <?php foreach ($candidate_categories as $cat): ?>
+            <button type="button" class="status-tab<?php echo (int)($candidate_filters['job_category_id'] ?? 0) === (int)$cat->id ? ' active' : ''; ?>" data-category-id="<?php echo (int)$cat->id; ?>">
+              <?php echo candidatePageH($cat->job_category_name); ?>
+            </button>
+          <?php endforeach; ?>
+        </div>
       </div>
-    <?php else: ?>
-      <?php foreach ($candidates as $candidate): ?>
-        <?php
-          $skills = $candidate['skills'] ?? [];
-          $status = $candidate['status'] ?? 'new';
-          $statusLabel = $statusLabels[$status] ?? $status;
-          $statusClass = $statusClasses[$status] ?? 'status-new';
-          $searchText = trim(($candidate['name'] ?? '') . ' ' . ($candidate['role'] ?? '') . ' ' . implode(' ', $skills));
-        ?>
-        <article
-          class="cand-card"
-          data-industry="<?= h($candidate['industry'] ?? '') ?>"
-          data-city="<?= h($candidate['city'] ?? '') ?>"
-          data-search="<?= h(mb_strtolower($searchText, 'UTF-8')) ?>"
-        >
-          <div class="cand-card-top">
-            <div class="cand-rank"><?= h($candidate['id'] ?? '') ?></div>
-            <div class="cand-card-actions">
-              <button type="button" class="card-action-btn fav" title="Yêu thích"><i class="ti ti-heart"></i></button>
-              <button type="button" class="card-action-btn" title="Tải CV"><i class="ti ti-download"></i></button>
+      <button type="button" class="industry-slide-btn" id="industryNext" aria-label="Cuộn ngành nghề sang phải"><i class="ti ti-chevron-right"></i></button>
+    </div>
+</form>
+
+    <!-- CANDIDATE GRID -->
+    <div class="cand-grid" id="candGrid">
+      <?php if (empty($candidates)): ?>
+        <div class="empty-state" style="grid-column:1/-1">
+          <i class="ti ti-user-search"></i>
+          <h3>Không tìm thấy ứng viên</h3>
+          <p>Chưa có dữ liệu ứng viên để hiển thị.</p>
+        </div>
+      <?php else: ?>
+        <?php foreach ($candidates as $candidate): ?>
+          <?php
+            $name = getCandidateName($candidate);
+            $role = getCandidateRole($candidate);
+            $city = getCandidateCity($candidate);
+            $salary = getCandidateSalary($candidate);
+            $expText = getCandidateExpText($candidate);
+            $initials = getCandidateInitials($name);
+            $color = getCandidateColor($candidate);
+            $appliedText = getCandidateApplied($candidate);
+            
+            $skillsText = trim((string)($candidate->soft_skills ?? ''));
+            $skills = array_filter(array_map('trim', explode(',', $skillsText)), function($val) {
+                return $val !== '';
+            });
+            
+            $detailUrl = general::getInstance()->permalink((int)($candidate->id ?? 0), 'candidate_profile');
+            $cvUrl = isset($candidate->cv_file) && trim($candidate->cv_file) !== '' ? XC_URL . '/' . ltrim($candidate->cv_file, '/') : '#';
+          ?>
+          <article class="cand-card">
+            <div class="cand-card-top">
+              <div class="cand-rank"><?php echo (int)($candidate->id ?? 0); ?></div>
+              <div class="cand-card-actions">
+                <button type="button" class="card-action-btn fav" title="Yêu thích"><i class="ti ti-heart"></i></button>
+                <?php if($cvUrl !== '#'): ?>
+                  <a href="<?php echo candidatePageH($cvUrl); ?>" target="_blank" class="card-action-btn" title="Tải CV"><i class="ti ti-download"></i></a>
+                <?php endif; ?>
+              </div>
+              <div class="cand-avatar" style="background:<?php echo candidatePageH($color); ?>">
+                <?php echo candidatePageH($initials); ?>
+                <div class="online-dot"></div>
+              </div>
+              <div class="cand-name"><a href="<?php echo candidatePageH($detailUrl); ?>" style="text-decoration:none;color:inherit;"><?php echo candidatePageH($name); ?></a></div>
+              <div class="cand-role"><?php echo candidatePageH($role); ?></div>
+              <div class="cand-meta">
+                <div class="cand-meta-row"><i class="ti ti-map-pin"></i><?php echo candidatePageH($city); ?></div>
+                <div class="cand-meta-row"><i class="ti ti-clock"></i><?php echo candidatePageH($expText); ?> kinh nghiệm</div>
+              </div>
             </div>
-            <div class="cand-avatar" style="background:<?= h($candidate['color'] ?? '#0d4e96') ?>">
-              <?= h(candidate_initials($candidate['name'] ?? '')) ?>
-              <div class="<?= !empty($candidate['online']) ? 'online-dot' : 'offline-dot' ?>"></div>
+            <div class="cand-card-body">
+              <div class="cand-info-grid">
+                <div class="cand-info-item"><div class="cand-info-label">Mức lương</div><div class="cand-info-value"><?php echo candidatePageH($salary); ?></div></div>
+                <div class="cand-info-item"><div class="cand-info-label">Ngày nộp</div><div class="cand-info-value"><?php echo candidatePageH($appliedText); ?></div></div>
+              </div>
+              <div class="cand-skills">
+                <?php if(!empty($skills)): ?>
+                  <?php foreach (array_slice($skills, 0, 4) as $skill): ?>
+                    <span class="skill-tag"><?php echo candidatePageH($skill); ?></span>
+                  <?php endforeach; ?>
+                <?php else: ?>
+                  <span class="skill-tag">Sẵn sàng học hỏi</span>
+                <?php endif; ?>
+              </div>
             </div>
-            <div class="cand-name"><?= h($candidate['name'] ?? '') ?></div>
-            <div class="cand-role"><?= h($candidate['role'] ?? '') ?></div>
-            <div class="cand-meta">
-              <div class="cand-meta-row"><i class="ti ti-map-pin"></i><?= h($candidate['city'] ?? '') ?></div>
-              <div class="cand-meta-row"><i class="ti ti-clock"></i><?= h($candidate['exp'] ?? '') ?> kinh nghiệm</div>
+            <div class="cand-card-footer">
+              <span class="cand-status-badge status-pass">Sẵn sàng làm việc</span>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div class="cand-score"><i class="ti ti-star-filled"></i>5.0</div>
+                <a href="<?php echo candidatePageH($detailUrl); ?>" class="btn-view" style="text-decoration:none;"><i class="ti ti-eye"></i> Xem</a>
+              </div>
             </div>
-          </div>
-          <div class="cand-card-body">
-            <div class="cand-info-grid">
-              <div class="cand-info-item"><div class="cand-info-label">Mức lương</div><div class="cand-info-value"><?= h($candidate['salary'] ?? '') ?></div></div>
-              <div class="cand-info-item"><div class="cand-info-label">Ngày nộp</div><div class="cand-info-value"><?= h($candidate['applied'] ?? '') ?></div></div>
-            </div>
-            <div class="cand-skills">
-              <?php foreach ($skills as $skill): ?>
-                <span class="skill-tag"><?= h($skill) ?></span>
-              <?php endforeach; ?>
-            </div>
-          </div>
-          <div class="cand-card-footer">
-            <span class="cand-status-badge <?= h($statusClass) ?>"><?= h($statusLabel) ?></span>
-            <div style="display:flex;align-items:center;gap:8px">
-              <div class="cand-score"><i class="ti ti-star-filled"></i><?= h($candidate['score'] ?? '') ?></div>
-              <button type="button" class="btn-view"><i class="ti ti-eye"></i> Xem</button>
-            </div>
-          </div>
-        </article>
-      <?php endforeach; ?>
+          </article>
+        <?php endforeach; ?>
+      <?php endif; ?>
+    </div>
+
+    <!-- PAGINATION -->
+    <?php if($candidate_total_pages > 1): ?>
+      <div class="pagination-wrap" id="paginationWrap">
+        <div class="page-info" id="pageInfo">
+          Hiển thị <strong><?php echo ($candidate_page - 1) * 16 + 1; ?>-<?php echo min($candidate_page * 16, $candidate_total); ?></strong> / <strong><?php echo $candidate_total; ?></strong>
+        </div>
+        <div class="pagination" id="pagination">
+          <a class="page-btn <?php echo $candidate_page <= 1 ? 'disabled' : ''; ?>" href="<?php echo $candidate_page > 1 ? candidatePageH(candidatePageUrl($candidate_page - 1)) : '#'; ?>"><i class="ti ti-chevron-left"></i></a>
+          <?php foreach(candidatePagePaginationItems($candidate_page, $candidate_total_pages) as $item): ?>
+            <?php if($item === '...'): ?>
+              <span class="page-btn disabled">...</span>
+            <?php else: ?>
+              <a class="page-btn <?php echo (int)$item === $candidate_page ? 'active' : ''; ?>" href="<?php echo candidatePageH(candidatePageUrl((int)$item)); ?>"><?php echo (int)$item; ?></a>
+            <?php endif; ?>
+          <?php endforeach; ?>
+          <a class="page-btn <?php echo $candidate_page >= $candidate_total_pages ? 'disabled' : ''; ?>" href="<?php echo $candidate_page < $candidate_total_pages ? candidatePageH(candidatePageUrl($candidate_page + 1)) : '#'; ?>"><i class="ti ti-chevron-right"></i></a>
+        </div>
+      </div>
     <?php endif; ?>
   </div>
 
-  <!-- PAGINATION -->
-  <div class="pagination-wrap" id="paginationWrap">
-    <div class="page-info" id="pageInfo"></div>
-    <div class="pagination" id="pagination"></div>
-    <div class="page-size-wrap">
-      Hiển thị
-      <select id="pageSizeSelect">
-        <option value="8">8</option>
-        <option value="12" selected>12</option>
-        <option value="20">20</option>
-        <option value="28">28</option>
-      </select>
-      / trang
-    </div>
-  </div>
-</div>
-
 <script>
 (function(){
-  var cards = Array.prototype.slice.call(document.querySelectorAll('.cand-card'));
-  var currentPage = 1;
-  var pageSize = 12;
-  var currentIndustry = 'all';
-  var currentLocation = 'all';
-  var searchQ = '';
-
-  function normalize(value){
-    return (value || '').toString().trim().toLowerCase();
-  }
-
-  function getFiltered(){
-    var q = normalize(searchQ);
-    return cards.filter(function(card){
-      var industryOk = currentIndustry === 'all' || card.dataset.industry === currentIndustry;
-      var locationOk = currentLocation === 'all' || card.dataset.city === currentLocation;
-      var searchOk = !q || normalize(card.dataset.search).indexOf(q) !== -1;
-      return industryOk && locationOk && searchOk;
-    });
-  }
-
-  function updateIndustryCounts(){
-    var counts = {all: cards.length};
-    cards.forEach(function(card){
-      var key = card.dataset.industry || '';
-      if (!key) return;
-      counts[key] = (counts[key] || 0) + 1;
-    });
-    document.querySelectorAll('[data-industry-count]').forEach(function(el){
-      var key = el.getAttribute('data-industry-count');
-      el.textContent = counts[key] || 0;
-    });
-  }
-
-  function renderPagination(total){
-    var totalPages = Math.ceil(total / pageSize);
-    var info = document.getElementById('pageInfo');
-    var pg = document.getElementById('pagination');
-    if (!info || !pg) return;
-    if (!total) {
-      info.innerHTML = 'Hiển thị <strong>0</strong> / <strong>0</strong>';
-      pg.innerHTML = '';
-      return;
-    }
-    var start = (currentPage - 1) * pageSize + 1;
-    var end = Math.min(currentPage * pageSize, total);
-    info.innerHTML = 'Hiển thị <strong>' + start + '-' + end + '</strong> / <strong>' + total + '</strong>';
-
-    var totalButtons = '';
-    totalButtons += '<button class="page-btn" data-page="' + (currentPage - 1) + '" ' + (currentPage === 1 ? 'disabled' : '') + '><i class="ti ti-chevron-left"></i></button>';
-    for (var i = 1; i <= totalPages; i++) {
-      totalButtons += '<button class="page-btn' + (i === currentPage ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>';
-    }
-    totalButtons += '<button class="page-btn" data-page="' + (currentPage + 1) + '" ' + (currentPage === totalPages ? 'disabled' : '') + '><i class="ti ti-chevron-right"></i></button>';
-    pg.innerHTML = totalButtons;
-    pg.querySelectorAll('[data-page]').forEach(function(btn){
-      btn.addEventListener('click', function(){
-        var page = parseInt(btn.getAttribute('data-page'), 10);
-        if (!page || page < 1 || page > totalPages) return;
-        currentPage = page;
-        renderCards(getFiltered());
+  var form = document.getElementById('candidateFilterForm');
+  if (form) {
+    Array.prototype.slice.call(form.querySelectorAll('select')).forEach(function(select) {
+      select.addEventListener('change', function() {
+        form.submit();
       });
     });
   }
 
-  function renderCards(list){
-    var start = (currentPage - 1) * pageSize;
-    var end = start + pageSize;
-    var visible = list.slice(start, end);
-    cards.forEach(function(card){ card.style.display = 'none'; });
-    visible.forEach(function(card){ card.style.display = ''; });
-    var resultCount = document.getElementById('resultCount');
-    if (resultCount) resultCount.innerHTML = '<strong>' + list.length + '</strong> ứng viên';
-    renderPagination(list.length);
-  }
-
-  function refresh(){
-    currentPage = 1;
-    renderCards(getFiltered());
-  }
+  document.querySelectorAll('#industryTabs .status-tab').forEach(function(tab){
+    tab.addEventListener('click', function(){
+      var catId = tab.getAttribute('data-category-id');
+      var input = document.getElementById('jobCategoryIdInput');
+      if (input) {
+        input.value = catId;
+        form.submit();
+      }
+    });
+  });
 
   function updateIndustrySliderControls(){
     var track = document.getElementById('industryTabs');
@@ -394,39 +323,15 @@ function candidate_initials($name) {
     track.scrollBy({left: direction * distance, behavior: 'smooth'});
   }
 
-  document.querySelectorAll('#industryTabs .status-tab').forEach(function(tab){
-    tab.addEventListener('click', function(){
-      document.querySelectorAll('#industryTabs .status-tab').forEach(function(item){ item.classList.remove('active'); });
-      tab.classList.add('active');
-      currentIndustry = tab.dataset.industry || 'all';
-      refresh();
-    });
-  });
+  var industryTrack = document.getElementById('industryTabs');
+  var industryPrev = document.getElementById('industryPrev');
+  var industryNext = document.getElementById('industryNext');
+  if (industryPrev) industryPrev.addEventListener('click', function(){ scrollIndustryTabs(-1); });
+  if (industryNext) industryNext.addEventListener('click', function(){ scrollIndustryTabs(1); });
+  if (industryTrack) industryTrack.addEventListener('scroll', updateIndustrySliderControls);
+  window.addEventListener('resize', updateIndustrySliderControls);
 
-  var searchInput = document.getElementById('searchInput');
-  if (searchInput) {
-    searchInput.addEventListener('input', function(){
-      searchQ = searchInput.value;
-      refresh();
-    });
-  }
-
-  var applyFilter = document.getElementById('applyFilter');
-  if (applyFilter) {
-    applyFilter.addEventListener('click', function(){
-      var selectedLocation = document.getElementById('filterLocation');
-      currentLocation = selectedLocation && selectedLocation.value ? selectedLocation.value : 'all';
-      refresh();
-    });
-  }
-
-  var pageSizeSelect = document.getElementById('pageSizeSelect');
-  if (pageSizeSelect) {
-    pageSizeSelect.addEventListener('change', function(){
-      pageSize = parseInt(pageSizeSelect.value, 10) || 12;
-      refresh();
-    });
-  }
+  updateIndustrySliderControls();
 
   document.querySelectorAll('.card-action-btn.fav').forEach(function(btn){
     btn.addEventListener('click', function(event){
@@ -436,18 +341,6 @@ function candidate_initials($name) {
       if (icon) icon.className = btn.classList.contains('active') ? 'ti ti-heart-filled' : 'ti ti-heart';
     });
   });
-
-  var industryTrack = document.getElementById('industryTabs');
-  var industryPrev = document.getElementById('industryPrev');
-  var industryNext = document.getElementById('industryNext');
-  if (industryPrev) industryPrev.addEventListener('click', function(){ scrollIndustryTabs(-1); });
-  if (industryNext) industryNext.addEventListener('click', function(){ scrollIndustryTabs(1); });
-  if (industryTrack) industryTrack.addEventListener('scroll', updateIndustrySliderControls);
-  window.addEventListener('resize', updateIndustrySliderControls);
-
-  updateIndustryCounts();
-  refresh();
-  updateIndustrySliderControls();
 })();
 </script>
 

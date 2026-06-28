@@ -1,0 +1,2 @@
+employer_id,title,job_category_id,province_id,quantity,job_description,experience_years,degree_required,salary_id,benefits_description,work_type,address_detail,deadline,status
+1,Chuyen vien tu van tuyen sinh,2,79,3,Tu van ung vien va cham soc khach hang tiem nang,1,Cao dang,4,Thuong KPI va bao hiem day du,Toan thoi gian,123 Nguyen Hue Quan 1 TP HCM,2026-07-31,pending

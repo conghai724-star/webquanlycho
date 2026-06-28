@@ -1,4 +1,4 @@
-<!-- FOOTER MOBILE BEAUTIFUL REDESIGN -->
+﻿<!-- FOOTER MOBILE BEAUTIFUL REDESIGN -->
 <style>
 /* ===== FOOTER: DESKTOP + MOBILE BEAUTIFUL ===== */
 
@@ -12,18 +12,14 @@
         <p>Cổng thông tin việc làm hỗ trợ kết nối sinh viên, người tìm việc và doanh nghiệp tuyển dụng. Nhanh chóng, minh bạch, hiện đại và dễ sử dụng.</p>
 
         <div class="cert">
-          <div class="cert-badge">Cổng việc làm uy tín</div>
+          <div class="cert-badge">Công việc làm uy tín</div>
           <div class="cert-badge">Hỗ trợ tuyển dụng</div>
         </div>
 
         <div class="footer-social">
-          <a href="https://www.facebook.com/vieclam" class="social-btn" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><i class="ti ti-brand-facebook"></i></a>
-          <a href="https://www.tiktok.com/@vieclam.vn" class="social-btn" target="_blank" rel="noopener noreferrer" aria-label="TikTok"><i class="ti ti-brand-tiktok"></i></a>
-          <a href="https://zalo.me/1235743452982402805" class="social-btn" target="_blank" rel="noopener noreferrer" aria-label="Zalo"><i class="ti ti-message-circle"></i></a>
-          <a href="https://www.instagram.com/vieclam.vn_official/" class="social-btn" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><i class="ti ti-brand-instagram"></i></a>
-          <a href="https://www.youtube.com/@vieclam-vn" class="social-btn" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><i class="ti ti-brand-youtube"></i></a>
-          <a href="https://www.linkedin.com/company/vieclam/" class="social-btn" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><i class="ti ti-brand-linkedin"></i></a>
-        </div>
+          <a href="#" class="social-btn" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><i class="ti ti-brand-facebook"></i></a>
+          <a href="#" class="social-btn" target="_blank" rel="noopener noreferrer" aria-label="Zalo"><i class="ti ti-message-circle"></i></a>
+         </div>
       </div>
 
       <div class="footer-col">
@@ -57,11 +53,11 @@
       <div class="footer-col footer-col--app">
         <h4>Thống kê lượt truy cập</h4>
         <div class="store-badges">
-        <div class="store-badge-text"><span class="small">Đang truy cập: </span><span class="big">198829 Lượt</span></div>
-        <div class="store-badge-text"><span class="small">Hôm nay: </span><span class="big">198829 Lượt</span></div>
-        <div class="store-badge-text"><span class="small">1 tuần trước:</span><span class="big">198829 Lượt</span></div>
-        <div class="store-badge-text"><span class="small">Tổng lượt truy cập:</span><span class="big">198829 Lượt</span></div>
-         
+        <?php $visitStats = isset($visit_stats) && is_array($visit_stats) ? $visit_stats : array('online' => 0, 'today' => 0, 'week' => 0, 'total' => 0); ?>
+        <div class="store-badge-text"><span class="small">Đang truy cập: </span><span class="big"><?php echo number_format((int)$visitStats['online']); ?> Lượt</span></div>
+        <div class="store-badge-text"><span class="small">Hôm nay: </span><span class="big"><?php echo number_format((int)$visitStats['today']); ?> Lượt</span></div>
+        <div class="store-badge-text"><span class="small">1 tuần trước:</span><span class="big"><?php echo number_format((int)$visitStats['week']); ?> Lượt</span></div>
+        <div class="store-badge-text"><span class="small">Tổng lượt truy cập:</span><span class="big"><?php echo number_format((int)$visitStats['total']); ?> Lượt</span></div>
           
         </div>
       </div>
@@ -85,7 +81,7 @@
       <div class="chat-panel-header-info">
         <div class="chat-panel-avatar"><i class="ti ti-headset"></i></div>
         <div>
-          <div class="chat-panel-title">Vieclam hỗ trợ</div>
+          <div class="chat-panel-title">Việc làm hỗ trợ</div>
           <div class="chat-panel-status">Đang trực tuyến</div>
         </div>
       </div>
@@ -107,6 +103,6 @@
   </div>
 </div>
 </html>
-<script src="<?php echo $template_path;?>/assets/js/chatbot.js"></script>
-<script src="<?php echo $template_path;?>/assets/js/jscore.min.js"></script>
+<script src="<?php echo $template_path;?>/assets/js/chatbot.js?v=<?php echo filemtime(__SITE_PATH.'/template/frontend/assets/js/chatbot.js'); ?>"></script>
+<script src="<?php echo $template_path;?>/assets/js/jscore.min.js?v=<?php echo filemtime(__SITE_PATH.'/template/frontend/assets/js/jscore.min.js'); ?>"></script>
 

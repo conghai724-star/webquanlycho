@@ -1,15 +1,96 @@
-
+﻿
 
 <?php require "header.php"; ?>
 <script>
 $(document).ready(function () {
 ///-----------Users action-----------
-   // Add student
+   $(document).on('click', '.create-student-account-btn', function () {
+      var $button = $(this);
+      $button.prop('disabled', true);
+      $.post("<?php echo XC_URL; ?>/api/addstudent", {
+         student_code: $button.data('code'), student_name: $button.data('name'), action: 'create'
+      }, function (data) {
+         if (data.status == 200) Swal.fire('Thành công', data.message, 'success').then(function () { location.reload(); });
+         else { Swal.fire('Không thể cấp tài khoản', data.message, 'error'); $button.prop('disabled', false); }
+      }, 'json').fail(function () { Swal.fire('Lỗi', 'Không thể kết nối API cấp tài khoản.', 'error'); $button.prop('disabled', false); });
+   });
 
-   //END add student
-   //Edit User
+   $(document).on('click', '.student-detail-btn', function () {
+      var data = $(this).data();
+      $('#detailStudentName').text(data.name || ''); $('#detailStudentCode').text(data.code || '');
+      $('#detailStudentPhone').text(data.phone || ''); $('#detailStudentEmail').text(data.email || '');
+      $('#detailStudentClass').text(data.class || ''); $('#detailStudentBirthday').text(data.birthday || '');
+      $('#detailStudentGender').text(String(data.gender) === '1' ? 'Nam' : (String(data.gender) === '2' ? 'Nữ' : 'Khác'));
+      $('#detailStudentMajor').text(data.major || ''); $('#detailStudentGpa').text(data.gpa || '');
+   });
+   function fillStudentForm(data) {
+      data = data || {};
+      $('#studentForm')[0].reset();
+      $('#studentFormId').val(data.id || '');
+      $('#studentFormModalLabel').text(data.id ? 'Chỉnh sửa sinh viên' : 'Thêm sinh viên');
+      $('#student_form_student_code').val(data.code || '');
+      $('#student_form_student_name').val(data.name || '');
+      $('#student_form_student_phone').val(data.phone || '');
+      $('#student_form_student_email').val(data.email || '');
+      $('#student_form_student_class').val(data.class || '');
+      $('#student_form_student_birthday').val(data.birthday || '');
+      $('#student_form_student_gender').val(String(data.gender || '0'));
+      $('#student_form_student_file').val(data.file || '');
+      $('#student_form_student_major_id').val(String(data.major || '1'));
+      $('#student_form_student_gpa').val(data.gpa || '');
+      $('#student_form_student_rank').val(data.rank || '');
+      $('#student_form_student_description').val(data.description || '');
+      $('#student_form_student_is_register').val(String(data.register || '0'));
+   }
 
-   //End Edit User
+   $(document).on('click', '.btn-open-add-student', function () {
+      fillStudentForm({});
+   });
+
+   $(document).on('click', '.btn-open-edit-student', function () {
+      fillStudentForm($(this).data());
+   });
+
+   $('#studentForm').on('submit', function (e) {
+      e.preventDefault();
+      var $button = $('#studentFormSubmit');
+      $button.prop('disabled', true);
+      $.ajax({
+         type: 'POST',
+         url: "<?php echo XC_URL; ?>/api/saveStudentProfile",
+         data: $(this).serialize(),
+         dataType: 'json',
+         success: function (data) {
+            if (data.status == 200) {
+               $('#studentFormModal').modal('hide');
+               Swal.fire({
+                  icon: 'success',
+                  title: 'Thành công',
+                  text: data.message || 'Đã lưu thông tin sinh viên.',
+                  timer: 1600,
+                  showConfirmButton: false
+               });
+               setTimeout(function () { location.reload(); }, 1700);
+            } else {
+               Swal.fire({
+                  icon: 'error',
+                  title: 'Lỗi',
+                  text: data.message || 'Không thể lưu thông tin sinh viên.'
+               });
+            }
+         },
+         error: function () {
+            Swal.fire({
+               icon: 'error',
+               title: 'Lỗi',
+               text: 'Có lỗi xảy ra khi gọi API lưu sinh viên.'
+            });
+         },
+         complete: function () {
+            $button.prop('disabled', false);
+         }
+      });
+   });
     // Reset mật khẩu
     $(document).on('click', '.reset-password-btn', function (e) {
       // e.preventDefault();
@@ -60,7 +141,7 @@ $(document).ready(function () {
       $('#delete_student_status').val(studentStatus);
    });
 
-   $('#confirmDeleteUserBtn').on('click', function () {
+   $('#confirmDeleteStudentBtn').on('click', function () {
       var id = $('#delete_student_id').val();
       var student_status = $('#delete_student_status').val();
 
@@ -71,7 +152,7 @@ $(document).ready(function () {
 
       $.ajax({
          type: "POST",
-         url: XC_URL + "/api/deletestudent",
+         url: "<?php echo XC_URL; ?>/api/deleteStudentAccount",
          data: {
             id: id,
             student_status: student_status
@@ -118,7 +199,7 @@ $(document).ready(function () {
 
       $.ajax({
          type: 'POST',
-         // url: XC_URL + '/api/insertStudens',
+         url: "<?php echo XC_URL; ?>/api/insertStudents",
          data: formData,
          processData: false,
          contentType: false,
@@ -176,7 +257,7 @@ $(document).ready(function () {
                   </h4>
                 </div>
 
-              <div>
+              <div class="d-flex gap-2">
                 <!-- <a href="<?php echo XC_URL;?>/admin/students/add" class="btn btn-success rounded-pill px-4 shadow-sm d-flex align-items-center gap-2">
                     
                     <svg width="20" viewBox="0 0 24 24" fill="none"
@@ -193,6 +274,10 @@ $(document).ready(function () {
                     <span>Thêm sinh viên</span>
 
                 </a> -->
+                <button type="button" class="btn btn-success rounded-pill px-4 shadow-sm d-flex align-items-center gap-2 btn-open-add-student" data-bs-toggle="modal" data-bs-target="#studentFormModal">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Thêm sinh viên</span>
+                </button>
                  <button type="button" class="btn btn-warning rounded-pill px-4 shadow-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#importStudentModal">
                     
                     <svg width="20" viewBox="0 0 24 24" fill="none"
@@ -237,6 +322,7 @@ $(document).ready(function () {
                           <td><?php echo $student->student_email; ?></td>
                            <td>
                               <div class="flex align-items-center list-student-action">
+                              <?php if(!empty($student->uid)): ?>
                               <a class="btn btn-sm btn-icon btn-secondary reset-password-btn" 
                                     data-bs-toggle="tooltip" 
                                     data-bs-placement="top" 
@@ -246,11 +332,25 @@ $(document).ready(function () {
                                         <i class="fa-solid fa-key"></i>
                                       </span>
                                   </a>
-                              <a class="btn btn-sm btn-icon btn-info" 
-                                    data-bs-toggle="tooltip" 
-                                    data-bs-placement="top" disable 
-                                    title="Detail" 
-                                    href="<?php echo XC_URL;?>/admin/students/detail/<?php echo $student->uid; ?>">
+                              <?php else: ?>
+                              <button type="button" class="btn btn-sm btn-success create-student-account-btn"
+                                 data-code="<?php echo htmlspecialchars($student->student_code, ENT_QUOTES, 'UTF-8'); ?>"
+                                 data-name="<?php echo htmlspecialchars($student->student_name, ENT_QUOTES, 'UTF-8'); ?>"
+                                 title="Cấp tài khoản"><i class="fa-solid fa-user-plus"></i></button>
+                              <?php endif; ?>
+                              <button type="button" class="btn btn-sm btn-icon btn-info student-detail-btn" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#studentDetailModal"
+                                    data-code="<?php echo htmlspecialchars($student->student_code, ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-name="<?php echo htmlspecialchars($student->student_name, ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-phone="<?php echo htmlspecialchars($student->student_phone, ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-email="<?php echo htmlspecialchars($student->student_email, ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-class="<?php echo htmlspecialchars($student->student_class, ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-birthday="<?php echo htmlspecialchars($student->student_birthday, ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-gender="<?php echo (int)$student->student_gender; ?>"
+                                    data-major="<?php echo (int)$student->student_major_id; ?>"
+                                    data-gpa="<?php echo htmlspecialchars($student->student_gpa, ENT_QUOTES, 'UTF-8'); ?>"
+                                    title="Xem chi tiết">
 
                                       <span class="btn-inner">
 
@@ -271,8 +371,8 @@ $(document).ready(function () {
 
                                       </span>
 
-                                  </a>
-                                 <a class="btn btn-sm btn-icon btn-warning" data-bs-toggle="tooltip" data-bs-placement="top" title="Edit" data-original-title="Edit" href="<?php echo XC_URL;?>/admin/students/edit/<?php echo $student->uid; ?>">
+                                  </button>
+                                 <button type="button" class="btn btn-sm btn-icon btn-warning btn-open-edit-student" data-bs-toggle="modal" data-bs-target="#studentFormModal" title="Chỉnh sửa" data-id="<?php echo (int)$student->id; ?>" data-code="<?php echo htmlspecialchars($student->student_code, ENT_QUOTES, 'UTF-8'); ?>" data-name="<?php echo htmlspecialchars($student->student_name, ENT_QUOTES, 'UTF-8'); ?>" data-phone="<?php echo htmlspecialchars($student->student_phone, ENT_QUOTES, 'UTF-8'); ?>" data-email="<?php echo htmlspecialchars($student->student_email, ENT_QUOTES, 'UTF-8'); ?>" data-class="<?php echo htmlspecialchars($student->student_class, ENT_QUOTES, 'UTF-8'); ?>" data-birthday="<?php echo htmlspecialchars($student->student_birthday, ENT_QUOTES, 'UTF-8'); ?>" data-gender="<?php echo (int)$student->student_gender; ?>" data-file="<?php echo htmlspecialchars($student->student_file, ENT_QUOTES, 'UTF-8'); ?>" data-major="<?php echo (int)$student->student_major_id; ?>" data-gpa="<?php echo htmlspecialchars($student->student_gpa, ENT_QUOTES, 'UTF-8'); ?>" data-rank="<?php echo htmlspecialchars($student->student_rank, ENT_QUOTES, 'UTF-8'); ?>" data-description="<?php echo htmlspecialchars($student->student_description, ENT_QUOTES, 'UTF-8'); ?>" data-register="<?php echo (int)$student->student_is_register; ?>">
                                     <span class="btn-inner">
                                        <svg class="icon-20" width="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                           <path d="M11.4925 2.78906H7.75349C4.67849 2.78906 2.75049 4.96606 2.75049 8.04806V16.3621C2.75049 19.4441 4.66949 21.6211 7.75349 21.6211H16.5775C19.6625 21.6211 21.5815 19.4441 21.5815 16.3621V12.3341" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -280,13 +380,13 @@ $(document).ready(function () {
                                           <path d="M15.1655 4.60254L19.7315 9.16854" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
                                        </svg>
                                     </span>
-                                 </a>
-                                 <a class="btn btn-sm btn-icon btn-info"  data-bs-toggle="tooltip" data-bs-placement="top" title="Phân quyền" href="<?php echo XC_URL;?>/admin/students/role/<?php echo $student->uid; ?>">
+                                 </button>
+                                 <?php if(!empty($student->uid)): ?><a class="btn btn-sm btn-icon btn-info"  data-bs-toggle="tooltip" data-bs-placement="top" title="Phân quyền" href="<?php echo XC_URL;?>/admin/students/role/<?php echo $student->uid; ?>">
                                     <span class="btn-inner">
                                        <i class="fa-solid fa-shield-halved" ></i>
                                     </span>
-                                 </a>
-                                 <a class="btn btn-sm btn-icon btn-danger btn-open-delete-student"
+                                 </a><?php endif; ?>
+                                 <?php if(!empty($student->uid)): ?><a class="btn btn-sm btn-icon btn-danger btn-open-delete-student"
                                     data-bs-toggle="modal"
                                     data-bs-target="#deleteUserModal"
                                     data-student-id="<?php echo $student->uid; ?>"
@@ -301,7 +401,7 @@ $(document).ready(function () {
                                           <path d="M17.4406 6.23973C16.6556 6.23973 15.9796 5.68473 15.8256 4.91573L15.5826 3.69973C15.4326 3.13873 14.9246 2.75073 14.3456 2.75073H10.1126C9.53358 2.75073 9.02558 3.13873 8.87558 3.69973L8.63258 4.91573C8.47858 5.68473 7.80258 6.23973 7.01758 6.23973" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
                                         </svg>
                                     </span>
-                                  </a>
+                                  </a><?php endif; ?>
                               </div>
                            </td>
                         </tr>
@@ -349,6 +449,93 @@ $(document).ready(function () {
       </div>
       <!-- END Modal xóa tài khoản -->
 
+      <!-- Modal thêm/sửa sinh viên -->
+      <div class="modal fade" id="studentFormModal" tabindex="-1" aria-labelledby="studentFormModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="studentFormModalLabel">Thêm sinh viên</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="studentForm">
+              <div class="modal-body">
+                <input type="hidden" name="id" id="studentFormId" value="">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label" for="student_form_student_code">Mã sinh viên <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="student_code" id="student_form_student_code" required>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label" for="student_form_student_name">Họ và tên <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="student_name" id="student_form_student_name" required>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label" for="student_form_student_phone">Điện thoại</label>
+                    <input type="text" class="form-control" name="student_phone" id="student_form_student_phone">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label" for="student_form_student_email">Email</label>
+                    <input type="email" class="form-control" name="student_email" id="student_form_student_email">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label" for="student_form_student_class">Lớp <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="student_class" id="student_form_student_class" required>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label" for="student_form_student_birthday">Ngày sinh <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control" name="student_birthday" id="student_form_student_birthday" required>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label" for="student_form_student_gender">Giới tính <span class="text-danger">*</span></label>
+                    <select class="form-select" name="student_gender" id="student_form_student_gender" required>
+                      <option value="0">Khác</option>
+                      <option value="1">Nam</option>
+                      <option value="2">Nữ</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label" for="student_form_student_major_id">Ngành học <span class="text-danger">*</span></label>
+                    <select class="form-select" name="student_major_id" id="student_form_student_major_id" required>
+                      <?php foreach(($job_categories ?? array()) as $category): ?>
+                        <option value="<?php echo (int)$category->id; ?>"><?php echo htmlspecialchars($category->job_category_name, ENT_QUOTES, 'UTF-8'); ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label" for="student_form_student_gpa">GPA</label>
+                    <input type="number" min="0" max="10" step="0.01" class="form-control" name="student_gpa" id="student_form_student_gpa">
+                  </div>
+                  <!-- <div class="col-md-3">
+                    <label class="form-label" for="student_form_student_is_register">Đã cấp tài khoản</label>
+                    <select class="form-select" name="student_is_register" id="student_form_student_is_register">
+                      <option value="0">Chưa</option>
+                      <option value="1">Đã cấp</option>
+                    </select>
+                  </div> -->
+                  <div class="col-md-6">
+                    <label class="form-label" for="student_form_student_rank">Xếp loại</label>
+                    <input type="text" class="form-control" name="student_rank" id="student_form_student_rank">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label" for="student_form_student_file">File / đường dẫn hồ sơ</label>
+                    <input type="text" class="form-control" name="student_file" id="student_form_student_file">
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label" for="student_form_student_description">Mô tả</label>
+                    <textarea class="form-control" name="student_description" id="student_form_student_description" rows="3"></textarea>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" id="studentFormSubmit" class="btn btn-primary">Lưu</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <!-- END Modal thêm/sửa sinh viên -->
+
       <!-- Modal import sinh viên -->
       <div class="modal fade" id="importStudentModal" tabindex="-1" aria-labelledby="importStudentModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -365,7 +552,7 @@ $(document).ready(function () {
                 </div>
                 <div class="mb-3">
                   <p class="mb-1">Tải file mẫu:</p>
-                  <a href="<?php echo XC_URL; ?>/uploads/student-import-template.csv" class="btn btn-sm btn-outline-primary" target="_blank">Tải file mẫu CSV</a>
+                  <a href="<?php echo XC_URL; ?>/uploads/student-import-template.xlsx" class="btn btn-sm btn-outline-primary" download>Tải file mẫu Excel kèm danh mục</a>
                   <p class="small text-muted mt-2">File mẫu hỗ trợ định dạng .csv và .xlsx. Cột bắt buộc: <strong>student_code</strong>, <strong>student_name</strong>.</p>
                 </div>
                
@@ -379,4 +566,20 @@ $(document).ready(function () {
         </div>
       </div>
       <!-- END Modal import sinh viên -->
+      <div class="modal fade" id="studentDetailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+          <div class="modal-header"><h5 class="modal-title">Chi tiết sinh viên</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body"><dl class="row mb-0">
+            <dt class="col-5">Họ tên</dt><dd class="col-7" id="detailStudentName"></dd>
+            <dt class="col-5">Mã sinh viên</dt><dd class="col-7" id="detailStudentCode"></dd>
+            <dt class="col-5">Điện thoại</dt><dd class="col-7" id="detailStudentPhone"></dd>
+            <dt class="col-5">Email</dt><dd class="col-7" id="detailStudentEmail"></dd>
+            <dt class="col-5">ID lớp</dt><dd class="col-7" id="detailStudentClass"></dd>
+            <dt class="col-5">Ngày sinh</dt><dd class="col-7" id="detailStudentBirthday"></dd>
+            <dt class="col-5">Giới tính</dt><dd class="col-7" id="detailStudentGender"></dd>
+            <dt class="col-5">ID ngành</dt><dd class="col-7" id="detailStudentMajor"></dd>
+            <dt class="col-5">GPA</dt><dd class="col-7" id="detailStudentGpa"></dd>
+          </dl></div>
+        </div></div>
+      </div>
      <?php require "footer.php"; ?>

@@ -1,5 +1,241 @@
 
 <?php require "header.php"; ?>
+<?php
+$featured_jobs = isset($featured_jobs) && is_array($featured_jobs) ? $featured_jobs : array();
+$province_jobs = isset($province_jobs) && is_array($province_jobs) ? $province_jobs : array();
+$linked_employers = isset($linked_employers) && is_array($linked_employers) ? $linked_employers : array();
+$recent_employers = isset($recent_employers) && is_array($recent_employers) ? $recent_employers : array();
+$urgent_jobs = isset($urgent_jobs) && is_array($urgent_jobs) ? $urgent_jobs : array();
+$job_provinces = isset($job_provinces) && is_array($job_provinces) ? $job_provinces : array();
+$job_categories_with_counts = isset($job_categories_with_counts) && is_array($job_categories_with_counts) ? $job_categories_with_counts : array();
+$featured_candidates = isset($featured_candidates) && is_array($featured_candidates) ? $featured_candidates : array();
+$home_featured_news = isset($home_featured_news) && is_array($home_featured_news) ? $home_featured_news : array();
+$featured_jobs_total_pages = isset($featured_jobs_total_pages) ? (int)$featured_jobs_total_pages : 1;
+$province_jobs_total_pages = isset($province_jobs_total_pages) ? (int)$province_jobs_total_pages : 1;
+$urgent_jobs_total_pages = isset($urgent_jobs_total_pages) ? (int)$urgent_jobs_total_pages : 1;
+
+function homeJobH($value){
+  return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+}
+
+function homeJobInitials($name){
+  $name = trim((string)$name);
+  if($name === ''){ return 'JOB'; }
+  $parts = preg_split('/\s+/', $name);
+  $letters = '';
+  foreach($parts as $part){
+    if($part !== ''){ $letters .= mb_substr($part, 0, 1, 'UTF-8'); }
+    if(mb_strlen($letters, 'UTF-8') >= 3){ break; }
+  }
+  return mb_strtoupper($letters ?: mb_substr($name, 0, 3, 'UTF-8'), 'UTF-8');
+}
+
+function homeEmployerLogoUrl($value){
+  $value = trim((string)$value);
+  if($value === ''){ return ''; }
+  if(preg_match('#^(https?:)?//#i', $value) || strpos($value, 'data:') === 0){ return $value; }
+  return XC_URL.'/'.ltrim($value, '/');
+}
+
+function homeEmployerCard($employer, $compact = false, $isClone = false){
+  $id = isset($employer->id) ? (int)$employer->id : 0;
+  $name = isset($employer->company_name) && $employer->company_name ? $employer->company_name : 'Nhà tuyển dụng';
+  $logo = homeEmployerLogoUrl($employer->logo_url ?? '');
+  $jobs = isset($employer->published_jobs) ? (int)$employer->published_jobs : 0;
+  $href = XC_URL.'/quan-ly-viec-lam.html?employer_id='.$id;
+  $initials = homeJobInitials($name);
+  $cloneAttribute = $isClone ? ' tabindex="-1"' : '';
+
+  if($compact){
+    echo '<a class="employer-logo-slide" href="'.homeJobH($href).'" title="'.homeJobH($name).'" aria-label="Việc làm tại '.homeJobH($name).'"'.$cloneAttribute.'>';
+    echo '<span class="employer-slide-logo"><span class="employer-slide-fallback">'.homeJobH($initials).'</span>';
+    if($logo !== ''){ echo '<img src="'.homeJobH($logo).'" alt="'.homeJobH($name).'" loading="lazy" onerror="this.style.display=\'none\'">'; }
+    echo '</span></a>';
+    return;
+  }
+
+  echo '<a class="employer-featured-card" href="'.homeJobH($href).'" aria-label="Xem việc làm tại '.homeJobH($name).'"'.$cloneAttribute.'>';
+  echo '<span class="employer-featured-logo"><span class="employer-featured-fallback">'.homeJobH($initials).'</span>';
+  if($logo !== ''){ echo '<img src="'.homeJobH($logo).'" alt="'.homeJobH($name).'" loading="lazy" onerror="this.style.display=\'none\'">'; }
+  echo '</span>';
+  echo '<span class="employer-featured-name" title="'.homeJobH($name).'">'.homeJobH($name).'</span>';
+  echo '<span class="employer-featured-count">'.number_format($jobs, 0, ',', '.').' việc làm đang tuyển</span>';
+  echo '</a>';
+}
+
+function homeEmployerSliderItems($employers, $minimumItems){
+  if(empty($employers)){ return array(); }
+  $items = array_values($employers);
+  while(count($items) < $minimumItems){
+    foreach($employers as $employer){
+      $items[] = $employer;
+      if(count($items) >= $minimumItems){ break; }
+    }
+  }
+  return $items;
+}
+
+function homeJobDateText($value){
+  if(!$value){ return 'Mới đăng'; }
+  $time = strtotime($value);
+  if(!$time){ return 'Mới đăng'; }
+  $seconds = max(0, time() - $time);
+  $minutes = floor($seconds / 60);
+  if($minutes < 1){ return 'Vừa xong'; }
+  if($minutes < 60){ return $minutes.' phút trước'; }
+  $hours = floor($minutes / 60);
+  if($hours < 24){ return $hours.' giờ trước'; }
+  $days = floor($hours / 24);
+  return $days.' ngày trước';
+}
+
+function homeJobDeadlineText($value){
+  if(!$value){ return 'Đang cập nhật'; }
+  $time = strtotime($value);
+  return $time ? date('d/m/Y', $time) : 'Đang cập nhật';
+}
+
+function homeJobIsUrgent($job){
+  $type = isset($job->job_post_type) ? $job->job_post_type : 'normal';
+  return in_array($type, array('urgent', 'hot'), true);
+}
+
+function homeJobTypeLabel($job){
+  $type = isset($job->job_post_type) ? $job->job_post_type : 'normal';
+  // if($type === 'hot'){ return 'HOT'; }
+  // if($type === 'urgent'){ return 'Tuyen gap'; }
+  return '';
+}
+
+function homeJobWorkTypeLabel($value){
+  $value = trim((string)$value);
+  $labels = array(
+    'full_time' => 'Full-time',
+    'part_time' => 'Part-time',
+    'remote' => 'Remote',
+    'hybrid' => 'Hybrid',
+    'internship' => 'Thực tập',
+    'contract' => 'Hợp đồng'
+  );
+  return isset($labels[$value]) ? $labels[$value] : ($value !== '' ? $value : 'Đang tuyển');
+}
+
+function homeJobExperienceText($value){
+  $value = trim((string)$value);
+  if($value === '' || $value === '0'){ return 'Chưa yêu cầu KN'; }
+  return $value.' năm KN';
+}
+
+function homeJobNormalize($value){
+  $value = mb_strtolower((string)$value, 'UTF-8');
+  $from = array('à','á','ạ','ả','ã','â','ầ','ấ','ậ','ẩ','ẫ','ă','ằ','ắ','ặ','ẳ','ẵ','è','é','ẹ','ẻ','ẽ','ê','ề','ế','ệ','ể','ễ','ì','í','ị','ỉ','ĩ','ò','ó','ọ','ỏ','õ','ô','ồ','ố','ộ','ổ','ỗ','ơ','ờ','ớ','ợ','ở','ỡ','ù','ú','ụ','ủ','ũ','ư','ừ','ứ','ự','ử','ữ','ỳ','ý','ỵ','ỷ','ỹ','đ');
+  $to = array('a','a','a','a','a','a','a','a','a','a','a','a','a','a','a','a','a','e','e','e','e','e','e','e','e','e','e','e','i','i','i','i','i','o','o','o','o','o','o','o','o','o','o','o','o','o','o','o','o','o','u','u','u','u','u','u','u','u','u','u','u','y','y','y','y','y','d');
+  return str_replace($from, $to, $value);
+}
+
+function homeJobSalaryKey($text){
+  $text = homeJobNormalize($text);
+  if(strpos($text, '1') !== false && strpos($text, '3') !== false) return '1-3';
+  if(strpos($text, '3') !== false && strpos($text, '5') !== false) return '3-5';
+  if(strpos($text, '5') !== false && strpos($text, '7') !== false) return '5-7';
+  if(strpos($text, '7') !== false && strpos($text, '10') !== false) return '7-10';
+  if(strpos($text, '10') !== false && strpos($text, '15') !== false) return '10-15';
+  if(strpos($text, '15') !== false && strpos($text, '20') !== false) return '15-20';
+  if(strpos($text, '20') !== false) return '20+';
+  return '';
+}
+
+function homeJobLocationKey($text){
+  $text = homeJobNormalize($text);
+  if(strpos($text, 'ha noi') !== false) return 'hanoi';
+  if(strpos($text, 'ho chi minh') !== false || strpos($text, 'hcm') !== false) return 'tphcm';
+  if(strpos($text, 'da nang') !== false) return 'danang';
+  if(strpos($text, 'binh duong') !== false) return 'binhduong';
+  if(strpos($text, 'can tho') !== false) return 'cantho';
+  return '';
+}
+
+function homeJobIndustryKey($text){
+  $text = homeJobNormalize($text);
+  if(strpos($text, 'logistics') !== false || strpos($text, 'kho') !== false) return 'logistics';
+  if(strpos($text, 'cong nghe') !== false || strpos($text, 'lap trinh') !== false || strpos($text, 'tester') !== false || strpos($text, 'php') !== false || strpos($text, 'java') !== false) return 'it';
+  if(strpos($text, 'nhan su') !== false || strpos($text, 'hr') !== false) return 'hr';
+  if(strpos($text, 'cham soc') !== false || strpos($text, 'dich vu') !== false) return 'service';
+  if(strpos($text, 'kinh doanh') !== false || strpos($text, 'ban hang') !== false) return 'sales';
+  return '';
+}
+
+function homeJobCard($job, $extraClass = '', $isLatest = false, $includeDeadline = false){
+  $companyName = $job->company_name ?: 'Nhà tuyển dụng';
+  $urgent = homeJobIsUrgent($job);
+  $postType = isset($job->job_post_type) ? $job->job_post_type : 'normal';
+  $salary = $job->salary_name ?: '';
+  $location = $job->province_name ?: '';
+  $industry = $job->job_category_name ?: '';
+  $typeLabel = homeJobTypeLabel($job);
+  $workType = homeJobWorkTypeLabel($job->work_type ?? '');
+  $titleClass = $postType === 'hot' ? ' job-title-hot' : ($postType === 'urgent' ? ' job-title-urgent' : '');
+  $classes = trim('job-card job-card-'.$postType.' '.$extraClass.($isLatest ? ' latest-job-card' : ''));
+  $href = general::getInstance()->permalink((int)($job->id ?? 0), 'job_post');
+  echo '<a href="'.homeJobH($href).'" class="'.$classes.'" data-salary="'.homeJobH(homeJobSalaryKey($salary)).'" data-location="'.homeJobH(homeJobLocationKey($location)).'" data-experience="'.homeJobH($job->experience_years).'" data-industry="'.homeJobH(homeJobIndustryKey($industry.' '.$job->title)).'">';
+  // if($isLatest){ echo '<span class="job-new-label">new</span>'; }
+  echo '<div class="job-card-header">';
+  echo '<div class="company-logo" style="background:#eef6ff;color:#0d4e96">'.homeJobH(homeJobInitials($companyName)).'</div>';
+  echo '<div><div class="job-title'.$titleClass.'">'.homeJobH($job->title).'</div><div class="company-name"><i class="ti ti-building"></i> '.homeJobH($companyName).'</div></div>';
+  echo '</div>';
+  echo '<div class="job-card-tags">';
+  echo '<span class="tag tag-salary">'.homeJobH($salary).'</span>';
+  echo '<span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> '.homeJobH($location).'</span>';
+  echo '<span class="tag tag-type">'.homeJobH($workType).'</span>';
+  echo '<span class="tag tag-experience">'.homeJobH(homeJobExperienceText($job->experience_years ?? '')).'</span>';
+  if($isLatest || $includeDeadline){ echo '<span class="tag tag-deadline"><i class="ti ti-calendar-event" style="font-size:10px"></i> Hạn nộp: '.homeJobH(homeJobDeadlineText($job->deadline ?? '')).'</span>'; }
+  echo '</div>';
+  echo '<div class="job-card-footer">';
+  echo '<span class="job-date"><i class="ti ti-clock"></i> '.homeJobH(homeJobDateText($job->published_at ?: $job->created_at)).'</span>';
+  // if($urgent){ echo '<span class="urgent-badge">'.homeJobH($typeLabel ?: 'GẤP').'</span>'; }
+  echo '</div></a>';
+}
+
+function homeCandidateAvatarUrl($value){
+  $value = trim((string)$value);
+  if($value === ''){ return ''; }
+  if(preg_match('#^(https?:)?//#i', $value) || strpos($value, 'data:') === 0){ return $value; }
+  return XC_URL.'/'.ltrim($value, '/');
+}
+
+function homeCandidateDateText($candidate){
+  $raw = $candidate->date_of_birth ?? $candidate->birthday ?? $candidate->dob ?? '';
+  $time = $raw ? strtotime((string)$raw) : false;
+  return $time ? date('d/m/Y', $time) : '�ang cập nhật';
+}
+
+function homeCandidateMajorText($candidate){
+  return trim((string)($candidate->job_category_name ?? $candidate->desired_position ?? 'Ứng viên đang tìm việc')) ?: 'Ứng viên đang tìm việc';
+}
+
+function homeCandidateUrl($candidate){
+  return general::getInstance()->permalink((int)($candidate->id ?? 0), 'candidate_profile');
+}
+
+function homeNewsImageUrl($value){
+  $value = trim((string)$value);
+  if($value === ''){ return 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=900&h=520&fit=crop'; }
+  if(preg_match('#^(https?:)?//#i', $value) || strpos($value, 'data:') === 0){ return $value; }
+  return XC_URL.'/uploads/events/'.ltrim($value, '/');
+}
+
+function homeNewsExcerpt($news, $length = 120){
+  $text = trim(strip_tags((string)($news->event_description ?? '')));
+  if($text === ''){ $text = trim(strip_tags((string)($news->event_content ?? ''))); }
+  if($text === ''){ return 'Nội dung đang được cập nhật.'; }
+  return mb_strlen($text, 'UTF-8') > $length ? mb_substr($text, 0, $length, 'UTF-8').'...' : $text;
+}
+
+function homeNewsDateText($value){
+  $time = $value ? strtotime((string)$value) : false;
+  return $time ? date('d/m/Y', $time) : '�ang cập nhật';
+}
+?>
 
 <!-- HERO -->
 <style>
@@ -280,7 +516,7 @@
       </div>
     </div>
   </div>
-  <div class="hero-slider-dots" id="heroSliderDots" aria-label="Chọn slider"></div>
+  <div class="hero-slider-dots" id="heroSliderDots" aria-label="Điều hướng slider"></div>
 </section>
 
 <script>
@@ -347,6 +583,34 @@
 
     startAutoPlay();
   }());
+</script>
+<script>
+  (function(){
+    var btn = document.querySelector('.hero-slider .search-btn');
+    var input = document.querySelector('.hero-slider .search-input');
+    var label = document.getElementById('searchLocationLabel');
+    var provinceMap = <?php
+      $provinceMap = array();
+      foreach($job_provinces as $province){
+        $provinceMap[$province->province_name] = (int)$province->id;
+      }
+      echo json_encode($provinceMap, JSON_UNESCAPED_UNICODE);
+    ?>;
+    function goSearch(){
+      var params = new URLSearchParams();
+      var keyword = input ? input.value.trim() : '';
+      var provinceName = label ? label.textContent.trim() : '';
+      if(keyword){ params.set('keyword', keyword); }
+      if(provinceName && provinceMap[provinceName]){ params.set('province_id', provinceMap[provinceName]); }
+      window.location.href = '<?php echo XC_URL; ?>/quan-ly-viec-lam.html' + (params.toString() ? '?' + params.toString() : '');
+    }
+    if(btn){ btn.addEventListener('click', goSearch); }
+    if(input){
+      input.addEventListener('keydown', function(event){
+        if(event.key === 'Enter'){ event.preventDefault(); goSearch(); }
+      });
+    }
+  })();
 </script>
 
 <!-- INDUSTRY TABS -->
@@ -425,6 +689,46 @@
     color: #667085;
     text-align: center;
   }
+  .featured-slide-leave,
+  .province-slide-leave,
+  .urgent-slide-out-next,
+  .urgent-slide-out-prev {
+    opacity: 0;
+  }
+  .featured-slide-leave,
+  .province-slide-leave,
+  .urgent-slide-out-next {
+    transform: translateX(-28px);
+    transition: opacity .22s ease, transform .22s ease;
+  }
+  .urgent-slide-out-prev {
+    transform: translateX(28px);
+    transition: opacity .22s ease, transform .22s ease;
+  }
+  .featured-slide-enter,
+  .province-slide-enter,
+  .urgent-slide-in-next,
+  .urgent-slide-in-prev {
+    animation-duration: .36s;
+    animation-timing-function: cubic-bezier(.22,.61,.36,1);
+    animation-fill-mode: both;
+  }
+  .featured-slide-enter,
+  .province-slide-enter,
+  .urgent-slide-in-next {
+    animation-name: homeSlideInNext;
+  }
+  .urgent-slide-in-prev {
+    animation-name: homeSlideInPrev;
+  }
+  @keyframes homeSlideInNext {
+    from { opacity: 0; transform: translateX(28px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes homeSlideInPrev {
+    from { opacity: 0; transform: translateX(-28px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
   @media (max-width: 900px) {
     .featured-job-filters {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -436,329 +740,188 @@
     }
   }
 </style>
-<section class="section" style="background:#fff">
+<section class="section latest-jobs-section">
   <div class="section-inner">
     <div class="section-header">
-      <div class="section-title">Việc làm nổi bật hôm nay</div>
-      <a href="https://vieclam.vn" class="see-all">Xem tất cả <i class="ti ti-arrow-right"></i></a>
+      <div class="section-title">Việc làm mới nhất</div>
+      <a href="<?php echo XC_URL; ?>/quan-ly-viec-lam.html" class="see-all">Xem tất cả <i class="ti ti-arrow-right"></i></a>
     </div>
-    <div class="urgent-jobs-filter featured-filter-bar" aria-label="Bộ lọc việc làm nổi bật">
-      <div class="urgent-filter-select" id="featuredFilterSelect">
-        <button type="button" class="urgent-filter-toggle" id="featuredFilterToggle" aria-expanded="false" aria-haspopup="listbox">
+
+    <div class="urgent-jobs-filter" aria-label="Bộ lọc việc làm mới nhất">
+      <div class="urgent-filter-select" id="latestFilterSelect">
+        <button type="button" class="urgent-filter-toggle" id="latestFilterToggle" aria-expanded="false" aria-haspopup="listbox">
           <i class="ti ti-filter"></i>
           <span>Lọc theo:</span>
-          <strong id="featuredFilterLabel">Lọc theo</strong>
+          <strong id="latestFilterLabel">Lọc theo</strong>
           <i class="ti ti-chevron-down"></i>
         </button>
-        <div class="urgent-filter-menu" id="featuredFilterMenu" role="listbox" aria-label="Chọn loại bộ lọc việc làm nổi bật">
-          <button type="button" class="urgent-filter-option active" data-featured-filter-type="all" role="option" aria-selected="true">Lọc theo <i class="ti ti-check"></i></button>
-          <button type="button" class="urgent-filter-option" data-featured-filter-type="salary" role="option" aria-selected="false">Mức lương <i class="ti ti-check"></i></button>
-          <button type="button" class="urgent-filter-option" data-featured-filter-type="location" role="option" aria-selected="false">Địa điểm <i class="ti ti-check"></i></button>
-          <button type="button" class="urgent-filter-option" data-featured-filter-type="industry" role="option" aria-selected="false">Ngành nghề <i class="ti ti-check"></i></button>
-          <button type="button" class="urgent-filter-option" data-featured-filter-type="experience" role="option" aria-selected="false">Kinh nghiệm <i class="ti ti-check"></i></button>
+        <div class="urgent-filter-menu" id="latestFilterMenu" role="listbox" aria-label="Chọn loại bộ lọc">
+          <button type="button" class="urgent-filter-option active" data-filter-type="all" role="option" aria-selected="true">Lọc theo <i class="ti ti-check"></i></button>
+          <button type="button" class="urgent-filter-option" data-filter-type="location" role="option" aria-selected="false">Địa điểm <i class="ti ti-check"></i></button>
+          <button type="button" class="urgent-filter-option" data-filter-type="salary" role="option" aria-selected="false">Mức lương <i class="ti ti-check"></i></button>
+          <button type="button" class="urgent-filter-option" data-filter-type="experience" role="option" aria-selected="false">Kinh nghiệm <i class="ti ti-check"></i></button>
+          <button type="button" class="urgent-filter-option" data-filter-type="industry" role="option" aria-selected="false">Ngành nghề <i class="ti ti-check"></i></button>
         </div>
       </div>
-      <button type="button" class="urgent-filter-nav prev" id="featuredFilterPrev" aria-label="Cuộn bộ lọc sang trái"><i class="ti ti-chevron-left"></i></button>
-      <div class="urgent-filter-chips" id="featuredFilterChips">
+      <button type="button" class="urgent-filter-nav prev" id="latestFilterPrev" aria-label="Cuộn bộ lọc sang trái"><i class="ti ti-chevron-left"></i></button>
+      <div class="urgent-filter-chips" id="latestFilterChips">
         <button type="button" class="urgent-filter-chip active" data-filter-value="all">Tất cả</button>
       </div>
-      <button type="button" class="urgent-filter-nav next" id="featuredFilterNext" aria-label="Cuộn bộ lọc sang phải"><i class="ti ti-chevron-right"></i></button>
+      <button type="button" class="urgent-filter-nav next" id="latestFilterNext" aria-label="Cuộn bộ lọc sang phải"><i class="ti ti-chevron-right"></i></button>
       <label class="mobile-filter-value">
-        <i class="ti ti-cash" id="featuredMobileFilterIcon"></i>
-        <select id="featuredMobileFilterValue" aria-label="Giá trị lọc việc làm nổi bật"></select>
+        <i class="ti ti-map-pin" id="latestMobileFilterIcon"></i>
+        <select id="latestMobileFilterValue" aria-label="Giá trị lọc việc làm mới nhất"></select>
       </label>
     </div>
-    <div id="jobsSliderWrap" class="jobs-slider-wrap">
-      <div id="jobsTrack" class="jobs-track">
-        <div class="jobs-grid" id="jobsGrid">
 
-      <div class="job-card">
-        <div class="job-card-header">
-          <div class="company-logo" style="background:#fff3e0;color:#e65100">VIB</div>
-          <div>
-            <div class="job-title">Chuyên viên Tư vấn Tài chính Cá nhân</div>
-            <div class="company-name"><i class="ti ti-building"></i> VIB – Ngân hàng Quốc tế</div>
-          </div>
-        </div>
-        <div class="job-card-tags">
-          <span class="tag tag-salary">10 – 20 triệu</span>
-          <span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> Hà Nội</span>
-          <span class="tag tag-type">Full-time</span>
-        </div>
-        <div class="job-card-footer">
-          <span class="job-date"><i class="ti ti-clock"></i> 2 giờ trước</span>
-          <span class="hot-badge">HOT</span>
-        </div>
-      </div>
-<div class="job-card">
-        <div class="job-card-header">
-          <div class="company-logo" style="background:#fff3e0;color:#e65100">VIB</div>
-          <div>
-            <div class="job-title">Chuyên viên Tư vấn Tài chính Cá nhân</div>
-            <div class="company-name"><i class="ti ti-building"></i> VIB – Ngân hàng Quốc tế</div>
-          </div>
-        </div>
-        <div class="job-card-tags">
-          <span class="tag tag-salary">10 – 20 triệu</span>
-          <span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> Hà Nội</span>
-          <span class="tag tag-type">Full-time</span>
-        </div>
-        <div class="job-card-footer">
-          <span class="job-date"><i class="ti ti-clock"></i> 2 giờ trước</span>
-          <span class="hot-badge">HOT</span>
-        </div>
-      </div>
-      <div class="job-card">
-        <div class="job-card-header">
-          <div class="company-logo" style="background:#fff3e0;color:#e65100">VIB</div>
-          <div>
-            <div class="job-title">Chuyên viên Tư vấn Tài chính Cá nhân</div>
-            <div class="company-name"><i class="ti ti-building"></i> VIB – Ngân hàng Quốc tế</div>
-          </div>
-        </div>
-        <div class="job-card-tags">
-          <span class="tag tag-salary">10 – 20 triệu</span>
-          <span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> Hà Nội</span>
-          <span class="tag tag-type">Full-time</span>
-        </div>
-        <div class="job-card-footer">
-          <span class="job-date"><i class="ti ti-clock"></i> 2 giờ trước</span>
-          <span class="hot-badge">HOT</span>
-        </div>
-      </div>
-      <div class="job-card">
-        <div class="job-card-header">
-          <div class="company-logo" style="background:#fff3e0;color:#e65100">VIB</div>
-          <div>
-            <div class="job-title">Chuyên viên Tư vấn Tài chính Cá nhân</div>
-            <div class="company-name"><i class="ti ti-building"></i> VIB – Ngân hàng Quốc tế</div>
-          </div>
-        </div>
-        <div class="job-card-tags">
-          <span class="tag tag-salary">10 – 20 triệu</span>
-          <span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> Hà Nội</span>
-          <span class="tag tag-type">Full-time</span>
-        </div>
-        <div class="job-card-footer">
-          <span class="job-date"><i class="ti ti-clock"></i> 2 giờ trước</span>
-          <span class="hot-badge">HOT</span>
-        </div>
-      </div>
-      <div class="job-card">
-        <div class="job-card-header">
-          <div class="company-logo" style="background:#fff3e0;color:#e65100">VIB</div>
-          <div>
-            <div class="job-title">Chuyên viên Tư vấn Tài chính Cá nhân</div>
-            <div class="company-name"><i class="ti ti-building"></i> VIB – Ngân hàng Quốc tế</div>
-          </div>
-        </div>
-        <div class="job-card-tags">
-          <span class="tag tag-salary">10 – 20 triệu</span>
-          <span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> Hà Nội</span>
-          <span class="tag tag-type">Full-time</span>
-        </div>
-        <div class="job-card-footer">
-          <span class="job-date"><i class="ti ti-clock"></i> 2 giờ trước</span>
-          <span class="hot-badge">HOT</span>
-        </div>
-      </div>
-      <div class="job-card">
-        <div class="job-card-header">
-          <div class="company-logo" style="background:#fff3e0;color:#e65100">VIB</div>
-          <div>
-            <div class="job-title">Chuyên viên Tư vấn Tài chính Cá nhân</div>
-            <div class="company-name"><i class="ti ti-building"></i> VIB – Ngân hàng Quốc tế</div>
-          </div>
-        </div>
-        <div class="job-card-tags">
-          <span class="tag tag-salary">10 – 20 triệu</span>
-          <span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> Hà Nội</span>
-          <span class="tag tag-type">Full-time</span>
-        </div>
-        <div class="job-card-footer">
-          <span class="job-date"><i class="ti ti-clock"></i> 2 giờ trước</span>
-          <span class="hot-badge">HOT</span>
-        </div>
-      </div>
-      <div class="job-card">
-        <div class="job-card-header">
-          <div class="company-logo" style="background:#fff3e0;color:#e65100">VIB</div>
-          <div>
-            <div class="job-title">Chuyên viên Tư vấn Tài chính Cá nhân</div>
-            <div class="company-name"><i class="ti ti-building"></i> VIB – Ngân hàng Quốc tế</div>
-          </div>
-        </div>
-        <div class="job-card-tags">
-          <span class="tag tag-salary">10 – 20 triệu</span>
-          <span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> Hà Nội</span>
-          <span class="tag tag-type">Full-time</span>
-        </div>
-        <div class="job-card-footer">
-          <span class="job-date"><i class="ti ti-clock"></i> 2 giờ trước</span>
-          <span class="hot-badge">HOT</span>
-        </div>
-      </div>
-      <div class="job-card">
-        <div class="job-card-header">
-          <div class="company-logo" style="background:#fff3e0;color:#e65100">VIB</div>
-          <div>
-            <div class="job-title">Chuyên viên Tư vấn Tài chính Cá nhân</div>
-            <div class="company-name"><i class="ti ti-building"></i> VIB – Ngân hàng Quốc tế</div>
-          </div>
-        </div>
-        <div class="job-card-tags">
-          <span class="tag tag-salary">10 – 20 triệu</span>
-          <span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> Hà Nội</span>
-          <span class="tag tag-type">Full-time</span>
-        </div>
-        <div class="job-card-footer">
-          <span class="job-date"><i class="ti ti-clock"></i> 2 giờ trước</span>
-          <span class="hot-badge">HOT</span>
-        </div>
-      </div>
-      <div class="job-card">
-        <div class="job-card-header">
-          <div class="company-logo" style="background:#fff3e0;color:#e65100">VIB</div>
-          <div>
-            <div class="job-title">Chuyên viên Tư vấn Tài chính Cá nhân</div>
-            <div class="company-name"><i class="ti ti-building"></i> VIB – Ngân hàng Quốc tế</div>
-          </div>
-        </div>
-        <div class="job-card-tags">
-          <span class="tag tag-salary">10 – 20 triệu</span>
-          <span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> Hà Nội</span>
-          <span class="tag tag-type">Full-time</span>
-        </div>
-        <div class="job-card-footer">
-          <span class="job-date"><i class="ti ti-clock"></i> 2 giờ trước</span>
-          <span class="hot-badge">HOT</span>
-        </div>
-      </div>
-      <div class="job-card">
-        <div class="job-card-header">
-          <div class="company-logo" style="background:#fff3e0;color:#e65100">VIB</div>
-          <div>
-            <div class="job-title">Chuyên viên Tư vấn Tài chính Cá nhân</div>
-            <div class="company-name"><i class="ti ti-building"></i> VIB – Ngân hàng Quốc tế</div>
-          </div>
-        </div>
-        <div class="job-card-tags">
-          <span class="tag tag-salary">10 – 20 triệu</span>
-          <span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> Hà Nội</span>
-          <span class="tag tag-type">Full-time</span>
-        </div>
-        <div class="job-card-footer">
-          <span class="job-date"><i class="ti ti-clock"></i> 2 giờ trước</span>
-          <span class="hot-badge">HOT</span>
-        </div>
-      </div>
-      
-      <div class="job-card">
-        <div class="job-card-header">
-          <div class="company-logo" style="background:#e3f2fd;color:#1565c0">VPB</div>
-          <div>
-            <div class="job-title">Nhân Viên Kinh Doanh / Sales Banking</div>
-            <div class="company-name"><i class="ti ti-building"></i> VPBank</div>
-          </div>
-        </div>
-        <div class="job-card-tags">
-          <span class="tag tag-salary">8 – 15 triệu</span>
-          <span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> TP.HCM</span>
-          <span class="tag tag-type">Full-time</span>
-        </div>
-        <div class="job-card-footer">
-          <span class="job-date"><i class="ti ti-clock"></i> 3 giờ trước</span>
-        </div>
-      </div>
-
-      <div class="job-card">
-        <div class="job-card-header">
-          <div class="company-logo" style="background:#e8f5e9;color:#2e7d32">FPT</div>
-          <div>
-            <div class="job-title">Lập Trình Viên Java / ReactJS Senior</div>
-            <div class="company-name"><i class="ti ti-building"></i> FPT Software</div>
-          </div>
-        </div>
-        <div class="job-card-tags">
-          <span class="tag tag-salary">18 – 35 triệu</span>
-          <span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> Hà Nội</span>
-          <span class="tag tag-urgent">Tuyển gấp</span>
-        </div>
-        <div class="job-card-footer">
-          <span class="job-date"><i class="ti ti-clock"></i> 5 giờ trước</span>
-          <span class="hot-badge">HOT</span>
-        </div>
-      </div>
-
-      <div class="job-card">
-        <div class="job-card-header">
-          <div class="company-logo" style="background:#fce4ec;color:#c62828">MBB</div>
-          <div>
-            <div class="job-title">Chuyên viên Marketing Digital / Content</div>
-            <div class="company-name"><i class="ti ti-building"></i> MBBank</div>
-          </div>
-        </div>
-        <div class="job-card-tags">
-          <span class="tag tag-salary">12 – 22 triệu</span>
-          <span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> TP.HCM</span>
-          <span class="tag tag-type">Full-time</span>
-        </div>
-        <div class="job-card-footer">
-          <span class="job-date"><i class="ti ti-clock"></i> Hôm nay</span>
-        </div>
-      </div>
-
-      <div class="job-card">
-        <div class="job-card-header">
-          <div class="company-logo" style="background:#f3e5f5;color:#6a1b9a">VIN</div>
-          <div>
-            <div class="job-title">Nhân Viên Nhân Sự (HR) – C&B Specialist</div>
-            <div class="company-name"><i class="ti ti-building"></i> Vingroup</div>
-          </div>
-        </div>
-        <div class="job-card-tags">
-          <span class="tag tag-salary">10 – 18 triệu</span>
-          <span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> Hà Nội</span>
-          <span class="tag tag-type">Full-time</span>
-        </div>
-        <div class="job-card-footer">
-          <span class="job-date"><i class="ti ti-clock"></i> Hôm nay</span>
-          <span class="hot-badge">HOT</span>
-        </div>
-      </div>
-
-      <div class="job-card">
-        <div class="job-card-header">
-          <div class="company-logo" style="background:#e0f2f1;color:#00695c">SAM</div>
-          <div>
-            <div class="job-title">Kế toán Tổng hợp / General Accountant</div>
-            <div class="company-name"><i class="ti ti-building"></i> Samsung Vina</div>
-          </div>
-        </div>
-        <div class="job-card-tags">
-          <span class="tag tag-salary">9 – 14 triệu</span>
-          <span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> Bình Dương</span>
-          <span class="tag tag-type">Full-time</span>
-        </div>
-        <div class="job-card-footer">
-          <span class="job-date"><i class="ti ti-clock"></i> Hôm nay</span>
-          <span class="urgent-badge">GẤP</span>
-        </div>
-      </div>
-
-        </div>
-      </div>
+    <div class="jobs-grid" id="latestJobsGrid" data-total-pages="<?php echo (int)$featured_jobs_total_pages; ?>" data-server-pagination="true">
+      <?php foreach($featured_jobs as $job){ homeJobCard($job, '', true); } ?>
     </div>
-
-    <div class="jobs-pagination" id="jobsPagination" aria-label="Phân trang việc làm nổi bật">
-      <button type="button" class="jobs-nav jobs-nav-prev" id="jobsPrev" aria-label="Trang trước"><i class="ti ti-chevron-left"></i></button>
-      <div class="jobs-dots-wrap" id="jobsDots"></div>
-      
-      <button type="button" class="jobs-nav jobs-nav-next" id="jobsNext" aria-label="Trang sau"><i class="ti ti-chevron-right"></i></button>
+    <div class="latest-jobs-empty" id="latestJobsEmpty">Không có việc làm mới nhất phù hợp với bộ lọc đã chọn.</div>
+    <div class="jobs-pagination" id="latestJobsPagination" aria-label="Phân trang việc làm mới nhất">
+      <button type="button" class="jobs-nav jobs-nav-prev" id="latestJobsPrev" aria-label="Trang trước"><i class="ti ti-chevron-left"></i></button>
+      <div class="jobs-dots-wrap" id="latestJobsDots"></div>
+      <button type="button" class="jobs-nav jobs-nav-next" id="latestJobsNext" aria-label="Trang sau"><i class="ti ti-chevron-right"></i></button>
     </div>
-    <div class="featured-jobs-empty" id="featuredJobsEmpty">Không có việc làm nổi bật phù hợp với bộ lọc đã chọn.</div>
   </div>
 </section>
+
+<!-- VIỆC LÀM TẠI TỈNH -->
+<section class="section province-jobs-section">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-title">Việc làm tại tỉnh</div>
+      <a href="<?php echo XC_URL; ?>/quan-ly-viec-lam.html" class="see-all">Xem tất cả <i class="ti ti-arrow-right"></i></a>
+    </div>
+
+    <div class="province-jobs-layout">
+      <a href="<?php echo XC_URL; ?>/quan-ly-viec-lam.html" class="province-jobs-banner" aria-label="Khám phá việc làm tại tỉnh">
+        <span class="province-banner-orb orb-one"></span>
+        <span class="province-banner-orb orb-two"></span>
+        <i class="ti ti-map-2 province-banner-map"></i>
+        <div class="province-banner-content">
+          <span class="province-banner-kicker"><i class="ti ti-map-pin"></i> Cơ hội gần bạn</span>
+          <strong>Việc làm<br>tại tỉnh</strong>
+          <p>Kết nối ứng viên với các doanh nghiệp trên toàn quốc.</p>
+          <span class="province-banner-action">Khám phá ngay <i class="ti ti-arrow-right"></i></span>
+        </div>
+      </a>
+
+      <div class="province-jobs-content">
+        <div class="province-jobs-grid" id="provinceJobsGrid" data-total-pages="<?php echo (int)$province_jobs_total_pages; ?>">
+          <?php foreach($province_jobs as $job){ homeJobCard($job, 'province-job-card', true); } ?>
+        </div>
+        <div class="jobs-pagination province-jobs-pagination" id="provinceJobsPagination" aria-label="Phân trang việc làm tại tỉnh">
+          <button type="button" class="jobs-nav jobs-nav-prev" id="provinceJobsPrev" aria-label="Trang trước"><i class="ti ti-chevron-left"></i></button>
+          <div class="jobs-dots-wrap" id="provinceJobsDots"></div>
+          <button type="button" class="jobs-nav jobs-nav-next" id="provinceJobsNext" aria-label="Trang sau"><i class="ti ti-chevron-right"></i></button>
+        </div>
+        <div class="province-jobs-empty" id="provinceJobsEmpty">Chưa có việc làm theo tỉnh phù hợp.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var grid = document.getElementById('provinceJobsGrid');
+    var pagination = document.getElementById('provinceJobsPagination');
+    var dots = document.getElementById('provinceJobsDots');
+    var previous = document.getElementById('provinceJobsPrev');
+    var next = document.getElementById('provinceJobsNext');
+    var empty = document.getElementById('provinceJobsEmpty');
+
+    if (!grid) return;
+
+    var currentPage = 1;
+    var totalPages = parseInt(grid.getAttribute('data-total-pages'), 10) || 1;
+    var isLoading = false;
+
+    function setProvinceHtml(html) {
+      grid.classList.add('province-slide-leave');
+      window.setTimeout(function () {
+        grid.innerHTML = html;
+        grid.classList.remove('province-slide-leave');
+        grid.classList.add('province-slide-enter');
+        window.setTimeout(function () {
+          grid.classList.remove('province-slide-enter');
+        }, 360);
+      }, 220);
+    }
+
+    function visibleDotPages() {
+      if (totalPages <= 3) {
+        var allPages = [];
+        for (var page = 1; page <= totalPages; page++) allPages.push(page);
+        return allPages;
+      }
+      if (currentPage === 1) return [1, 2, 3];
+      if (currentPage === totalPages) return [totalPages - 2, totalPages - 1, totalPages];
+      return [currentPage - 1, currentPage, currentPage + 1];
+    }
+
+    function renderDots() {
+      if (!dots) return;
+      dots.innerHTML = '';
+      visibleDotPages().forEach(function (page) {
+        var dot = document.createElement('button');
+        dot.type = 'button';
+        dot.className = page === currentPage ? 'job-page-dot active' : 'job-page-dot';
+        dot.setAttribute('aria-label', 'Trang ' + page);
+        dot.setAttribute('aria-current', page === currentPage ? 'page' : 'false');
+        dot.addEventListener('click', function () {
+          if (page !== currentPage) loadProvinceJobs(page);
+        });
+        dots.appendChild(dot);
+      });
+    }
+
+    function updateControls() {
+      if (pagination) pagination.style.display = totalPages > 1 ? 'flex' : 'none';
+      if (previous) previous.disabled = currentPage <= 1 || isLoading;
+      if (next) next.disabled = currentPage >= totalPages || isLoading;
+      renderDots();
+    }
+
+    function loadProvinceJobs(page) {
+      if (isLoading) return;
+      isLoading = true;
+      updateControls();
+
+      fetch('<?php echo XC_URL; ?>/api/homeProvinceJobs?page=' + encodeURIComponent(page), {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      })
+        .then(function (response) { return response.json(); })
+        .then(function (result) {
+          if (!result || Number(result.status) !== 200) throw new Error('Không thể tải dữ liệu');
+          currentPage = parseInt(result.page, 10) || 1;
+          totalPages = parseInt(result.total_pages, 10) || 1;
+          setProvinceHtml(result.html || '');
+          if (empty) empty.style.display = result.html ? 'none' : 'block';
+        })
+        .catch(function () {
+          if (empty) empty.style.display = 'block';
+        })
+        .finally(function () {
+          isLoading = false;
+          updateControls();
+        });
+    }
+
+    if (previous) {
+      previous.addEventListener('click', function () {
+        if (currentPage > 1) loadProvinceJobs(currentPage - 1);
+      });
+    }
+    if (next) {
+      next.addEventListener('click', function () {
+        if (currentPage < totalPages) loadProvinceJobs(currentPage + 1);
+      });
+    }
+
+    updateControls();
+  })();
+</script>
 
 <!-- VIEC LAM TUYEN GAP -->
 <style>
@@ -1013,14 +1176,14 @@
     }
   }
 </style>
-<section class="section" style="background:#f4f7fb">
+<section class="section urgent-jobs-section">
   <div class="section-inner">
     <div class="section-header">
       <div class="section-title">Việc làm tuyển gấp</div>
-      <a href="https://vieclam.vn/viec-lam-tuyen-nhanh.html" class="see-all">Xem tất cả <i class="ti ti-arrow-right"></i></a>
+      <a href="<?php echo XC_URL; ?>/quan-ly-viec-lam.html?post_type=urgent" class="see-all">Xem tất cả <i class="ti ti-arrow-right"></i></a>
     </div>
 
-    <div class="urgent-jobs-filter" aria-label="Lọc việc làm tuyển gấp">
+    <div class="urgent-jobs-filter" aria-label="Bộ lọc việc làm tuyển gấp">
       <div class="urgent-filter-select" id="urgentFilterSelect">
         <button type="button" class="urgent-filter-toggle" id="urgentFilterToggle" aria-expanded="false" aria-haspopup="listbox">
           <i class="ti ti-filter"></i>
@@ -1047,115 +1210,8 @@
       </label>
     </div>
 
-    <div class="jobs-grid" id="urgentJobsGrid">
-      <div class="job-card urgent-job-card" data-salary="7-10" data-location="tphcm" data-experience="none" data-industry="sales">
-        <div class="job-card-header">
-          <div class="company-logo" style="background:#fff3e0;color:#e65100">MWG</div>
-          <div>
-            <div class="job-title">Nhân Viên Bán Hàng Đi Làm Ngay</div>
-            <div class="company-name"><i class="ti ti-building"></i> Thế Giới Di Động</div>
-          </div>
-        </div>
-        <div class="job-card-tags">
-          <span class="tag tag-salary">7 - 10 triệu</span>
-          <span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> TP.HCM</span>
-          <span class="tag tag-urgent">Tuyển gấp</span>
-        </div>
-        <div class="job-card-footer">
-          <span class="job-date"><i class="ti ti-clock"></i> Hôm nay</span>
-          <span class="urgent-badge">GẤP</span>
-        </div>
-      </div>
-      <div class="job-card urgent-job-card" data-salary="10-15" data-location="hanoi" data-experience="1-2" data-industry="logistics">
-        <div class="job-card-header">
-          <div class="company-logo" style="background:#e3f2fd;color:#1565c0">GHTK</div>
-          <div>
-            <div class="job-title">Điều Phối Kho Vận / Logistics</div>
-            <div class="company-name"><i class="ti ti-building"></i> Giao Hàng Tiết Kiệm</div>
-          </div>
-        </div>
-        <div class="job-card-tags">
-          <span class="tag tag-salary">10 - 15 triệu</span>
-          <span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> Hà Nội</span>
-          <span class="tag tag-urgent">Tuyển gấp</span>
-        </div>
-        <div class="job-card-footer">
-          <span class="job-date"><i class="ti ti-clock"></i> 1 giờ trước</span>
-          <span class="urgent-badge">GẤP</span>
-        </div>
-      </div>
-      <div class="job-card urgent-job-card" data-salary="15-20" data-location="danang" data-experience="3-5" data-industry="it">
-        <div class="job-card-header">
-          <div class="company-logo" style="background:#e8f5e9;color:#2e7d32">FPT</div>
-          <div>
-            <div class="job-title">Tester Automation Tuyển Gấp</div>
-            <div class="company-name"><i class="ti ti-building"></i> FPT Software</div>
-          </div>
-        </div>
-        <div class="job-card-tags">
-          <span class="tag tag-salary">15 - 20 triệu</span>
-          <span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> Đà Nẵng</span>
-          <span class="tag tag-urgent">Tuyển gấp</span>
-        </div>
-        <div class="job-card-footer">
-          <span class="job-date"><i class="ti ti-clock"></i> 2 giờ trước</span>
-          <span class="hot-badge">HOT</span>
-        </div>
-      </div>
-      <div class="job-card urgent-job-card" data-salary="5-7" data-location="cantho" data-experience="none" data-industry="service">
-        <div class="job-card-header">
-          <div class="company-logo" style="background:#fce4ec;color:#c62828">GS</div>
-          <div>
-            <div class="job-title">Nhân Viên Chăm Sóc Khách Hàng</div>
-            <div class="company-name"><i class="ti ti-building"></i> Golden Service</div>
-          </div>
-        </div>
-        <div class="job-card-tags">
-          <span class="tag tag-salary">5 - 7 triệu</span>
-          <span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> Cần Thơ</span>
-          <span class="tag tag-urgent">Tuyển gấp</span>
-        </div>
-        <div class="job-card-footer">
-          <span class="job-date"><i class="ti ti-clock"></i> Hôm nay</span>
-          <span class="urgent-badge">GẤP</span>
-        </div>
-      </div>
-      <div class="job-card urgent-job-card" data-salary="3-5" data-location="binhduong" data-experience="none" data-industry="sales">
-        <div class="job-card-header">
-          <div class="company-logo" style="background:#f3e5f5;color:#6a1b9a">CF</div>
-          <div>
-            <div class="job-title">Thu Ngân Cửa Hàng Ca Xoay</div>
-            <div class="company-name"><i class="ti ti-building"></i> City Food</div>
-          </div>
-        </div>
-        <div class="job-card-tags">
-          <span class="tag tag-salary">3 - 5 triệu</span>
-          <span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> Bình Dương</span>
-          <span class="tag tag-urgent">Tuyển gấp</span>
-        </div>
-        <div class="job-card-footer">
-          <span class="job-date"><i class="ti ti-clock"></i> Hôm nay</span>
-          <span class="urgent-badge">GẤP</span>
-        </div>
-      </div>
-      <div class="job-card urgent-job-card" data-salary="1-3" data-location="hanoi" data-experience="none" data-industry="hr">
-        <div class="job-card-header">
-          <div class="company-logo" style="background:#e0f2f1;color:#00695c">PT</div>
-          <div>
-            <div class="job-title">Thực Tập Sinh Tuyển Dụng Part-time</div>
-            <div class="company-name"><i class="ti ti-building"></i> People Talent</div>
-          </div>
-        </div>
-        <div class="job-card-tags">
-          <span class="tag tag-salary">1 - 3 triệu</span>
-          <span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> Hà Nội</span>
-          <span class="tag tag-urgent">Tuyển gấp</span>
-        </div>
-        <div class="job-card-footer">
-          <span class="job-date"><i class="ti ti-clock"></i> 3 giờ trước</span>
-          <span class="urgent-badge">GẤP</span>
-        </div>
-      </div>
+    <div class="jobs-grid" id="urgentJobsGrid" data-total-pages="<?php echo (int)$urgent_jobs_total_pages; ?>" data-server-pagination="true">
+      <?php foreach($urgent_jobs as $job){ homeJobCard($job, 'urgent-job-card', false, true); } ?>
     </div>
     <div class="urgent-jobs-empty" id="urgentJobsEmpty">Không có việc làm tuyển gấp phù hợp với bộ lọc đã chọn.</div>
     <div class="jobs-pagination" id="urgentJobsPagination" aria-label="Phân trang việc làm tuyển gấp">
@@ -1168,76 +1224,50 @@
 
 <script>
   (function () {
-    var featuredGrid = document.getElementById('jobsGrid');
-    var featuredEmpty = document.getElementById('featuredJobsEmpty');
-    var featuredFilterSelect = document.getElementById('featuredFilterSelect');
-    var featuredFilterToggle = document.getElementById('featuredFilterToggle');
-    var featuredFilterLabel = document.getElementById('featuredFilterLabel');
-    var featuredFilterChips = document.getElementById('featuredFilterChips');
-    var featuredMobileFilterValue = document.getElementById('featuredMobileFilterValue');
-    var featuredMobileFilterIcon = document.getElementById('featuredMobileFilterIcon');
-    var featuredFilterPrev = document.getElementById('featuredFilterPrev');
-    var featuredFilterNext = document.getElementById('featuredFilterNext');
-    var featuredFilterOptions = Array.prototype.slice.call(document.querySelectorAll('[data-featured-filter-type]'));
+    var latestGrid = document.getElementById('latestJobsGrid');
+    var latestEmpty = document.getElementById('latestJobsEmpty');
+    var latestFilterSelect = document.getElementById('latestFilterSelect');
+    var latestFilterToggle = document.getElementById('latestFilterToggle');
+    var latestFilterLabel = document.getElementById('latestFilterLabel');
+    var latestFilterChips = document.getElementById('latestFilterChips');
+    var latestMobileFilterValue = document.getElementById('latestMobileFilterValue');
+    var latestMobileFilterIcon = document.getElementById('latestMobileFilterIcon');
+    var latestFilterPrev = document.getElementById('latestFilterPrev');
+    var latestFilterNext = document.getElementById('latestFilterNext');
+    var latestJobsPrev = document.getElementById('latestJobsPrev');
+    var latestJobsNext = document.getElementById('latestJobsNext');
+    var latestJobsDots = document.getElementById('latestJobsDots');
 
-    function normalizeText(value) {
-      return (value || '').toLowerCase();
-    }
-
-    function detectSalary(text) {
-      var lower = normalizeText(text);
-      if (lower.indexOf('1') > -1 && lower.indexOf('3') > -1 && lower.indexOf('triệu') > -1) return '1-3';
-      if (lower.indexOf('3') > -1 && lower.indexOf('5') > -1 && lower.indexOf('triệu') > -1) return '3-5';
-      if (lower.indexOf('5') > -1 && lower.indexOf('7') > -1 && lower.indexOf('triệu') > -1) return '5-7';
-      if (lower.indexOf('7') > -1 && lower.indexOf('10') > -1 && lower.indexOf('triệu') > -1) return '7-10';
-      if (lower.indexOf('10') > -1 && lower.indexOf('15') > -1 && lower.indexOf('triệu') > -1) return '10-15';
-      if (lower.indexOf('15') > -1 && lower.indexOf('20') > -1 && lower.indexOf('triệu') > -1) return '15-20';
-      if (lower.indexOf('20') > -1 || lower.indexOf('35') > -1 || lower.indexOf('22') > -1) return '20+';
-      return '';
-    }
-
-    function detectIndustry(text) {
-      var lower = normalizeText(text);
-      if (lower.indexOf('marketing') > -1 || lower.indexOf('content') > -1) return 'marketing';
-      if (lower.indexOf('java') > -1 || lower.indexOf('react') > -1 || lower.indexOf('fpt') > -1) return 'it';
-      if (lower.indexOf('nhân sự') > -1 || lower.indexOf('hr') > -1 || lower.indexOf('c&b') > -1) return 'hr';
-      if (lower.indexOf('kế toán') > -1 || lower.indexOf('accountant') > -1) return 'accounting';
-      if (lower.indexOf('kinh doanh') > -1 || lower.indexOf('sales') > -1 || lower.indexOf('bán') > -1) return 'sales';
-      if (lower.indexOf('tài chính') > -1 || lower.indexOf('ngân hàng') > -1 || lower.indexOf('bank') > -1 || lower.indexOf('vib') > -1 || lower.indexOf('vpb') > -1 || lower.indexOf('mbbank') > -1) return 'finance';
-      return '';
-    }
-
-    function detectLocation(text, index) {
-      var lower = normalizeText(text);
-      if (lower.indexOf('tp.hcm') > -1 || lower.indexOf('hcm') > -1) return 'tphcm';
-      if (lower.indexOf('bình dương') > -1 || lower.indexOf('bÃ¬nh dÆ°Æ¡ng') > -1) return 'binhduong';
-      if (lower.indexOf('đà nẵng') > -1 || lower.indexOf('Ä‘Ã  náºµng') > -1) return 'danang';
-      if (lower.indexOf('hà nội') > -1 || lower.indexOf('hÃ  ná»™i') > -1) return 'hanoi';
-      return index % 3 === 0 ? 'hanoi' : (index % 3 === 1 ? 'tphcm' : 'binhduong');
-    }
-
-    if (featuredGrid) {
-      var featuredCards = Array.prototype.slice.call(featuredGrid.querySelectorAll('.job-card'));
-      var expValues = ['1-2', '1-2', '3-5', 'none', '5+', '1-2'];
-      var featuredActiveFilterType = 'all';
-      var featuredActiveFilterValue = 'all';
-      var featuredFilterLabels = {
+    if (latestGrid) {
+      var latestActiveFilterType = 'all';
+      var latestActiveFilterValue = 'all';
+      var latestPage = 1;
+      var latestTotalPages = parseInt(latestGrid.getAttribute('data-total-pages'), 10) || 1;
+      var latestIsLoading = false;
+      var latestJobsPagination = document.getElementById('latestJobsPagination');
+      var latestFilterLabels = {
         all: 'Lọc theo',
-        salary: 'Mức lương',
         location: 'Địa điểm',
-        industry: 'Ngành nghề',
-        experience: 'Kinh nghiệm'
+        salary: 'Mức lương',
+        experience: 'Kinh nghiệm',
+        industry: 'Ngành nghề'
       };
-      var featuredFilterIcons = {
+      var latestFilterIcons = {
         all: 'ti ti-filter',
-        salary: 'ti ti-cash',
         location: 'ti ti-map-pin',
-        industry: 'ti ti-briefcase',
-        experience: 'ti ti-user-check'
+        salary: 'ti ti-cash',
+        experience: 'ti ti-user-check',
+        industry: 'ti ti-briefcase'
       };
-      var featuredChipSets = {
-        all: [
-          { value: 'all', label: 'Tất cả' }
+      var latestChipSets = {
+        all: [{ value: 'all', label: 'Tất cả' }],
+        location: [
+          { value: 'all', label: 'Tất cả' },
+          { value: 'hanoi', label: 'Hà Nội' },
+          { value: 'tphcm', label: 'TP.HCM' },
+          { value: 'danang', label: 'Đà Nẵng' },
+          { value: 'binhduong', label: 'Bình Dương' },
+          { value: 'cantho', label: 'Cần Thơ' }
         ],
         salary: [
           { value: 'all', label: 'Tất cả' },
@@ -1249,12 +1279,12 @@
           { value: '15-20', label: '15 - 20 triệu' },
           { value: '20+', label: 'Trên 20 triệu' }
         ],
-        location: [
+        experience: [
           { value: 'all', label: 'Tất cả' },
-          { value: 'hanoi', label: 'Hà Nội' },
-          { value: 'tphcm', label: 'TP.HCM' },
-          { value: 'binhduong', label: 'Bình Dương' },
-          { value: 'danang', label: 'Đà Nẵng' }
+          { value: 'none', label: 'Chưa có kinh nghiệm' },
+          { value: '1-2', label: '1 - 2 năm' },
+          { value: '3-5', label: '3 - 5 năm' },
+          { value: '5+', label: 'Trên 5 năm' }
         ],
         industry: [
           { value: 'all', label: 'Tất cả' },
@@ -1264,141 +1294,228 @@
           { value: 'marketing', label: 'Marketing' },
           { value: 'hr', label: 'Nhân sự' },
           { value: 'accounting', label: 'Kế toán' }
-        ],
-        experience: [
-          { value: 'all', label: 'Tất cả' },
-          { value: 'none', label: 'Chưa có kinh nghiệm' },
-          { value: '1-2', label: '1 - 2 năm' },
-          { value: '3-5', label: '3 - 5 năm' },
-          { value: '5+', label: 'Trên 5 năm' }
         ]
       };
 
-      featuredCards.forEach(function (card, index) {
-        var text = card.innerText || card.textContent || '';
-        card.setAttribute('data-featured-salary', detectSalary(text));
-        card.setAttribute('data-featured-location', detectLocation(text, index));
-        card.setAttribute('data-featured-industry', detectIndustry(text));
-        card.setAttribute('data-featured-experience', expValues[index % expValues.length]);
-      });
+      var latestScopedFilterOptions = Array.prototype.slice.call(
+        document.querySelectorAll('#latestFilterSelect [data-filter-type]')
+      );
 
-      function applyFeaturedFilters() {
-        var visibleCount = 0;
-
-        featuredCards.forEach(function (card) {
-          var isVisible = featuredActiveFilterType === 'all' || featuredActiveFilterValue === 'all' || card.getAttribute('data-featured-' + featuredActiveFilterType) === featuredActiveFilterValue;
-
-          card.style.display = isVisible ? '' : 'none';
-          if (isVisible) visibleCount++;
-        });
-
-        if (featuredEmpty) {
-          featuredEmpty.style.display = visibleCount ? 'none' : 'block';
+      function getLatestDotPages() {
+        if (latestTotalPages <= 3) {
+          var smallPages = [];
+          for (var i = 1; i <= latestTotalPages; i++) smallPages.push(i);
+          return smallPages;
         }
+        if (latestPage <= 1) return [1, 2, 3];
+        if (latestPage >= latestTotalPages) return [latestTotalPages - 2, latestTotalPages - 1, latestTotalPages];
+        return [latestPage - 1, latestPage, latestPage + 1];
       }
 
-      function renderFeaturedChips() {
-        if (!featuredFilterChips) return;
-        var items = featuredChipSets[featuredActiveFilterType] || [];
-        featuredFilterChips.innerHTML = '';
-        if (featuredMobileFilterValue) {
-          featuredMobileFilterValue.innerHTML = '';
+      function renderLatestPagination() {
+        if (!latestJobsDots) return;
+        while (latestJobsDots.firstChild) {
+          latestJobsDots.removeChild(latestJobsDots.firstChild);
         }
-        if (featuredMobileFilterIcon) {
-          featuredMobileFilterIcon.className = featuredFilterIcons[featuredActiveFilterType] || 'ti ti-filter';
+
+        getLatestDotPages().forEach(function (pageNumber) {
+          var dot = document.createElement('button');
+          dot.type = 'button';
+          dot.className = 'job-page-dot';
+          dot.setAttribute('aria-label', 'Trang ' + pageNumber);
+          dot.setAttribute('data-page', pageNumber);
+          dot.addEventListener('click', function () {
+            loadLatestJobs(parseInt(this.getAttribute('data-page'), 10), true);
+          });
+          latestJobsDots.appendChild(dot);
+        });
+        Array.prototype.slice.call(latestJobsDots.querySelectorAll('.job-page-dot')).forEach(function (dot) {
+          var isActive = parseInt(dot.getAttribute('data-page'), 10) === latestPage;
+          dot.classList.toggle('active', isActive);
+          dot.setAttribute('aria-current', isActive ? 'page' : 'false');
+        });
+      }
+
+      function updateLatestControls() {
+        if (latestJobsPagination) {
+          latestJobsPagination.style.display = latestTotalPages > 1 ? 'flex' : 'none';
+        }
+        if (latestJobsPrev) {
+          latestJobsPrev.disabled = latestPage <= 1 || latestIsLoading;
+        }
+        if (latestJobsNext) {
+          latestJobsNext.disabled = latestPage >= latestTotalPages || latestIsLoading;
+        }
+        renderLatestPagination();
+      }
+
+      function setLatestHtml(html) {
+        latestGrid.classList.add('featured-slide-leave');
+        window.setTimeout(function () {
+          latestGrid.innerHTML = html;
+          latestGrid.classList.remove('featured-slide-leave');
+          latestGrid.classList.add('featured-slide-enter');
+          window.setTimeout(function () {
+            latestGrid.classList.remove('featured-slide-enter');
+          }, 360);
+        }, 220);
+      }
+
+      function loadLatestJobs(targetPage, manual) {
+        if (latestIsLoading) return;
+        targetPage = Math.max(1, parseInt(targetPage, 10) || 1);
+        latestIsLoading = true;
+        updateLatestControls();
+        var url = '<?php echo XC_URL; ?>/api/homeFeaturedJobs?page=' + encodeURIComponent(targetPage) + '&filter_type=' + encodeURIComponent(latestActiveFilterType) + '&filter_value=' + encodeURIComponent(latestActiveFilterValue);
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+          .then(function (response) { return response.json(); })
+          .then(function (result) {
+            if (!result || Number(result.status) !== 200) return;
+            latestPage = parseInt(result.page, 10) || 1;
+            latestTotalPages = parseInt(result.total_pages, 10) || 1;
+            setLatestHtml(result.html || '');
+            if (latestEmpty) {
+              latestEmpty.style.display = result.html ? 'none' : 'block';
+            }
+          })
+          .catch(function () {
+            if (latestEmpty) latestEmpty.style.display = 'block';
+          })
+          .finally(function () {
+            latestIsLoading = false;
+            updateLatestControls();
+          });
+      }
+
+      function applyLatestFilters() {
+        latestPage = 1;
+        loadLatestJobs(1, true);
+      }
+
+      function renderLatestChips() {
+        if (!latestFilterChips) return;
+        var items = latestChipSets[latestActiveFilterType] || [];
+        latestFilterChips.innerHTML = '';
+        if (latestMobileFilterValue) {
+          latestMobileFilterValue.innerHTML = '';
+        }
+        if (latestMobileFilterIcon) {
+          latestMobileFilterIcon.className = latestFilterIcons[latestActiveFilterType] || 'ti ti-filter';
         }
 
         items.forEach(function (item) {
           var chip = document.createElement('button');
           chip.type = 'button';
-          chip.className = item.value === featuredActiveFilterValue ? 'urgent-filter-chip active' : 'urgent-filter-chip';
+          chip.className = item.value === latestActiveFilterValue ? 'urgent-filter-chip active' : 'urgent-filter-chip';
           chip.setAttribute('data-filter-value', item.value);
           chip.textContent = item.label;
           chip.addEventListener('click', function () {
-            featuredActiveFilterValue = item.value;
-            Array.prototype.slice.call(featuredFilterChips.querySelectorAll('.urgent-filter-chip')).forEach(function (currentChip) {
+            latestActiveFilterValue = item.value;
+            latestPage = 1;
+            Array.prototype.slice.call(latestFilterChips.querySelectorAll('.urgent-filter-chip')).forEach(function (currentChip) {
               currentChip.classList.toggle('active', currentChip === chip);
             });
-            applyFeaturedFilters();
+            applyLatestFilters();
           });
-          featuredFilterChips.appendChild(chip);
+          latestFilterChips.appendChild(chip);
 
-          if (featuredMobileFilterValue) {
+          if (latestMobileFilterValue) {
             var option = document.createElement('option');
             option.value = item.value;
             option.textContent = item.label;
-            option.selected = item.value === featuredActiveFilterValue;
-            featuredMobileFilterValue.appendChild(option);
+            option.selected = item.value === latestActiveFilterValue;
+            latestMobileFilterValue.appendChild(option);
           }
         });
 
-        featuredFilterChips.scrollLeft = 0;
+        latestFilterChips.scrollLeft = 0;
       }
 
-      if (featuredFilterToggle && featuredFilterSelect) {
-        featuredFilterToggle.addEventListener('click', function () {
-          var isOpen = featuredFilterSelect.classList.toggle('open');
-          featuredFilterToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      if (latestFilterToggle && latestFilterSelect) {
+        latestFilterToggle.addEventListener('click', function () {
+          var isOpen = latestFilterSelect.classList.toggle('open');
+          latestFilterToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
         });
       }
 
-      featuredFilterOptions.forEach(function (option) {
+      latestScopedFilterOptions.forEach(function (option) {
         option.addEventListener('click', function () {
-          featuredActiveFilterType = option.getAttribute('data-featured-filter-type');
-          featuredActiveFilterValue = 'all';
+          latestActiveFilterType = option.getAttribute('data-filter-type');
+          latestActiveFilterValue = 'all';
+          latestPage = 1;
 
-          if (featuredFilterLabel) {
-            featuredFilterLabel.textContent = featuredFilterLabels[featuredActiveFilterType] || '';
+          if (latestFilterLabel) {
+            latestFilterLabel.textContent = latestFilterLabels[latestActiveFilterType] || '';
           }
-          featuredFilterOptions.forEach(function (item) {
+          latestScopedFilterOptions.forEach(function (item) {
             var isActive = item === option;
             item.classList.toggle('active', isActive);
             item.setAttribute('aria-selected', isActive ? 'true' : 'false');
           });
-          if (featuredFilterSelect) {
-            featuredFilterSelect.classList.remove('open');
+          if (latestFilterSelect) {
+            latestFilterSelect.classList.remove('open');
           }
-          if (featuredFilterToggle) {
-            featuredFilterToggle.setAttribute('aria-expanded', 'false');
+          if (latestFilterToggle) {
+            latestFilterToggle.setAttribute('aria-expanded', 'false');
           }
 
-          renderFeaturedChips();
-          applyFeaturedFilters();
+          renderLatestChips();
+          applyLatestFilters();
         });
       });
 
       document.addEventListener('click', function (event) {
-        if (featuredFilterSelect && !featuredFilterSelect.contains(event.target)) {
-          featuredFilterSelect.classList.remove('open');
-          if (featuredFilterToggle) {
-            featuredFilterToggle.setAttribute('aria-expanded', 'false');
+        if (latestFilterSelect && !latestFilterSelect.contains(event.target)) {
+          latestFilterSelect.classList.remove('open');
+          if (latestFilterToggle) {
+            latestFilterToggle.setAttribute('aria-expanded', 'false');
           }
         }
       });
 
-      if (featuredFilterPrev && featuredFilterChips) {
-        featuredFilterPrev.addEventListener('click', function () {
-          featuredFilterChips.scrollBy({ left: -220, behavior: 'smooth' });
+      if (latestFilterPrev && latestFilterChips) {
+        latestFilterPrev.addEventListener('click', function () {
+          latestFilterChips.scrollBy({ left: -220, behavior: 'smooth' });
         });
       }
-      if (featuredFilterNext && featuredFilterChips) {
-        featuredFilterNext.addEventListener('click', function () {
-          featuredFilterChips.scrollBy({ left: 220, behavior: 'smooth' });
+      if (latestFilterNext && latestFilterChips) {
+        latestFilterNext.addEventListener('click', function () {
+          latestFilterChips.scrollBy({ left: 220, behavior: 'smooth' });
         });
       }
-      if (featuredMobileFilterValue) {
-        featuredMobileFilterValue.addEventListener('change', function () {
-          featuredActiveFilterValue = featuredMobileFilterValue.value;
-          Array.prototype.slice.call(featuredFilterChips.querySelectorAll('.urgent-filter-chip')).forEach(function (chip) {
-            chip.classList.toggle('active', chip.getAttribute('data-filter-value') === featuredActiveFilterValue);
+      if (latestMobileFilterValue) {
+        latestMobileFilterValue.addEventListener('change', function () {
+          latestActiveFilterValue = latestMobileFilterValue.value;
+          latestPage = 1;
+          Array.prototype.slice.call(latestFilterChips.querySelectorAll('.urgent-filter-chip')).forEach(function (chip) {
+            chip.classList.toggle('active', chip.getAttribute('data-filter-value') === latestActiveFilterValue);
           });
-          applyFeaturedFilters();
+          applyLatestFilters();
+        });
+      }
+      if (latestJobsPrev) {
+        latestJobsPrev.addEventListener('click', function () {
+          if (latestPage > 1) {
+            loadLatestJobs(latestPage - 1, true);
+          }
+        });
+      }
+      if (latestJobsNext) {
+        latestJobsNext.addEventListener('click', function () {
+          if (latestPage < latestTotalPages) {
+            loadLatestJobs(latestPage + 1, true);
+          }
         });
       }
 
-      renderFeaturedChips();
+      renderLatestChips();
+      updateLatestControls();
     }
+  })();
+</script>
 
+<script>
+  (function () {
     var chipsWrap = document.getElementById('urgentSalaryChips');
     var urgentGrid = document.getElementById('urgentJobsGrid');
     var emptyState = document.getElementById('urgentJobsEmpty');
@@ -1413,9 +1530,9 @@
     var urgentFilterLabel = document.getElementById('urgentFilterLabel');
     var urgentMobileFilterValue = document.getElementById('urgentMobileFilterValue');
     var urgentMobileFilterIcon = document.getElementById('urgentMobileFilterIcon');
-    var urgentFilterOptions = Array.prototype.slice.call(document.querySelectorAll('.urgent-filter-option'));
+    var urgentFilterOptions = Array.prototype.slice.call(document.querySelectorAll('#urgentFilterSelect .urgent-filter-option'));
 
-    if (!chipsWrap || !urgentGrid) return;
+    if (!chipsWrap || !urgentGrid || urgentGrid.getAttribute('data-server-pagination') === 'true') return;
 
     var chips = [];
     var cards = Array.prototype.slice.call(urgentGrid.querySelectorAll('.urgent-job-card'));
@@ -1438,9 +1555,7 @@
       industry: 'ti ti-briefcase'
     };
     var urgentChipSets = {
-      all: [
-        { value: 'all', label: 'Tất cả' }
-      ],
+      all: [{ value: 'all', label: 'Tất cả' }],
       location: [
         { value: 'all', label: 'Tất cả' },
         { value: 'hanoi', label: 'Hà Nội' },
@@ -1522,12 +1637,14 @@
 
     function renderUrgentPagination(totalPages) {
       if (!urgentJobsDots) return;
-      urgentJobsDots.innerHTML = '';
+      while (urgentJobsDots.firstChild) {
+        urgentJobsDots.removeChild(urgentJobsDots.firstChild);
+      }
 
       for (var i = 0; i < totalPages; i++) {
         var dot = document.createElement('button');
         dot.type = 'button';
-        dot.className = i === urgentPage ? 'sv-dot active' : 'sv-dot';
+        dot.className = 'job-page-dot';
         dot.setAttribute('aria-label', 'Trang ' + (i + 1));
         dot.setAttribute('data-page', i);
         dot.addEventListener('click', function () {
@@ -1536,6 +1653,11 @@
         });
         urgentJobsDots.appendChild(dot);
       }
+      Array.prototype.slice.call(urgentJobsDots.querySelectorAll('.job-page-dot')).forEach(function (dot, index) {
+        var isActive = index === urgentPage;
+        dot.classList.toggle('active', isActive);
+        dot.setAttribute('aria-current', isActive ? 'page' : 'false');
+      });
     }
 
     function renderUrgentJobs() {
@@ -1654,77 +1776,181 @@
   })();
 </script>
 
-<!-- VIỆC LÀM THEO NGHỀ NGHIỆP -->
-<section class="section" style="background:#f4f5f6">
-  <div class="section-inner">
-    <div class="section-header">
-      <div class="section-title">Việc làm theo nghề nghiệp</div>
-      <a href="https://vieclam.vn/viec-lam/viec-lam-theo-nganh-nghe" class="see-all">Xem thêm <i class="ti ti-arrow-right"></i></a>
-    </div>
-    <div class="cats-grid">
-      <a href="https://vieclam.vn/viec-lam-hanh-chinh-thu-ky-o1.html" class="cat-card">
-        <div class="cat-icon-wrap">📋</div>
-        <div class="cat-name">Hành chính - Thư ký</div>
-        <div class="cat-count">12.450 việc làm</div>
-      </a>
-      <a href="https://vieclam.vn/viec-lam-an-ninh-bao-ve-o2.html" class="cat-card">
-        <div class="cat-icon-wrap">🛡️</div>
-        <div class="cat-name">An ninh - Bảo vệ</div>
-        <div class="cat-count">4.200 việc làm</div>
-      </a>
-      <a href="https://vieclam.vn/viec-lam-thiet-ke-sang-tao-nghe-thuat-o3.html" class="cat-card">
-        <div class="cat-icon-wrap">🎨</div>
-        <div class="cat-name">Thiết kế - Sáng tạo</div>
-        <div class="cat-count">8.730 việc làm</div>
-      </a>
-      <a href="https://vieclam.vn/viec-lam-kien-truc-thiet-ke-noi-ngoai-that-o4.html" class="cat-card">
-        <div class="cat-icon-wrap">🏗️</div>
-        <div class="cat-name">Kiến trúc - Nội thất</div>
-        <div class="cat-count">7.320 việc làm</div>
-      </a>
-      <a href="https://vieclam.vn/viec-lam-khach-san-nha-hang-du-lich-o5.html" class="cat-card">
-        <div class="cat-icon-wrap">🍽️</div>
-        <div class="cat-name">Khách sạn - Nhà hàng</div>
-        <div class="cat-count">8.670 việc làm</div>
-      </a>
-      <a href="https://vieclam.vn/viec-lam-ban-si-ban-le-quan-ly-cua-hang-o6.html" class="cat-card">
-        <div class="cat-icon-wrap">🛒</div>
-        <div class="cat-name">Bán lẻ - Cửa hàng</div>
-        <div class="cat-count">15.400 việc làm</div>
-      </a>
-      <a href="#" class="cat-card">
-        <div class="cat-icon-wrap">💻</div>
-        <div class="cat-name">CNTT - Phần mềm</div>
-        <div class="cat-count">18.230 việc làm</div>
-      </a>
-      <a href="#" class="cat-card">
-        <div class="cat-icon-wrap">📣</div>
-        <div class="cat-name">Marketing - PR</div>
-        <div class="cat-count">11.540 việc làm</div>
-      </a>
-      <a href="#" class="cat-card">
-        <div class="cat-icon-wrap">💰</div>
-        <div class="cat-name">Kế toán - Kiểm toán</div>
-        <div class="cat-count">9.870 việc làm</div>
-      </a>
-      <a href="#" class="cat-card">
-        <div class="cat-icon-wrap">🔧</div>
-        <div class="cat-name">Kỹ thuật - Cơ khí</div>
-        <div class="cat-count">13.890 việc làm</div>
-      </a>
-      <a href="#" class="cat-card">
-        <div class="cat-icon-wrap">👥</div>
-        <div class="cat-name">Nhân sự - C&B</div>
-        <div class="cat-count">7.450 việc làm</div>
-      </a>
-      <a href="https://vieclam.vn/viec-lam/viec-lam-theo-nganh-nghe" class="cat-card" style="border-style:dashed;background:#fafafa">
-        <div class="cat-icon-wrap" style="background:#f5f5f5">➕</div>
-        <div class="cat-name" style="color:#0d4e96">Xem tất cả</div>
-        <div class="cat-count">30+ ngành nghề</div>
-      </a>
-    </div>
-  </div>
-</section>
+<script>
+  (function () {
+    var grid = document.getElementById('urgentJobsGrid');
+    var empty = document.getElementById('urgentJobsEmpty');
+    var pagination = document.getElementById('urgentJobsPagination');
+    var dots = document.getElementById('urgentJobsDots');
+    var previous = document.getElementById('urgentJobsPrev');
+    var next = document.getElementById('urgentJobsNext');
+    var filterSelect = document.getElementById('urgentFilterSelect');
+    var filterToggle = document.getElementById('urgentFilterToggle');
+    var filterLabel = document.getElementById('urgentFilterLabel');
+    var filterOptions = Array.prototype.slice.call(document.querySelectorAll('#urgentFilterSelect [data-filter-type]'));
+    var chips = document.getElementById('urgentSalaryChips');
+    var chipPrevious = document.getElementById('urgentSalaryPrev');
+    var chipNext = document.getElementById('urgentSalaryNext');
+    var mobileValue = document.getElementById('urgentMobileFilterValue');
+    var mobileIcon = document.getElementById('urgentMobileFilterIcon');
+
+    if (!grid) return;
+
+    var currentPage = 1;
+    var totalPages = parseInt(grid.getAttribute('data-total-pages'), 10) || 1;
+    var activeType = 'all';
+    var activeValue = 'all';
+    var isLoading = false;
+    var filterLabels = { all: 'Lọc theo', location: 'Địa điểm', salary: 'Mức lương', experience: 'Kinh nghiệm', industry: 'Ngành nghề' };
+    var filterIcons = { all: 'ti ti-filter', location: 'ti ti-map-pin', salary: 'ti ti-cash', experience: 'ti ti-user-check', industry: 'ti ti-briefcase' };
+    var filterValues = {
+      all: [{ value: 'all', label: 'Tất cả' }],
+      location: [{ value: 'all', label: 'Tất cả' }, { value: 'hanoi', label: 'Hà Nội' }, { value: 'tphcm', label: 'TP.HCM' }, { value: 'danang', label: 'Đà Nẵng' }, { value: 'binhduong', label: 'Bình Dương' }, { value: 'cantho', label: 'Cần Thơ' }],
+      salary: [{ value: 'all', label: 'Tất cả' }, { value: '1-3', label: '1 - 3 triệu' }, { value: '3-5', label: '3 - 5 triệu' }, { value: '5-7', label: '5 - 7 triệu' }, { value: '7-10', label: '7 - 10 triệu' }, { value: '10-15', label: '10 - 15 triệu' }, { value: '15-20', label: '15 - 20 triệu' }, { value: '20+', label: 'Trên 20 triệu' }],
+      experience: [{ value: 'all', label: 'Tất cả' }, { value: 'none', label: 'Chưa có kinh nghiệm' }, { value: '1-2', label: '1 - 2 năm' }, { value: '3-5', label: '3 - 5 năm' }, { value: '5+', label: 'Trên 5 năm' }],
+      industry: [{ value: 'all', label: 'Tất cả' }, { value: 'finance', label: 'Tài chính - Ngân hàng' }, { value: 'sales', label: 'Bán hàng - Kinh doanh' }, { value: 'it', label: 'CNTT - Phần mềm' }, { value: 'marketing', label: 'Marketing' }, { value: 'hr', label: 'Nhân sự' }, { value: 'accounting', label: 'Kế toán' }]
+    };
+
+    function dotPages() {
+      if (totalPages <= 3) {
+        var pages = [];
+        for (var page = 1; page <= totalPages; page++) pages.push(page);
+        return pages;
+      }
+      if (currentPage <= 1) return [1, 2, 3];
+      if (currentPage >= totalPages) return [totalPages - 2, totalPages - 1, totalPages];
+      return [currentPage - 1, currentPage, currentPage + 1];
+    }
+
+    function renderPagination() {
+      if (pagination) pagination.style.display = totalPages > 1 ? 'flex' : 'none';
+      if (previous) previous.disabled = currentPage <= 1 || isLoading;
+      if (next) next.disabled = currentPage >= totalPages || isLoading;
+      if (!dots) return;
+      dots.innerHTML = '';
+      dotPages().forEach(function (page) {
+        var dot = document.createElement('button');
+        dot.type = 'button';
+        dot.className = page === currentPage ? 'job-page-dot active' : 'job-page-dot';
+        dot.setAttribute('aria-label', 'Trang ' + page);
+        dot.setAttribute('aria-current', page === currentPage ? 'page' : 'false');
+        dot.addEventListener('click', function () {
+          if (page !== currentPage) loadUrgentJobs(page);
+        });
+        dots.appendChild(dot);
+      });
+    }
+
+    function renderFilterValues() {
+      if (!chips) return;
+      var values = filterValues[activeType] || filterValues.all;
+      chips.innerHTML = '';
+      if (mobileValue) mobileValue.innerHTML = '';
+      if (mobileIcon) mobileIcon.className = filterIcons[activeType] || filterIcons.all;
+
+      values.forEach(function (item) {
+        var chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = item.value === activeValue ? 'urgent-filter-chip active' : 'urgent-filter-chip';
+        chip.textContent = item.label;
+        chip.addEventListener('click', function () {
+          if (activeValue === item.value) return;
+          activeValue = item.value;
+          loadUrgentJobs(1);
+        });
+        chips.appendChild(chip);
+
+        if (mobileValue) {
+          var option = document.createElement('option');
+          option.value = item.value;
+          option.textContent = item.label;
+          option.selected = item.value === activeValue;
+          mobileValue.appendChild(option);
+        }
+      });
+    }
+
+    function setUrgentJobsHtml(html, direction) {
+      return new Promise(function (resolve) {
+        var outClass = direction === 'previous' ? 'urgent-slide-out-prev' : 'urgent-slide-out-next';
+        var inClass = direction === 'previous' ? 'urgent-slide-in-prev' : 'urgent-slide-in-next';
+        grid.classList.remove('urgent-slide-in-next', 'urgent-slide-in-prev');
+        grid.classList.add(outClass);
+        window.setTimeout(function () {
+          grid.innerHTML = html;
+          grid.classList.remove(outClass);
+          grid.classList.add(inClass);
+          window.setTimeout(function () {
+            grid.classList.remove(inClass);
+            resolve();
+          }, 350);
+        }, 220);
+      });
+    }
+
+    function loadUrgentJobs(page) {
+      if (isLoading) return;
+      var direction = page < currentPage ? 'previous' : 'next';
+      isLoading = true;
+      renderPagination();
+      var url = '<?php echo XC_URL; ?>/api/homeUrgentJobs?page=' + encodeURIComponent(page) + '&filter_type=' + encodeURIComponent(activeType) + '&filter_value=' + encodeURIComponent(activeValue);
+      fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function (response) { return response.json(); })
+        .then(function (result) {
+          if (!result || Number(result.status) !== 200) throw new Error('Không thể tải dữ liệu');
+          currentPage = parseInt(result.page, 10) || 1;
+          totalPages = parseInt(result.total_pages, 10) || 1;
+          if (empty) empty.style.display = result.html ? 'none' : 'block';
+          return setUrgentJobsHtml(result.html || '', direction);
+        })
+        .catch(function () {
+          if (empty) empty.style.display = 'block';
+        })
+        .finally(function () {
+          isLoading = false;
+          renderPagination();
+        });
+    }
+
+    if (filterToggle && filterSelect) {
+      filterToggle.addEventListener('click', function () {
+        var isOpen = filterSelect.classList.toggle('open');
+        filterToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+    }
+    filterOptions.forEach(function (option) {
+      option.addEventListener('click', function () {
+        activeType = option.getAttribute('data-filter-type') || 'all';
+        activeValue = 'all';
+        if (filterLabel) filterLabel.textContent = filterLabels[activeType] || filterLabels.all;
+        filterOptions.forEach(function (item) {
+          var isActive = item === option;
+          item.classList.toggle('active', isActive);
+          item.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+        if (filterSelect) filterSelect.classList.remove('open');
+        if (filterToggle) filterToggle.setAttribute('aria-expanded', 'false');
+        renderFilterValues();
+        loadUrgentJobs(1);
+      });
+    });
+    document.addEventListener('click', function (event) {
+      if (filterSelect && !filterSelect.contains(event.target)) {
+        filterSelect.classList.remove('open');
+        if (filterToggle) filterToggle.setAttribute('aria-expanded', 'false');
+      }
+    });
+    if (chipPrevious && chips) chipPrevious.addEventListener('click', function () { chips.scrollBy({ left: -220, behavior: 'smooth' }); });
+    if (chipNext && chips) chipNext.addEventListener('click', function () { chips.scrollBy({ left: 220, behavior: 'smooth' }); });
+    if (mobileValue) mobileValue.addEventListener('change', function () { activeValue = mobileValue.value; loadUrgentJobs(1); });
+    if (previous) previous.addEventListener('click', function () { if (currentPage > 1) loadUrgentJobs(currentPage - 1); });
+    if (next) next.addEventListener('click', function () { if (currentPage < totalPages) loadUrgentJobs(currentPage + 1); });
+
+    renderFilterValues();
+    renderPagination();
+  })();
+</script>
+
 
 <!-- SINH VIÊN NỔI BẬT -->
 <?php
@@ -1771,7 +1997,7 @@ $svPages = array_chunk($featuredStudents, 12);
 <section class="sv-section">
   <div class="section-inner">
     <div class="section-header">
-      <div class="section-title">Sinh viên nổi bật</div>
+      <div class="section-title">Ứng viên nổi bật</div>
       <a href="#" class="see-all">Xem tất cả <i class="ti ti-arrow-right"></i></a>
     </div>
 
@@ -1782,7 +2008,7 @@ $svPages = array_chunk($featuredStudents, 12);
           <?php foreach ($pageStudents as $s): ?>
           <div class="sv-card">
             <span class="sv-badge">Sinh viên</span>
-            <span class="sv-badge-xuat-sac">Xuất sắc</span>
+            <!-- <span class="sv-badge-xuat-sac">Xuất sắc</span> -->
             <div class="sv-avatar-wrap">
               <div class="sv-avatar-fallback" style="background:<?= htmlspecialchars($s['color'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($s['initials'], ENT_QUOTES, 'UTF-8') ?></div>
             </div>
@@ -1808,107 +2034,113 @@ $svPages = array_chunk($featuredStudents, 12);
   </div>
 </section>
 
-<!-- NHÀ TUYỂN DỤNG NỔI BẬT -->
-<section class="section" style="background:#fff">
+<!-- NHÀ TUYỂN DỤNG TIÊU BIỂU -->
+<?php $recentEmployerSlides = homeEmployerSliderItems($recent_employers, 12); ?>
+<section class="employers-showcase-section">
   <div class="section-inner">
     <div class="section-header">
-      <div class="section-title">Nhà tuyển dụng nổi bật</div>
-      <a href="#" class="see-all">Xem tất cả <i class="ti ti-arrow-right"></i></a>
+      <div class="section-title">Nhà tuyển dụng tiêu biểu</div>
+      <a href="<?php echo XC_URL; ?>/quan-ly-viec-lam.html" class="see-all">Xem thêm <i class="ti ti-arrow-right"></i></a>
     </div>
-    <div class="employer-logos">
-      <div class="employer-card"><div class="emp-text" style="color:#1565c0;font-size:15px;font-weight:800">VIB</div></div>
-      <div class="employer-card"><div class="emp-text" style="color:#1b5e20;font-size:15px;font-weight:800">VPBank</div></div>
-      <div class="employer-card"><div class="emp-text" style="color:#e65100;font-size:15px;font-weight:800">FPT</div></div>
-      <div class="employer-card"><div class="emp-text" style="color:#880e4f;font-size:15px;font-weight:800">Vingroup</div></div>
-      <div class="employer-card"><div class="emp-text" style="color:#01579b;font-size:15px;font-weight:800">Samsung</div></div>
-      <div class="employer-card"><div class="emp-text" style="color:#4a148c;font-size:15px;font-weight:800">Masan</div></div>
-      <div class="employer-card"><div class="emp-text" style="color:#b71c1c;font-size:15px;font-weight:800">MBBank</div></div>
-      <div class="employer-card"><div class="emp-text" style="color:#1a237e;font-size:15px;font-weight:800">BIDV</div></div>
-      <div class="employer-card"><div class="emp-text" style="color:#33691e;font-size:15px;font-weight:800">Viettel</div></div>
-      <div class="employer-card"><div class="emp-text" style="color:#f57f17;font-size:15px;font-weight:800">Shopee</div></div>
-      <div class="employer-card"><div class="emp-text" style="color:#006064;font-size:15px;font-weight:800">Grab</div></div>
-      <div class="employer-card"><div class="emp-text" style="color:#c62828;font-size:15px;font-weight:800">Lazada</div></div>
-    </div>
+
+    <?php if(!empty($linked_employers)): ?>
+      <div class="employer-featured-slider" aria-label="Nhà tuyển dụng đã liên kết">
+        <button type="button" class="employer-slider-nav employer-slider-prev" id="linkedEmployersPrev" aria-label="Nhà tuyển dụng trước"><i class="ti ti-chevron-left"></i></button>
+        <div class="employer-slider-viewport employer-featured-viewport" id="linkedEmployersViewport">
+          <div class="employer-slider-track employer-featured-track" id="linkedEmployersTrack">
+            <?php foreach($linked_employers as $employer){ homeEmployerCard($employer); } ?>
+          </div>
+        </div>
+        <button type="button" class="employer-slider-nav employer-slider-next" id="linkedEmployersNext" aria-label="Nhà tuyển dụng tiếp theo"><i class="ti ti-chevron-right"></i></button>
+      </div>
+    <?php else: ?>
+      <div class="employer-showcase-empty">Chưa có nhà tuyển dụng liên kết.</div>
+    <?php endif; ?>
+
+    <?php if(!empty($recentEmployerSlides)): ?>
+      <div class="employer-slider-viewport employer-logo-viewport" aria-label="Nhà tuyển dụng mới">
+        <div class="employer-slider-track employer-logo-track">
+          <?php foreach($recentEmployerSlides as $employer){ homeEmployerCard($employer, true); } ?>
+          <div class="employer-slider-copy" aria-hidden="true">
+            <?php foreach($recentEmployerSlides as $employer){ homeEmployerCard($employer, true, true); } ?>
+          </div>
+        </div>
+      </div>
+    <?php endif; ?>
   </div>
 </section>
 
-<!-- VIỆC LÀM THEO KHU VỰC -->
+<script>
+  (function () {
+    var viewport = document.getElementById('linkedEmployersViewport');
+    var track = document.getElementById('linkedEmployersTrack');
+    var previous = document.getElementById('linkedEmployersPrev');
+    var next = document.getElementById('linkedEmployersNext');
+
+    if (!viewport || !track || !previous || !next) return;
+
+    var currentPage = 0;
+
+    function getState() {
+      var cards = track.querySelectorAll('.employer-featured-card');
+      var firstCard = cards[0];
+      if (!firstCard) return { cards: 0, perPage: 1, totalPages: 1, cardWidth: 0 };
+      var gap = parseFloat(window.getComputedStyle(track).gap) || 0;
+      var cardWidth = firstCard.getBoundingClientRect().width + gap;
+      var perPage = Math.max(1, Math.floor((viewport.clientWidth + gap) / cardWidth));
+      return {
+        cards: cards.length,
+        perPage: perPage,
+        totalPages: Math.max(1, Math.ceil(cards.length / perPage)),
+        cardWidth: cardWidth
+      };
+    }
+
+    function render() {
+      var state = getState();
+      if (currentPage >= state.totalPages) currentPage = state.totalPages - 1;
+      track.style.transform = 'translateX(-' + (currentPage * state.perPage * state.cardWidth) + 'px)';
+      previous.disabled = currentPage <= 0;
+      next.disabled = currentPage >= state.totalPages - 1;
+    }
+
+    previous.addEventListener('click', function () {
+      if (currentPage > 0) {
+        currentPage--;
+        render();
+      }
+    });
+    next.addEventListener('click', function () {
+      var state = getState();
+      if (currentPage < state.totalPages - 1) {
+        currentPage++;
+        render();
+      }
+    });
+    window.addEventListener('resize', render);
+    render();
+  })();
+</script>
+<!-- VIỆC LÀM THEO NGHỀ NGHIỆP -->
 <section class="section" style="background:#f4f5f6">
   <div class="section-inner">
     <div class="section-header">
-      <div class="section-title">Việc làm theo khu vực</div>
-      <a href="https://vieclam.vn/viec-lam/viec-lam-theo-tinh-thanh" class="see-all">Xem thêm <i class="ti ti-arrow-right"></i></a>
+      <div class="section-title">Việc làm theo nghề nghiệp</div>
+      <a href="<?php echo XC_URL; ?>/quan-ly-viec-lam.html" class="see-all">Xem thêm <i class="ti ti-arrow-right"></i></a>
     </div>
-    <div class="city-grid">
-      <a href="https://vieclam.vn/viec-lam-toan-quoc-p136.html" class="city-card">
-        <div class="city-icon">🇻🇳</div>
-        <div class="city-name">Toàn quốc</div>
-        <div class="city-jobs">180.000+ việc</div>
-      </a>
-      <a href="https://vieclam.vn/viec-lam-ha-noi-p73.html" class="city-card">
-        <div class="city-icon">🏙️</div>
-        <div class="city-name">Hà Nội</div>
-        <div class="city-jobs">52.400 việc</div>
-      </a>
-      <a href="https://vieclam.vn/viec-lam-tp-hcm-p122.html" class="city-card">
-        <div class="city-icon">🌆</div>
-        <div class="city-name">TP.HCM</div>
-        <div class="city-jobs">68.700 việc</div>
-      </a>
-      <a href="#" class="city-card">
-        <div class="city-icon">🏖️</div>
-        <div class="city-name">Đà Nẵng</div>
-        <div class="city-jobs">12.300 việc</div>
-      </a>
-      <a href="https://vieclam.vn/viec-lam-binh-duong-p119.html" class="city-card">
-        <div class="city-icon">🏭</div>
-        <div class="city-name">Bình Dương</div>
-        <div class="city-jobs">18.500 việc</div>
-      </a>
-      <a href="#" class="city-card">
-        <div class="city-icon">🏗️</div>
-        <div class="city-name">Đồng Nai</div>
-        <div class="city-jobs">9.200 việc</div>
-      </a>
-      <a href="#" class="city-card">
-        <div class="city-icon">🌴</div>
-        <div class="city-name">Cần Thơ</div>
-        <div class="city-jobs">6.800 việc</div>
-      </a>
-      <a href="https://vieclam.vn/viec-lam-an-giang-p129.html" class="city-card">
-        <div class="city-icon">🌊</div>
-        <div class="city-name">An Giang</div>
-        <div class="city-jobs">2.100 việc</div>
-      </a>
-      <a href="https://vieclam.vn/viec-lam-ba-ria-vung-tau-p121.html" class="city-card">
-        <div class="city-icon">⛵</div>
-        <div class="city-name">Bà Rịa - Vũng Tàu</div>
-        <div class="city-jobs">5.400 việc</div>
-      </a>
-      <a href="#" class="city-card">
-        <div class="city-icon">🐉</div>
-        <div class="city-name">Hải Phòng</div>
-        <div class="city-jobs">8.900 việc</div>
-      </a>
-      <a href="#" class="city-card">
-        <div class="city-icon">🏔️</div>
-        <div class="city-name">Lâm Đồng</div>
-        <div class="city-jobs">3.200 việc</div>
-      </a>
-      <a href="#" class="city-card">
-        <div class="city-icon">🌺</div>
-        <div class="city-name">Khánh Hòa</div>
-        <div class="city-jobs">4.100 việc</div>
-      </a>
-      <a href="#" class="city-card">
-        <div class="city-icon">🏘️</div>
-        <div class="city-name">Long An</div>
-        <div class="city-jobs">5.700 việc</div>
-      </a>
-      <a href="https://vieclam.vn/viec-lam/viec-lam-theo-tinh-thanh" class="city-card" style="border-style:dashed;background:#fafafa">
-        <div class="city-icon">📍</div>
-        <div class="city-name" style="color:#0d4e96">Xem thêm</div>
-        <div class="city-jobs">49 tỉnh thành</div>
+    <div class="cats-grid">
+      <?php foreach($job_categories_with_counts as $category): ?>
+        <?php $categoryIcon = trim((string)($category->job_category_icon ?? '')) ?: 'ti ti-briefcase'; ?>
+        <a href="<?php echo XC_URL; ?>/quan-ly-viec-lam.html?job_category_id=<?php echo (int)$category->id; ?>" class="cat-card" aria-label="Xem việc làm ngành <?php echo homeJobH($category->job_category_name); ?>">
+          <div class="cat-icon-wrap"><i class="<?php echo homeJobH($categoryIcon); ?>"></i></div>
+          <div class="cat-name"><?php echo homeJobH($category->job_category_name); ?></div>
+          <div class="cat-count"><?php echo number_format((int)$category->published_jobs, 0, ',', '.'); ?> việc làm</div>
+        </a>
+      <?php endforeach; ?>
+      <a href="<?php echo XC_URL; ?>/quan-ly-viec-lam.html" class="cat-card" style="border-style:dashed;background:#fafafa">
+        <div class="cat-icon-wrap" style="background:#f5f5f5"><i class="ti ti-plus"></i></div>
+        <div class="cat-name" style="color:#0d4e96">Xem tất cả</div>
+        <div class="cat-count">Các ngành nghề</div>
       </a>
     </div>
   </div>
@@ -2076,7 +2308,7 @@ $svPages = array_chunk($featuredStudents, 12);
       <p>Đăng tin tuyển dụng miễn phí, tiếp cận hơn 5 triệu ứng viên tiềm năng. Quản lý hồ sơ ứng tuyển dễ dàng và hiệu quả.</p>
     </div>
     <div class="cta-stats">
-      <div class="cta-stat">
+      <!-- <div class="cta-stat">
         <div class="cta-stat-num">450K+</div>
         <div class="cta-stat-label">Nhà tuyển dụng</div>
       </div>
@@ -2087,7 +2319,7 @@ $svPages = array_chunk($featuredStudents, 12);
       <div class="cta-stat">
         <div class="cta-stat-num">1.2M+</div>
         <div class="cta-stat-label">Tin tuyển dụng</div>
-      </div>
+      </div> -->
     </div>
     <button class="btn-cta">Đăng tin tuyển dụng ngay →</button>
   </div>

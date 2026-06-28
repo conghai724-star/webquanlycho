@@ -78,7 +78,8 @@ class Database{
     public function query($sql){ 
         $this->result = mysqli_query($this->connection,$sql ); 
         if (!$this->result){ 
-            $output = "Database query failed: " . mysqli_error() . "<br /><br />"; 
+            $output = "Database query failed: " . mysqli_error($this->connection) . "<br /><br />";
+            $output .= "SQL: " . htmlspecialchars($sql, ENT_QUOTES, 'UTF-8') . "<br /><br />";
             die($output); 
         } 
         return $this->result; 

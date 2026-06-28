@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Project: thuvien.
  * File: tourController.php.
@@ -9,10 +9,243 @@
  */
 Class apiController extends baseController
 { 
+	private function ensureAdminPermissionTables()
+	{
+		global $db;
+		$db->query("CREATE TABLE IF NOT EXISTS hicrm_admin_menu_permissions (
+			id int(11) NOT NULL AUTO_INCREMENT,
+			permission_key varchar(100) NOT NULL,
+			permission_name varchar(255) NOT NULL,
+			parent_key varchar(100) DEFAULT NULL,
+			sort_order int(11) NOT NULL DEFAULT 0,
+			permission_status int(11) NOT NULL DEFAULT 1,
+			PRIMARY KEY (id),
+			UNIQUE KEY uniq_permission_key (permission_key)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+		$db->query("CREATE TABLE IF NOT EXISTS hicrm_user_group_permissions (
+			id int(11) NOT NULL AUTO_INCREMENT,
+			group_id int(11) NOT NULL,
+			permission_id int(11) NOT NULL,
+			PRIMARY KEY (id),
+			UNIQUE KEY uniq_group_permission (group_id, permission_id),
+			KEY idx_group_id (group_id),
+			KEY idx_permission_id (permission_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+	}
+
     public function index()
     {
 		
     }
+	private function homeApiJson($payload)
+	{
+		header('Content-Type: application/json; charset=utf-8');
+		echo json_encode($payload, JSON_UNESCAPED_UNICODE);
+		exit();
+	}
+	private function homeApiH($value)
+	{
+		return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+	}
+	private function homeApiNormalize($value)
+	{
+		$value = mb_strtolower((string)$value, 'UTF-8');
+		$from = array('à','á','ạ','ả','ã','â','ầ','ấ','ậ','ẩ','ẫ','ă','ằ','ắ','ặ','ẳ','ẵ','è','é','ẹ','ẻ','ẽ','ê','ề','ế','ệ','ể','ễ','ì','í','ị','ỉ','ĩ','ò','ó','ọ','ỏ','õ','ô','ồ','ố','ộ','ổ','ỗ','ơ','ờ','ớ','ợ','ở','ỡ','ù','ú','ụ','ủ','ũ','ư','ừ','ứ','ự','ử','ữ','ỳ','ý','ỵ','ỷ','ỹ','đ');
+		$to = array('a','a','a','a','a','a','a','a','a','a','a','a','a','a','a','a','a','e','e','e','e','e','e','e','e','e','e','e','i','i','i','i','i','o','o','o','o','o','o','o','o','o','o','o','o','o','o','o','o','o','u','u','u','u','u','u','u','u','u','u','u','y','y','y','y','y','d');
+		return str_replace($from, $to, $value);
+	}
+	private function homeApiSalaryKey($text)
+	{
+		$text = $this->homeApiNormalize($text);
+		if(strpos($text, '1') !== false && strpos($text, '3') !== false) return '1-3';
+		if(strpos($text, '3') !== false && strpos($text, '5') !== false) return '3-5';
+		if(strpos($text, '5') !== false && strpos($text, '7') !== false) return '5-7';
+		if(strpos($text, '7') !== false && strpos($text, '10') !== false) return '7-10';
+		if(strpos($text, '10') !== false && strpos($text, '15') !== false) return '10-15';
+		if(strpos($text, '15') !== false && strpos($text, '20') !== false) return '15-20';
+		if(strpos($text, '20') !== false) return '20+';
+		return '';
+	}
+	private function homeApiLocationKey($text)
+	{
+		$text = $this->homeApiNormalize($text);
+		if(strpos($text, 'ha noi') !== false) return 'hanoi';
+		if(strpos($text, 'ho chi minh') !== false || strpos($text, 'hcm') !== false) return 'tphcm';
+		if(strpos($text, 'da nang') !== false) return 'danang';
+		if(strpos($text, 'binh duong') !== false) return 'binhduong';
+		if(strpos($text, 'can tho') !== false) return 'cantho';
+		return '';
+	}
+	private function homeApiIndustryKey($text)
+	{
+		$text = $this->homeApiNormalize($text);
+		if(strpos($text, 'tai chinh') !== false || strpos($text, 'ngan hang') !== false) return 'finance';
+		if(strpos($text, 'marketing') !== false) return 'marketing';
+		if(strpos($text, 'ke toan') !== false) return 'accounting';
+		if(strpos($text, 'logistics') !== false || strpos($text, 'kho') !== false) return 'logistics';
+		if(strpos($text, 'cong nghe') !== false || strpos($text, 'lap trinh') !== false || strpos($text, 'tester') !== false || strpos($text, 'php') !== false || strpos($text, 'java') !== false) return 'it';
+		if(strpos($text, 'nhan su') !== false || strpos($text, 'hr') !== false) return 'hr';
+		if(strpos($text, 'cham soc') !== false || strpos($text, 'dich vu') !== false) return 'service';
+		if(strpos($text, 'kinh doanh') !== false || strpos($text, 'ban hang') !== false || strpos($text, 'sales') !== false) return 'sales';
+		return '';
+	}
+	private function homeApiWorkTypeLabel($value)
+	{
+		$labels = array('full_time' => 'Full-time', 'part_time' => 'Part-time', 'remote' => 'Remote', 'hybrid' => 'Hybrid', 'internship' => 'Thực tập', 'contract' => 'Hợp đồng');
+		$value = trim((string)$value);
+		return isset($labels[$value]) ? $labels[$value] : ($value !== '' ? $value : 'Đang tuyển');
+	}
+	private function homeApiExperienceText($value)
+	{
+		$value = trim((string)$value);
+		return ($value === '' || $value === '0') ? 'Chưa yêu cầu KN' : $value.' năm KN';
+	}
+	private function homeApiDateText($value)
+	{
+		if(!$value){ return 'Mới đăng'; }
+		$time = strtotime($value);
+		if(!$time){ return 'Mới đăng'; }
+		$seconds = max(0, time() - $time);
+		$minutes = floor($seconds / 60);
+		if($minutes < 1){ return 'Vừa xong'; }
+		if($minutes < 60){ return $minutes.'p trước'; }
+		$hours = floor($minutes / 60);
+		if($hours < 24){ return $hours.'h trước'; }
+		return floor($hours / 24).' ngày trước';
+	}
+	private function homeApiDeadlineText($value)
+	{
+		$time = $value ? strtotime($value) : false;
+		return $time ? date('d/m/Y', $time) : 'Đang cập nhật';
+	}
+	private function homeApiJobCard($job, $extraClass = '', $includeDeadline = false)
+	{
+		$title = isset($job->title) ? $job->title : 'Việc làm đang tuyển';
+		$company = !empty($job->company_name) ? $job->company_name : 'Nhà tuyển dụng';
+		$salary = !empty($job->salary_name) ? $job->salary_name : 'Thỏa thuận';
+		$location = !empty($job->province_name) ? $job->province_name : 'Toàn quốc';
+		$industry = !empty($job->job_category_name) ? $job->job_category_name : '';
+		$href = general::getInstance()->permalink((int)$job->id, 'job_post');
+		$workType = $this->homeApiWorkTypeLabel($job->work_type ?? '');
+		$postType = isset($job->job_post_type) ? $job->job_post_type : 'normal';
+		$titleClass = $postType === 'hot' ? ' job-title-hot' : ($postType === 'urgent' ? ' job-title-urgent' : '');
+		$classes = trim('job-card job-card-'.$postType.' '.$extraClass);
+		$initials = mb_strtoupper(mb_substr($company, 0, 1, 'UTF-8'), 'UTF-8');
+		$html = '<a href="'.$this->homeApiH($href).'" class="'.$this->homeApiH($classes).'" data-salary="'.$this->homeApiH($this->homeApiSalaryKey($salary)).'" data-location="'.$this->homeApiH($this->homeApiLocationKey($location)).'" data-experience="'.$this->homeApiH($job->experience_years ?? '').'" data-industry="'.$this->homeApiH($this->homeApiIndustryKey($industry.' '.$title)).'">';
+		$html .= '<div class="job-card-header"><div class="company-logo" style="background:#eef6ff;color:#0d4e96">'.$this->homeApiH($initials).'</div><div><div class="job-title'.$titleClass.'">'.$this->homeApiH($title).'</div><div class="company-name"><i class="ti ti-building"></i> '.$this->homeApiH($company).'</div></div></div>';
+		$html .= '<div class="job-card-tags"><span class="tag tag-salary">'.$this->homeApiH($salary).'</span><span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> '.$this->homeApiH($location).'</span><span class="tag tag-type">'.$this->homeApiH($workType).'</span><span class="tag tag-experience">'.$this->homeApiH($this->homeApiExperienceText($job->experience_years ?? '')).'</span>';
+		if($includeDeadline){ $html .= '<span class="tag tag-deadline"><i class="ti ti-calendar-event" style="font-size:10px"></i> Hạn nộp: '.$this->homeApiH($this->homeApiDeadlineText($job->deadline ?? '')).'</span>'; }
+		$html .= '</div><div class="job-card-footer"><span class="job-date"><i class="ti ti-clock"></i> '.$this->homeApiH($this->homeApiDateText($job->published_at ?? $job->created_at ?? '')).'</span></div></a>';
+		return $html;
+	}
+	private function homeApiFilterWhere($filterType, $filterValue)
+	{
+		global $db;
+		$filterType = trim((string)$filterType);
+		$filterValue = trim((string)$filterValue);
+		if($filterType === '' || $filterType === 'all' || $filterValue === '' || $filterValue === 'all'){
+			return '';
+		}
+		switch($filterType){
+			case 'location':
+				$map = array('hanoi' => 'ha noi', 'tphcm' => 'ho chi minh', 'danang' => 'da nang', 'binhduong' => 'binh duong', 'cantho' => 'can tho');
+				if(!isset($map[$filterValue])){ return ''; }
+				return " AND LOWER(CONVERT(pr.province_name USING utf8mb4)) LIKE '%".$db->escapestring($map[$filterValue])."%'";
+			case 'salary':
+				$map = array(
+					'1-3' => array(1, 3),
+					'3-5' => array(3, 5),
+					'5-7' => array(5, 7),
+					'7-10' => array(7, 10),
+					'10-15' => array(10, 15),
+					'15-20' => array(15, 20)
+				);
+				if($filterValue === '20+'){ return " AND LOWER(CONVERT(s.salary_name USING utf8mb4)) LIKE '%20%'"; }
+				if(!isset($map[$filterValue])){ return ''; }
+				return " AND LOWER(CONVERT(s.salary_name USING utf8mb4)) LIKE '%".$map[$filterValue][0]."%' AND LOWER(CONVERT(s.salary_name USING utf8mb4)) LIKE '%".$map[$filterValue][1]."%'";
+			case 'industry':
+				$map = array(
+					'finance' => array('tai chinh', 'ngan hang'),
+					'sales' => array('kinh doanh', 'ban hang', 'sales'),
+					'it' => array('cong nghe', 'lap trinh', 'php', 'java', 'tester'),
+					'marketing' => array('marketing'),
+					'hr' => array('nhan su', 'hr'),
+					'accounting' => array('ke toan'),
+					'logistics' => array('logistics', 'kho'),
+					'service' => array('cham soc', 'dich vu')
+				);
+				if(!isset($map[$filterValue])){ return ''; }
+				$likes = array();
+				foreach($map[$filterValue] as $keyword){
+					$kw = $db->escapestring($keyword);
+					$likes[] = "LOWER(CONVERT(CONCAT(COALESCE(c.job_category_name, ''), ' ', COALESCE(p.title, '')) USING utf8mb4)) LIKE '%".$kw."%'";
+				}
+				return " AND (".implode(' OR ', $likes).")";
+			case 'experience':
+				if($filterValue === 'none'){ return " AND (COALESCE(p.experience_years, '') = '' OR p.experience_years = '0')"; }
+				if($filterValue === '1-2'){ return " AND CAST(COALESCE(NULLIF(p.experience_years, ''), '0') AS UNSIGNED) BETWEEN 1 AND 2"; }
+				if($filterValue === '3-5'){ return " AND CAST(COALESCE(NULLIF(p.experience_years, ''), '0') AS UNSIGNED) BETWEEN 3 AND 5"; }
+				if($filterValue === '5+'){ return " AND CAST(COALESCE(NULLIF(p.experience_years, ''), '0') AS UNSIGNED) >= 5"; }
+				return '';
+		}
+		return '';
+	}
+	public function homeFeaturedJobs()
+	{
+		global $db;
+		$page = max(1, intval(isset($_GET['page']) ? $_GET['page'] : 1));
+		$perPage = 15;
+		$where = " WHERE p.status = 'published' AND COALESCE(p.published_at, p.created_at) >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+		$where .= $this->homeApiFilterWhere($_GET['filter_type'] ?? 'all', $_GET['filter_value'] ?? 'all');
+		$from = " FROM hicrm_job_posts p LEFT JOIN hicrm_employers e ON e.id = p.employer_id LEFT JOIN hicrm_job_categories c ON c.id = p.job_category_id LEFT JOIN hicrm_provinces pr ON pr.id = p.province_id LEFT JOIN hicrm_salary s ON s.id = p.salary_id";
+		$db->query("SELECT COUNT(p.id) AS total".$from.$where);
+		$total = intval($db->fetch_object(true)->total);
+		$totalPages = max(1, ceil($total / $perPage));
+		if($page > $totalPages){ $page = $totalPages; }
+		$offset = ($page - 1) * $perPage;
+		$db->query("SELECT p.*, e.company_name, e.logo_url, c.job_category_name, pr.province_name, s.salary_name".$from.$where." ORDER BY COALESCE(p.published_at, p.created_at) DESC, p.deadline IS NULL ASC, p.deadline ASC, p.id DESC LIMIT ".$offset.",".$perPage);
+		$jobs = $db->fetch_object();
+		$html = '';
+		foreach((array)$jobs as $job){ $html .= $this->homeApiJobCard($job, 'latest-job-card', true); }
+		$this->homeApiJson(array('status' => 200, 'page' => $page, 'total_pages' => $totalPages, 'html' => $html));
+	}
+	public function homeProvinceJobs()
+	{
+		global $db;
+		$page = max(1, intval(isset($_GET['page']) ? $_GET['page'] : 1));
+		$perPage = 6;
+		$where = " WHERE p.status = 'published' AND p.province_id IS NOT NULL AND p.province_id = 22";
+		$from = " FROM hicrm_job_posts p LEFT JOIN hicrm_employers e ON e.id = p.employer_id LEFT JOIN hicrm_job_categories c ON c.id = p.job_category_id LEFT JOIN hicrm_provinces pr ON pr.id = p.province_id LEFT JOIN hicrm_salary s ON s.id = p.salary_id";
+		$db->query("SELECT COUNT(p.id) AS total".$from.$where);
+		$total = intval($db->fetch_object(true)->total);
+		$totalPages = max(1, ceil($total / $perPage));
+		if($page > $totalPages){ $page = $totalPages; }
+		$offset = ($page - 1) * $perPage;
+		$db->query("SELECT p.*, e.company_name, e.logo_url, c.job_category_name, pr.province_name, s.salary_name".$from.$where." ORDER BY COALESCE(p.published_at, p.created_at) DESC, p.deadline IS NULL ASC, p.deadline ASC, p.id DESC LIMIT ".$offset.",".$perPage);
+		$jobs = $db->fetch_object();
+		$html = '';
+		foreach((array)$jobs as $job){ $html .= $this->homeApiJobCard($job, 'province-job-card latest-job-card', true); }
+		$this->homeApiJson(array('status' => 200, 'page' => $page, 'total_pages' => $totalPages, 'html' => $html));
+	}
+	public function homeUrgentJobs()
+	{
+		global $db;
+		$page = max(1, intval(isset($_GET['page']) ? $_GET['page'] : 1));
+		$perPage = 9;
+		$where = " WHERE p.status = 'published' AND p.job_post_type IN ('urgent', 'hot') AND e.is_linked_school = 1";
+		$where .= $this->homeApiFilterWhere($_GET['filter_type'] ?? 'all', $_GET['filter_value'] ?? 'all');
+		$from = " FROM hicrm_job_posts p INNER JOIN hicrm_employers e ON e.id = p.employer_id LEFT JOIN hicrm_job_categories c ON c.id = p.job_category_id LEFT JOIN hicrm_provinces pr ON pr.id = p.province_id LEFT JOIN hicrm_salary s ON s.id = p.salary_id";
+		$db->query("SELECT COUNT(p.id) AS total".$from.$where);
+		$total = intval($db->fetch_object(true)->total);
+		$totalPages = max(1, ceil($total / $perPage));
+		if($page > $totalPages){ $page = $totalPages; }
+		$offset = ($page - 1) * $perPage;
+		$db->query("SELECT p.*, e.company_name, e.logo_url, c.job_category_name, pr.province_name, s.salary_name".$from.$where." ORDER BY p.published_at DESC, p.deadline IS NULL ASC, p.deadline ASC, p.created_at DESC, p.id DESC LIMIT ".$offset.",".$perPage);
+		$jobs = $db->fetch_object();
+		$html = '';
+		foreach((array)$jobs as $job){ $html .= $this->homeApiJobCard($job, 'urgent-job-card', true); }
+		$this->homeApiJson(array('status' => 200, 'page' => $page, 'total_pages' => $totalPages, 'html' => $html));
+	}
 	public function getbalance()
 	{
 		$result = array();
@@ -123,10 +356,24 @@ Class apiController extends baseController
 		$full_name = $db->escapestring($_POST['full_name']);
 		$email = $db->escapestring($_POST['user_email']);
 		$password = md5($db->escapestring($_POST['user_password']));
-		$user_group = 1;
+		$user_group = isset($_POST['user_group']) ? intval($_POST['user_group']) : 0;
 		$method = $_POST['method'];
 		$user_created_date = date("d-m-Y");
+		$user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
 		$result = array();
+		if($user_group <= 0){
+			$result['status'] = 400;
+			$result['message'] = 'Vui lòng chọn nhóm quyền cho tài khoản';
+			echo json_encode($result);
+			return;
+		}
+		$db->query("SELECT id FROM hicrm_user_groups WHERE id = '".$user_group."' AND group_status NOT IN(99) LIMIT 1");
+		if(!$db->num_row()){
+			$result['status'] = 400;
+			$result['message'] = 'Nhóm quyền không tồn tại hoặc đã bị xóa';
+			echo json_encode($result);
+			return;
+		}
 		
 		if(isset($method) && $method == "add"){
 			if(empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)){
@@ -157,6 +404,38 @@ Class apiController extends baseController
 			$db->query("INSERT INTO hicrm_users(full_name, user_password, user_email, user_group) VALUES ('".$full_name."','".$password."','".$email."','".$user_group."')");
 			$result['status'] = 200;
 			$result['message'] = 'Thêm thành công';
+			$result['url'] = XC_URL."/admin/users";
+		}elseif(isset($method) && $method == "edit"){
+			if($user_id <= 0){
+				$result['status'] = 400;
+				$result['message'] = 'Tài khoản cần cập nhật không hợp lệ';
+				echo json_encode($result);
+				return;
+			}
+			if(empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)){
+				$result['status'] = 400;
+				$result['message'] = 'Email không hợp lệ';
+				echo json_encode($result);
+				return;
+			}
+			$db->query("SELECT id FROM hicrm_users WHERE user_email = '".$email."' AND id <> '".$user_id."' LIMIT 1");
+			if($db->num_row()){
+				$result['status'] = 400;
+				$result['message'] = 'Email đã tồn tại';
+				echo json_encode($result);
+				return;
+			}
+			$fields = array(
+				"full_name = '".$full_name."'",
+				"user_email = '".$email."'",
+				"user_group = '".$user_group."'"
+			);
+			if(trim((string)($_POST['user_password'] ?? '')) !== ''){
+				$fields[] = "user_password = '".$password."'";
+			}
+			$db->query("UPDATE hicrm_users SET ".implode(',', $fields)." WHERE id = '".$user_id."' LIMIT 1");
+			$result['status'] = 200;
+			$result['message'] = 'Cập nhật tài khoản thành công';
 			$result['url'] = XC_URL."/admin/users";
 		}
 		echo json_encode($result);
@@ -2895,7 +3174,13 @@ Class apiController extends baseController
 		$email = $db->escapestring($_POST["email"]);
 		$password = $db->escapestring($_POST["password"]);
 		$password = md5($password);
-		$db->query("SELECT * FROM hicrm_users WHERE (user_email = '".$email."' OR user_username = '".$email."') AND user_password = '".$password."' AND user_status = 1 LIMIT 1");
+		$db->query("SELECT u.*
+			FROM hicrm_users u
+			INNER JOIN hicrm_user_groups g ON u.user_group = g.id AND g.group_status NOT IN(99)
+			WHERE (u.user_email = '".$email."' OR u.user_username = '".$email."')
+				AND u.user_password = '".$password."'
+				AND u.user_status = 1
+			LIMIT 1");
 		
         if($db->num_row())
         {
@@ -5350,11 +5635,12 @@ public function addstudent()
 	// Thêm nhóm quyền mới
 	public function addGroup(){
 		global $db;
-
-		$group_name = $db->escapestring($_POST['group_name']);
+		$this->ensureAdminPermissionTables();
+		$group_id = isset($_POST['group_id']) ? intval($_POST['group_id']) : 0;
+		$group_name = $db->escapestring(trim($_POST['group_name'] ?? ''));
 		$group_class = $db->escapestring($_POST['group_class'] ?? '');
 		$group_icon = $db->escapestring($_POST['group_icon'] ?? '');
-		$user_role_id = $db->escapestring($_POST['user_role_id'] ?? '');
+		$permission_ids = isset($_POST['permission_ids']) && is_array($_POST['permission_ids']) ? $_POST['permission_ids'] : array();
 		$result = array();
 
 		if(empty($group_name)){
@@ -5365,7 +5651,7 @@ public function addstudent()
 		}
 
 		// Kiểm tra nhóm quyền đã tồn tại chưa
-		$db->query("SELECT id FROM hicrm_user_groups WHERE group_name = '".$group_name."' AND group_status != 99");
+		$db->query("SELECT id FROM hicrm_user_groups WHERE group_name = '".$group_name."' AND group_status != 99".($group_id > 0 ? " AND id <> '".$group_id."'" : ""));
 		if($db->num_row()){
 			$result['status'] = 400;
 			$result['message'] = 'Tên nhóm quyền đã tồn tại';
@@ -5373,18 +5659,79 @@ public function addstudent()
 			return;
 		}
 
-		// Thêm nhóm quyền mới
-		$db->query("INSERT INTO hicrm_user_groups( group_name, group_class, group_icon, group_status) VALUES ('".$group_name."','".$group_class."','".$group_icon."',1)");
+		$valid_permission_ids = array();
+		foreach($permission_ids as $permission_id){
+			$permission_id = intval($permission_id);
+			if($permission_id > 0){
+				$valid_permission_ids[] = $permission_id;
+			}
+		}
+		$valid_permission_ids = array_values(array_unique($valid_permission_ids));
 
-		if($db->affected_rows() > 0){
-			$result['status'] = 200;
-			$result['message'] = 'Thêm nhóm quyền thành công';
-			$result['url'] = XC_URL."/admin/groups";
+		if($group_id > 0){
+			$db->query("UPDATE hicrm_user_groups SET group_name = '".$group_name."', group_class = '".$group_class."', group_icon = '".$group_icon."' WHERE id = '".$group_id."' LIMIT 1");
 		}else{
-			$result['status'] = 500;
-			$result['message'] = 'Có lỗi xảy ra khi thêm nhóm quyền';
+			$db->query("INSERT INTO hicrm_user_groups(group_name, group_class, group_icon, group_status) VALUES ('".$group_name."','".$group_class."','".$group_icon."',1)");
+			$group_id = intval($db->insert_id());
 		}
 
+		$db->query("DELETE FROM hicrm_user_group_permissions WHERE group_id = '".$group_id."'");
+		foreach($valid_permission_ids as $permission_id){
+			$db->query("INSERT IGNORE INTO hicrm_user_group_permissions(group_id, permission_id) VALUES ('".$group_id."','".$permission_id."')");
+		}
+
+		$result['status'] = 200;
+		$result['message'] = (isset($_POST['method']) && $_POST['method'] === 'edit') ? 'Cập nhật nhóm quyền thành công' : 'Thêm nhóm quyền thành công';
+		$result['url'] = XC_URL."/admin/groups";
+
+		echo json_encode($result);
+	}
+
+	public function assignAdminGroup()
+	{
+		global $db;
+		$result = array();
+		$user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
+		$user_group = isset($_POST['user_group']) ? intval($_POST['user_group']) : 0;
+
+		if($user_id <= 0){
+			$result['status'] = 400;
+			$result['message'] = 'Tài khoản admin không hợp lệ';
+			echo json_encode($result);
+			return;
+		}
+
+		if($user_group <= 0){
+			$result['status'] = 400;
+			$result['message'] = 'Vui lòng chọn nhóm quyền';
+			echo json_encode($result);
+			return;
+		}
+
+		$db->query("SELECT id FROM hicrm_user_groups WHERE id = '".$user_group."' AND group_status NOT IN(99) LIMIT 1");
+		if(!$db->num_row()){
+			$result['status'] = 404;
+			$result['message'] = 'Nhóm quyền không tồn tại';
+			echo json_encode($result);
+			return;
+		}
+
+		$db->query("SELECT u.id
+			FROM hicrm_users u
+			INNER JOIN hicrm_user_groups g ON u.user_group = g.id AND g.group_status NOT IN(99)
+			WHERE u.id = '".$user_id."' AND u.user_status NOT IN(99)
+			LIMIT 1");
+		if(!$db->num_row()){
+			$result['status'] = 404;
+			$result['message'] = 'Không tìm thấy tài khoản admin cần phân quyền';
+			echo json_encode($result);
+			return;
+		}
+
+		$db->query("UPDATE hicrm_users SET user_group = '".$user_group."' WHERE id = '".$user_id."' LIMIT 1");
+		$result['status'] = 200;
+		$result['message'] = 'Cập nhật nhóm quyền thành công';
+		$result['url'] = XC_URL.'/admin/users';
 		echo json_encode($result);
 	}
 	// End thêm nhóm quyền mới
