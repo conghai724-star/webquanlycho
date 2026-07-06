@@ -345,6 +345,19 @@ private function getController() {
 					$args[$k++] = $parts[$i]; 
 				$this->args = $args;
 			}
+		}elseif($parts[0] == "ket-qua-san-viec-lam")
+		{
+			$this->controller = "home";
+			$this->action = "results_detail";
+			if(isset( $parts[1]))
+			{
+				$count_args = count($parts);
+				$k = 1;
+				$args = array();
+				for($i = 1; $i < $count_args; $i++)
+					$args[$k++] = $parts[$i]; 
+				$this->args = $args;
+			}
 		}elseif($parts[0] == "san-viec-lam-online.html")
 		{
 			// echo $parts[0];

@@ -1,8 +1,94 @@
 <?php require "header.php"; ?>
 <script src="https://cdn.ckeditor.com/ckeditor5/40.0.0/super-build/ckeditor.js"></script>
+<?php
+$event = isset($event_detail) ? $event_detail : (object)array();
+$event_categories = is_array($event_categories) ? $event_categories : array();
+$is_edit = isset($method) && $method === 'edit';
+$current_user_id = isset($_SESSION['user']['id']) ? (int) $_SESSION['user']['id'] : 0;
+function adminEventFormH($value){ return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
+function adminEventFormImage($image){ $image = trim((string)$image); return $image === '' ? '' : (strpos($image, 'http') === 0 ? $image : XC_URL.'/uploads/events/'.ltrim($image, '/')); }
+$image_src = adminEventFormImage($event->event_image ?? '');
+?>
+<style>
+.event-editor-card{max-width:none}
+.event-current-image{width:180px;height:120px;border-radius:10px;background:#eef3f8;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#3a57e8}
+.event-current-image img{width:100%;height:100%;object-fit:cover}
+.event-editor-fallback-notice{display:none;margin-top:12px;margin-bottom:10px}
+.event-fallback-wrap{display:none;margin-top:12px}
+.event-fallback-toolbar{display:flex;flex-wrap:wrap;gap:6px;padding:10px;border:1px solid #dbe4f0;border-bottom:0;border-radius:10px 10px 0 0;background:#f8fafc}
+.event-fallback-toolbar button,.event-fallback-toolbar select{min-height:34px;border:1px solid #d5dfeb;border-radius:7px;background:#fff;color:#1f2937;padding:5px 9px}
+.event-fallback-toolbar button:hover{background:#eef3ff;color:#3a57e8}
+.event-fallback-editor{min-height:420px;border:1px solid #dbe4f0;border-radius:0 0 10px 10px;padding:14px;background:#fff;outline:none;overflow:auto}
+.event-fallback-editor:focus{border-color:#3a57e8;box-shadow:0 0 0 .2rem rgba(58,87,232,.12)}
+</style>
+<div class="conatiner-fluid content-inner mt-n5 py-0">
+   <form class="card event-editor-card" id="eventForm" enctype="multipart/form-data">
+      <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+         <div>
+            <h4 class="card-title mb-1"><?php echo $is_edit ? 'Chỉnh sửa tin tức/sự kiện' : 'Thêm tin tức/sự kiện'; ?></h4>
+         </div>
+         <div class="d-flex gap-2">
+            <a class="btn btn-light" href="<?php echo XC_URL; ?>/admin/events"><i class="fa-solid fa-arrow-left me-1"></i>Quay lại</a>
+            <button class="btn btn-primary" type="submit"><i class="fa-solid fa-floppy-disk me-1"></i>Lưu</button>
+         </div>
+      </div>
+      <div class="card-body">
+         <input type="hidden" name="id" value="<?php echo (int)($event->id ?? 0); ?>">
+         <input type="hidden" name="eid" value="<?php echo (int)($event->id ?? 0); ?>">
+         <input type="hidden" name="method" value="<?php echo $is_edit ? 'edit' : 'add'; ?>">
+         <input type="hidden" name="user_id" value="<?php echo $current_user_id; ?>">
+         <input type="hidden" name="event_user_created" value="<?php echo $current_user_id; ?>">
+         <div class="row g-3">
+            <div class="col-lg-8">
+               <label class="form-label">Tiêu đề <span class="text-danger">*</span></label>
+               <input class="form-control" name="event_name" id="eventName" value="<?php echo adminEventFormH($event->event_name ?? ''); ?>" required>
+            </div>
+            <div class="col-lg-4">
+               <label class="form-label">Loại</label>
+               <select class="form-select" name="event_type">
+                  <option value="0">Chưa phân loại</option>
+                  <?php foreach($event_categories as $category): ?><option value="<?php echo (int)$category->id; ?>" <?php echo (int)($event->event_type ?? 0) === (int)$category->id ? 'selected' : ''; ?>><?php echo adminEventFormH($category->category_name); ?></option><?php endforeach; ?>
+               </select>
+            </div>
+            <div class="col-md-4">
+               <label class="form-label">Trạng thái</label>
+               <select class="form-select" name="event_status">
+                  <option value="1" <?php echo (int)($event->event_status ?? 1) === 1 ? 'selected' : ''; ?>>Hiển thị</option>
+                  <option value="0" <?php echo (int)($event->event_status ?? 1) === 0 ? 'selected' : ''; ?>>Ẩn</option>
+               </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+               <div class="form-check form-switch mb-2">
+                  <input class="form-check-input" type="checkbox" value="1" name="event_hot" id="eventHot" <?php echo (int)($event->event_hot ?? 0) === 1 ? 'checked' : ''; ?>>
+                  <label class="form-check-label" for="eventHot">Đánh dấu nổi bật</label>
+               </div>
+            </div>
+            <div class="col-md-8">
+               <label class="form-label">Ảnh đại diện</label>
+               <input class="form-control" type="file" name="event_image" accept="image/*">
+               <small class="text-muted">Hỗ trợ JPG, PNG, WEBP, GIF. Tối đa 5MB.</small>
+            </div>
+            <div class="col-md-4">
+               <?php if($image_src !== ''): ?><div class="event-current-image"><img src="<?php echo adminEventFormH($image_src); ?>" alt="<?php echo adminEventFormH($event->event_name ?? ''); ?>"></div><?php endif; ?>
+            </div>
+            <div class="col-md-12">
+               <label class="form-label">Mô tả ngắn</label>
+               <textarea class="form-control" name="event_description" rows="3"><?php echo adminEventFormH($event->event_description ?? ''); ?></textarea>
+            </div>
+            <div class="col-md-12">
+               <label class="form-label">Nội dung <span class="text-danger">*</span></label>
+               <textarea class="form-control" name="eventContent" id="eventContent"><?php echo adminEventFormH($event->event_content ?? ''); ?></textarea>
+              
+               
+            </div>
+         </div>
+      </div>
+   </form>
+</div>
 <script>
-   $(document).ready(function() {
-    CKEDITOR.ClassicEditor.create(document.querySelector('textarea[name="event_content"]'), {
+jQuery(function($){
+   var fallbackActive = false;
+ CKEDITOR.ClassicEditor.create(document.querySelector('textarea[name="eventContent"]'), {
         // 1. Cấu hình Toolbar (Giữ nguyên các tính năng soạn thảo mạnh mẽ)
         toolbar: {
             items: [
@@ -59,123 +145,9 @@
     .catch(error => {
         console.error('Lỗi khởi tạo:', error);
     });
-</script>
-<?php
-$event = isset($event_detail) ? $event_detail : (object)array();
-$event_categories = is_array($event_categories) ? $event_categories : array();
-$is_edit = isset($method) && $method === 'edit';
-function adminEventFormH($value){ return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
-function adminEventFormDate($value){ $time = $value ? strtotime($value) : false; return $time ? date('Y-m-d', $time) : ''; }
-function adminEventFormImage($image){ $image = trim((string)$image); return $image === '' ? '' : (strpos($image, 'http') === 0 ? $image : XC_URL.'/uploads/events/'.ltrim($image, '/')); }
-$image_src = adminEventFormImage($event->event_image ?? '');
-?>
-<style>
-.event-editor-card{max-width:none}
-.event-current-image{width:180px;height:120px;border-radius:10px;background:#eef3f8;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#3a57e8}
-.event-current-image img{width:100%;height:100%;object-fit:cover}
-.event-editor-fallback-notice{display:none;margin-bottom:10px}
-.event-fallback-wrap{display:none}
-.event-fallback-toolbar{display:flex;flex-wrap:wrap;gap:6px;padding:10px;border:1px solid #dbe4f0;border-bottom:0;border-radius:10px 10px 0 0;background:#f8fafc}
-.event-fallback-toolbar button,.event-fallback-toolbar select{min-height:34px;border:1px solid #d5dfeb;border-radius:7px;background:#fff;color:#1f2937;padding:5px 9px}
-.event-fallback-toolbar button:hover{background:#eef3ff;color:#3a57e8}
-.event-fallback-editor{min-height:420px;border:1px solid #dbe4f0;border-radius:0 0 10px 10px;padding:14px;background:#fff;outline:none;overflow:auto}
-.event-fallback-editor:focus{border-color:#3a57e8;box-shadow:0 0 0 .2rem rgba(58,87,232,.12)}
-</style>
-<div class="conatiner-fluid content-inner mt-n5 py-0">
-   <form class="card event-editor-card" id="eventForm" enctype="multipart/form-data">
-      <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
-         <div>
-            <h4 class="card-title mb-1"><?php echo $is_edit ? 'Chỉnh sửa tin tức/sự kiện' : 'Thêm tin tức/sự kiện'; ?></h4>
-            <p class="mb-0 text-muted">Soạn nội dung bằng CKEditor với các công cụ định dạng tương tự Word.</p>
-         </div>
-         <div class="d-flex gap-2">
-            <a class="btn btn-light" href="<?php echo XC_URL; ?>/admin/events"><i class="fa-solid fa-arrow-left me-1"></i>Quay lại</a>
-            <button class="btn btn-primary" type="submit"><i class="fa-solid fa-floppy-disk me-1"></i>Lưu</button>
-         </div>
-      </div>
-      <div class="card-body">
-         <input type="hidden" name="id" value="<?php echo (int)($event->id ?? 0); ?>">
-         <div class="row g-3">
-            <div class="col-lg-8">
-               <label class="form-label">Tiêu đề <span class="text-danger">*</span></label>
-               <input class="form-control" name="event_name" id="eventName" value="<?php echo adminEventFormH($event->event_name ?? ''); ?>" required>
-            </div>
-            <div class="col-lg-4">
-               <label class="form-label">Ngày tạo</label>
-               <input class="form-control" type="date" name="event_created_date" value="<?php echo adminEventFormH(adminEventFormDate($event->event_created_date ?? '')); ?>">
-            </div>
-            <div class="col-md-4">
-               <label class="form-label">Loại</label>
-               <select class="form-select" name="event_type">
-                  <option value="0">Chưa phân loại</option>
-                  <?php foreach($event_categories as $category): ?><option value="<?php echo (int)$category->id; ?>" <?php echo (int)($event->event_type ?? 0) === (int)$category->id ? 'selected' : ''; ?>><?php echo adminEventFormH($category->category_name); ?></option><?php endforeach; ?>
-               </select>
-            </div>
-            <div class="col-md-4">
-               <label class="form-label">Trạng thái</label>
-               <select class="form-select" name="event_status">
-                  <option value="1" <?php echo (int)($event->event_status ?? 1) === 1 ? 'selected' : ''; ?>>Hiển thị</option>
-                  <option value="0" <?php echo (int)($event->event_status ?? 1) === 0 ? 'selected' : ''; ?>>Ẩn</option>
-               </select>
-            </div>
-            <div class="col-md-4 d-flex align-items-end">
-               <div class="form-check form-switch mb-2">
-                  <input class="form-check-input" type="checkbox" value="1" name="event_hot" id="eventHot" <?php echo (int)($event->event_hot ?? 0) === 1 ? 'checked' : ''; ?>>
-                  <label class="form-check-label" for="eventHot">Đánh dấu nổi bật</label>
-               </div>
-            </div>
-            <div class="col-md-8">
-               <label class="form-label">Ảnh đại diện</label>
-               <input class="form-control" type="file" name="event_image" accept="image/*">
-               <small class="text-muted">Hỗ trợ JPG, PNG, WEBP, GIF. Tối đa 5MB.</small>
-            </div>
-            <div class="col-md-4">
-               <?php if($image_src !== ''): ?><div class="event-current-image"><img src="<?php echo adminEventFormH($image_src); ?>" alt="<?php echo adminEventFormH($event->event_name ?? ''); ?>"></div><?php endif; ?>
-            </div>
-            <div class="col-md-12">
-               <label class="form-label">Mô tả ngắn</label>
-               <textarea class="form-control" name="event_description" rows="3"><?php echo adminEventFormH($event->event_description ?? ''); ?></textarea>
-            </div>
-            <div class="col-md-12">
-               <label class="form-label">Nội dung <span class="text-danger">*</span></label>
-               <textarea class="form-control" name="event_content" id="eventContent"><?php echo adminEventFormH($event->event_content ?? ''); ?></textarea>
-               
-               </div>
-            </div>
-         </div>
-      </div>
-   </form>
-</div>
-<script src="https://cdn.ckeditor.com/4.25.1-lts/full-all/ckeditor.js"></script>
-<script>
-jQuery(function($){
-   var fallbackActive = false;
 
-   function initCkeditor(){
-      if(!window.CKEDITOR || !document.getElementById('eventContent')){
-         return false;
-      }
-      CKEDITOR.replace('eventContent', {
-         height: 420,
-         allowedContent: true,
-         extraPlugins: 'colorbutton,font,justify,print,find,div,forms,iframe,pagebreak,templates,showblocks,selectall,copyformatting,pastefromword',
-         removePlugins: 'exportpdf',
-         toolbar: [
-            { name:'document', items:['Source','-','NewPage','Preview','Print','-','Templates'] },
-            { name:'clipboard', items:['Cut','Copy','Paste','PasteText','PasteFromWord','-','Undo','Redo'] },
-            { name:'editing', items:['Find','Replace','-','SelectAll','-','Scayt'] },
-            { name:'basicstyles', items:['Bold','Italic','Underline','Strike','Subscript','Superscript','-','CopyFormatting','RemoveFormat'] },
-            { name:'paragraph', items:['NumberedList','BulletedList','-','Outdent','Indent','-','Blockquote','CreateDiv','-','JustifyLeft','JustifyCenter','JustifyRight','JustifyBlock'] },
-            { name:'links', items:['Link','Unlink','Anchor'] },
-            { name:'insert', items:['Image','Table','HorizontalRule','SpecialChar','PageBreak','Iframe'] },
-            '/',
-            { name:'styles', items:['Styles','Format','Font','FontSize'] },
-            { name:'colors', items:['TextColor','BGColor'] },
-            { name:'tools', items:['Maximize','ShowBlocks'] }
-         ]
-      });
-      return true;
-   }
+
+   
 
    function initFallbackEditor(){
       fallbackActive = true;
@@ -192,15 +164,11 @@ jQuery(function($){
    }
 
    function getEventContent(){
-      if(window.CKEDITOR && CKEDITOR.instances.eventContent){
-         return CKEDITOR.instances.eventContent.getData();
+      if(window.editor && typeof window.editor.getData === 'function'){
+         return window.editor.getData();
       }
       syncFallbackEditor();
       return $('#eventContent').val();
-   }
-
-   if(!initCkeditor()){
-      initFallbackEditor();
    }
 
    $('#eventFallbackToolbar').on('mousedown', 'button', function(e){
@@ -215,11 +183,11 @@ jQuery(function($){
          document.execCommand(command, false, null);
       }
       if(action === 'link'){
-         var link = window.prompt('Nháº­p URL liÃªn káº¿t');
+         var link = window.prompt('Nhập URL liên kết');
          if(link){ document.execCommand('createLink', false, link); }
       }
       if(action === 'image'){
-         var image = window.prompt('Nháº­p URL hÃ¬nh áº£nh');
+         var image = window.prompt('Nhập URL hình ảnh');
          if(image){ document.execCommand('insertImage', false, image); }
       }
       if(action === 'table'){
@@ -245,7 +213,7 @@ jQuery(function($){
          return;
       }
       $.ajax({
-         type:'POST',url:'<?php echo XC_URL; ?>/api/adminEventSave',data:data,processData:false,contentType:false,dataType:'json',
+         type:'POST',url:'<?php echo XC_URL; ?>/api/events',data:data,processData:false,contentType:false,dataType:'json',
          success:function(resp){ if(resp.status==200){ Swal.fire({icon:'success',title:resp.message||'Lưu thành công',timer:1400,showConfirmButton:false}); setTimeout(function(){ window.location.href='<?php echo XC_URL; ?>/admin/events'; },1500); } else { Swal.fire({icon:'error',title:'Lỗi',text:resp.message||'Không thể lưu tin tức/sự kiện'}); } },
          error:function(){ Swal.fire({icon:'error',title:'Lỗi',text:'Có lỗi xảy ra khi gọi API lưu dữ liệu'}); }
       });

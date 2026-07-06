@@ -3,6 +3,33 @@
 $image_categories = array(0 => 'Mặc định', 1 => 'Banner', 2 => 'Nội dung', 3 => 'Slider');
 // $image_devices = array(0 => 'Desktop', 1 => 'Mobile');
 $images = is_array($images) ? $images : array();
+$page = isset($page) ? (int) $page : 1;
+$per_page = isset($per_page) ? (int) $per_page : 20;
+$total_images = isset($total_images) ? (int) $total_images : count($images);
+$total_pages = isset($total_pages) ? (int) $total_pages : 1;
+
+if (!function_exists('backendImageBuildUrl')) {
+    function backendImageBuildUrl($targetPage) {
+        return XC_URL.'/admin/images?page='.(int) $targetPage;
+    }
+}
+
+if (!function_exists('backendImagePaginationItems')) {
+    function backendImagePaginationItems($currentPage, $totalPages) {
+        $currentPage = max(1, (int) $currentPage);
+        $totalPages = max(1, (int) $totalPages);
+        if ($totalPages <= 7) {
+            return range(1, $totalPages);
+        }
+        if ($currentPage <= 4) {
+            return array(1, 2, 3, 4, 5, 'ellipsis', $totalPages);
+        }
+        if ($currentPage >= $totalPages - 3) {
+            return array(1, 'ellipsis', $totalPages - 4, $totalPages - 3, $totalPages - 2, $totalPages - 1, $totalPages);
+        }
+        return array(1, 'ellipsis', $currentPage - 1, $currentPage, $currentPage + 1, 'ellipsis', $totalPages);
+    }
+}
 ?>
 <style>
     .image-library-grid {
@@ -104,7 +131,7 @@ $images = is_array($images) ? $images : array();
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
             <div>
                 <h4 class="card-title mb-1">Thư viện hình ảnh</h4>
-                <p class="mb-0 text-muted"><span id="visibleImageCount"><?php echo count($images); ?></span> / <?php echo count($images); ?> hình ảnh</p>
+                <p class="mb-0 text-muted"><span id="visibleImageCount"><?php echo count($images); ?></span> / <?php echo $total_images; ?> hình ảnh</p>
             </div>
             <button class="btn btn-success rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addImageModal"><i class="fa-solid fa-plus me-2"></i>Thêm hình ảnh</button>
         </div>
@@ -148,6 +175,30 @@ $images = is_array($images) ? $images : array();
                 <p class="text-muted mb-0">Thêm ảnh mới hoặc thay đổi bộ lọc.</p>
             </div>
         </div>
+        <?php if ($total_pages > 1): ?>
+            <div class="card-footer d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <small class="text-muted">Hiển thị <?php echo $per_page; ?> hình mỗi trang.</small>
+                <nav aria-label="Phân trang thư viện ảnh">
+                    <ul class="pagination mb-0 justify-content-end flex-wrap">
+                        <li class="page-item <?php echo $page <= 1 ? 'disabled' : ''; ?>">
+                            <a class="page-link" href="<?php echo $page <= 1 ? '#' : htmlspecialchars(backendImageBuildUrl($page - 1), ENT_QUOTES, 'UTF-8'); ?>">Trước</a>
+                        </li>
+                        <?php foreach (backendImagePaginationItems($page, $total_pages) as $pagination_item): ?>
+                            <?php if ($pagination_item === 'ellipsis'): ?>
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            <?php else: ?>
+                                <li class="page-item <?php echo (int) $pagination_item === $page ? 'active' : ''; ?>">
+                                    <a class="page-link" href="<?php echo htmlspecialchars(backendImageBuildUrl($pagination_item), ENT_QUOTES, 'UTF-8'); ?>"><?php echo (int) $pagination_item; ?></a>
+                                </li>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                        <li class="page-item <?php echo $page >= $total_pages ? 'disabled' : ''; ?>">
+                            <a class="page-link" href="<?php echo $page >= $total_pages ? '#' : htmlspecialchars(backendImageBuildUrl($page + 1), ENT_QUOTES, 'UTF-8'); ?>">Sau</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        <?php endif; ?>
     </div>
 </div>
 

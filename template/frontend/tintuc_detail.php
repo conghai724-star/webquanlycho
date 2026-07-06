@@ -31,18 +31,13 @@ if(isset($news_detail->event_image) && trim($news_detail->event_image) !== ''){
   }
 }
 
-// Group comments by parent_id
+// Public comments: only display comment_content and require login to submit
+$publicComments = isset($news_comments) && is_array($news_comments) ? $news_comments : array();
+$canComment = isset($_SESSION['user']['id']) && intval($_SESSION['user']['id']) > 0;
+$commentLoginUrl = XC_URL.'/login';
 $commentsByParent = array();
 $rootComments = array();
-if (isset($news_comments) && is_array($news_comments)) {
-    foreach ($news_comments as $c) {
-        if ($c->parent_id > 0) {
-            $commentsByParent[$c->parent_id][] = $c;
-        } else {
-            $rootComments[] = $c;
-        }
-    }
-}
+$totalComments = count($publicComments);
 
 if (!function_exists('getInitials')) {
   function getInitials($name) {
@@ -90,6 +85,23 @@ if (isset($news_detail->event_user_created) && intval($news_detail->event_user_c
         if ($creator->user_group == 1) {
             $authorRole = 'Quản trị viên · ViecLam.vn';
         }
+    }
+}
+
+foreach ($publicComments as $comment) {
+    $comment->display_name = trim((string)($comment->commenter_name ?? $comment->comment_name ?? ''));
+    if ($comment->display_name === '') {
+        $comment->display_name = 'An danh';
+    }
+
+    $parentId = isset($comment->parent_id) ? (int)$comment->parent_id : 0;
+    if ($parentId > 0) {
+        if (!isset($commentsByParent[$parentId])) {
+            $commentsByParent[$parentId] = array();
+        }
+        $commentsByParent[$parentId][] = $comment;
+    } else {
+        $rootComments[] = $comment;
     }
 }
 ?>
@@ -158,7 +170,7 @@ if (isset($news_detail->event_user_created) && intval($news_detail->event_user_c
       </div>
       <div class="author-stats">
         <div class="author-stat"><i class="ti ti-calendar"></i> <?php echo $newsDate; ?></div>
-        <div class="author-stat"><i class="ti ti-message-circle"></i> <strong><?php echo count($rootComments) + count($news_comments) - count($rootComments); ?></strong> bình luận</div>
+        <div class="author-stat"><i class="ti ti-message-circle"></i> <strong><?php echo $totalComments; ?></strong> bình luận</div>
       </div>
     </div>
 
@@ -200,7 +212,7 @@ if (isset($news_detail->event_user_created) && intval($news_detail->event_user_c
       <div class="comments-title">
         <i class="ti ti-message-dots"></i>
         Bình luận
-        <span class="comment-count-badge"><?php echo count($news_comments); ?> bình luận</span>
+        <span class="comment-count-badge"><?php echo $totalComments; ?> bình luận</span>
       </div>
 
       <!-- Form -->
@@ -233,35 +245,44 @@ if (isset($news_detail->event_user_created) && intval($news_detail->event_user_c
           <?php foreach ($rootComments as $c): ?>
             <!-- Parent Comment -->
             <div class="comment-item" id="comment-<?php echo $c->id; ?>">
-              <div class="c-avatar" style="background:#0d4e96"><?php echo htmlspecialchars(getInitials($c->comment_name), ENT_QUOTES, 'UTF-8'); ?></div>
+              <div class="c-avatar" style="background:#0d4e96"><?php echo htmlspecialchars(getInitials($c->display_name), ENT_QUOTES, 'UTF-8'); ?></div>
               <div class="c-body">
                 <div class="c-header">
-                  <span class="c-name"><?php echo htmlspecialchars($c->comment_name, ENT_QUOTES, 'UTF-8'); ?></span>
+                  <span class="c-name"><?php echo htmlspecialchars($c->display_name, ENT_QUOTES, 'UTF-8'); ?></span>
                   <span class="c-role">Người đọc</span>
                   <span class="c-date"><i class="ti ti-clock"></i><?php echo getCommentTime($c->created_at); ?></span>
                 </div>
                 <p class="c-text"><?php echo nl2br(htmlspecialchars($c->comment_content, ENT_QUOTES, 'UTF-8')); ?></p>
                 <div class="c-actions">
                   <button class="c-action-btn" onclick="likeComment(<?php echo $c->id; ?>, this)"><i class="ti ti-thumb-up"></i>Thích (<span class="like-count">0</span>)</button>
-                  <button class="c-action-btn" onclick="replyComment(<?php echo $c->id; ?>, '<?php echo htmlspecialchars($c->comment_name, ENT_QUOTES, 'UTF-8'); ?>')"><i class="ti ti-message-reply"></i>Trả lời</button>
+                  <button class="c-action-btn" onclick="replyComment(<?php echo $c->id; ?>, <?php echo htmlspecialchars(json_encode($c->display_name), ENT_QUOTES, 'UTF-8'); ?>)"><i class="ti ti-message-reply"></i>Trả lời</button>
                 </div>
+                <?php if (isset($c->admin_reply) && trim((string)$c->admin_reply) !== ''): ?>
+                  <div class="comment-reply-item" style="margin-top:14px;padding:14px 16px;background:#f7fbff;border:1px solid #d9e8fb;border-radius:16px;">
+                    <div class="cr-avatar" style="background:#2e7d32"><?php echo htmlspecialchars(getInitials($c->reply_user_name ?? 'Admin'), ENT_QUOTES, 'UTF-8'); ?></div>
+                    <div class="c-body">
+                      <div class="c-header">
+                        <span class="c-name"><?php echo htmlspecialchars(trim((string)($c->reply_user_name ?? 'Ban quản trị')), ENT_QUOTES, 'UTF-8'); ?></span>
+                        <span class="c-role" style="background:#e8f5e9;color:#2e7d32">Admin</span>
+                        <span class="c-date"><i class="ti ti-clock"></i><?php echo getCommentTime($c->replied_at ?? $c->updated_at ?? $c->created_at); ?></span>
+                      </div>
+                      <p class="c-text" style="font-size:13px"><?php echo nl2br(htmlspecialchars($c->admin_reply, ENT_QUOTES, 'UTF-8')); ?></p>
+                    </div>
+                  </div>
+                <?php endif; ?>
               </div>
             </div>
 
             <!-- Replies -->
             <?php if (isset($commentsByParent[$c->id])): ?>
-              <div class="comment-replies">
+              <div class="comment-replies" style="margin-left:58px;padding-left:18px;border-left:2px solid #e5edf6;">
                 <?php foreach ($commentsByParent[$c->id] as $reply): ?>
                   <div class="comment-reply-item" id="comment-<?php echo $reply->id; ?>">
-                    <div class="cr-avatar" style="background:#2e7d32"><?php echo htmlspecialchars(getInitials($reply->comment_name), ENT_QUOTES, 'UTF-8'); ?></div>
+                    <div class="cr-avatar" style="background:#2e7d32"><?php echo htmlspecialchars(getInitials($reply->display_name), ENT_QUOTES, 'UTF-8'); ?></div>
                     <div class="c-body">
                       <div class="c-header">
-                        <span class="c-name"><?php echo htmlspecialchars($reply->comment_name, ENT_QUOTES, 'UTF-8'); ?></span>
-                        <?php if ($reply->reply_user_id > 0 || strpos(strtolower($reply->comment_name), 'ban biên tập') !== false || strpos(strtolower($reply->comment_name), 'bbt') !== false): ?>
-                          <span class="c-role" style="background:#e8f5e9;color:#2e7d32">Tác giả</span>
-                        <?php else: ?>
-                          <span class="c-role">Người đọc</span>
-                        <?php endif; ?>
+                        <span class="c-name"><?php echo htmlspecialchars($reply->display_name, ENT_QUOTES, 'UTF-8'); ?></span>
+                        <span class="c-role">Người đọc</span>
                         <span class="c-date"><i class="ti ti-clock"></i><?php echo getCommentTime($reply->created_at); ?></span>
                       </div>
                       <p class="c-text" style="font-size:13px"><?php echo nl2br(htmlspecialchars($reply->comment_content, ENT_QUOTES, 'UTF-8')); ?></p>
@@ -569,6 +590,66 @@ function likeComment(commentId, btn) {
     countSpan.textContent = currentCount + 1;
   }
 }
+
+// Comment access and public display adjustments
+(function() {
+  var canComment = <?php echo $canComment ? 'true' : 'false'; ?>;
+  var commentForm = document.getElementById('commentForm');
+  var commentName = document.getElementById('comment_name');
+  var commentEmail = document.getElementById('comment_email');
+  var commentGrid = document.querySelector('.cf-grid');
+  var replyHelper = document.getElementById('replying-to-helper');
+  var commentWrap = document.querySelector('.comment-form-wrap');
+  var sessionName = <?php echo json_encode(isset($_SESSION['user']['full_name']) ? (string)$_SESSION['user']['full_name'] : ''); ?>;
+  var sessionEmail = <?php echo json_encode(isset($_SESSION['user']['email']) ? (string)$_SESSION['user']['email'] : ''); ?>;
+
+  if (replyHelper) {
+    replyHelper.style.display = 'none';
+  }
+  if (commentGrid) {
+    commentGrid.style.display = 'none';
+  }
+  if (commentName) {
+    commentName.value = sessionName || 'Tai khoan';
+    commentName.removeAttribute('required');
+  }
+  if (commentEmail) {
+    commentEmail.value = sessionEmail || 'account@example.com';
+    commentEmail.removeAttribute('required');
+  }
+
+  if (!canComment && commentWrap) {
+    var notice = document.createElement('div');
+    notice.className = 'alert alert-warning';
+    notice.style.marginBottom = '12px';
+    notice.innerHTML = 'Vui lòng đăng nhập để sử dụng chức năng bình luận.';
+    commentWrap.insertBefore(notice, commentWrap.firstChild.nextSibling);
+    var commentTextarea = document.getElementById('comment_content');
+    var submitBtn = commentWrap.querySelector('.cf-submit');
+    if (commentTextarea) {
+      commentTextarea.setAttribute('disabled', 'disabled');
+      commentTextarea.setAttribute('placeholder', 'Đăng nhập để gửi bình luận');
+    }
+    if (submitBtn) {
+      submitBtn.setAttribute('disabled', 'disabled');
+    }
+  }
+
+  if (commentForm) {
+    commentForm.addEventListener('submit', function(e) {
+      if (!canComment) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        var loginBtn = document.querySelector('.js-login-open');
+        if (loginBtn) {
+          loginBtn.click();
+        } else {
+          window.location.href = '<?php echo $commentLoginUrl; ?>';
+        }
+      }
+    }, true);
+  }
+})();
 
 // Hot Slider
 (function(){

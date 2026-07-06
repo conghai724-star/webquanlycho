@@ -10,9 +10,13 @@ $job_provinces = isset($job_provinces) && is_array($job_provinces) ? $job_provin
 $job_categories_with_counts = isset($job_categories_with_counts) && is_array($job_categories_with_counts) ? $job_categories_with_counts : array();
 $featured_candidates = isset($featured_candidates) && is_array($featured_candidates) ? $featured_candidates : array();
 $home_featured_news = isset($home_featured_news) && is_array($home_featured_news) ? $home_featured_news : array();
+$featured_job_filters = isset($featured_job_filters) && is_array($featured_job_filters) ? $featured_job_filters : array();
+$urgent_job_filters = isset($urgent_job_filters) && is_array($urgent_job_filters) ? $urgent_job_filters : array();
 $featured_jobs_total_pages = isset($featured_jobs_total_pages) ? (int)$featured_jobs_total_pages : 1;
 $province_jobs_total_pages = isset($province_jobs_total_pages) ? (int)$province_jobs_total_pages : 1;
 $urgent_jobs_total_pages = isset($urgent_jobs_total_pages) ? (int)$urgent_jobs_total_pages : 1;
+$featured_job_filters_json = json_encode($featured_job_filters, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+$urgent_job_filters_json = json_encode($urgent_job_filters, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
 function homeJobH($value){
   return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
@@ -206,7 +210,7 @@ function homeCandidateAvatarUrl($value){
 function homeCandidateDateText($candidate){
   $raw = $candidate->date_of_birth ?? $candidate->birthday ?? $candidate->dob ?? '';
   $time = $raw ? strtotime((string)$raw) : false;
-  return $time ? date('d/m/Y', $time) : '�ang cập nhật';
+  return $time ? date('d/m/Y', $time) : 'Đang cập nhật';
 }
 
 function homeCandidateMajorText($candidate){
@@ -215,6 +219,26 @@ function homeCandidateMajorText($candidate){
 
 function homeCandidateUrl($candidate){
   return general::getInstance()->permalink((int)($candidate->id ?? 0), 'candidate_profile');
+}
+
+function homeCandidateName($candidate){
+  return trim((string)($candidate->full_name ?? $candidate->candidate_name ?? 'Ứng viên nổi bật')) ?: 'Ứng viên nổi bật';
+}
+
+function homeCandidateInitials($candidate){
+  $name = homeCandidateName($candidate);
+  $parts = preg_split('/\s+/', $name);
+  $letters = '';
+  foreach((array)$parts as $part){
+    if($part !== ''){ $letters .= mb_substr($part, 0, 1, 'UTF-8'); }
+    if(mb_strlen($letters, 'UTF-8') >= 2){ break; }
+  }
+  return mb_strtoupper($letters ?: mb_substr($name, 0, 2, 'UTF-8'), 'UTF-8');
+}
+
+function homeCandidateAccentColor($candidate){
+  $palette = array('#0d4e96', '#1565c0', '#2e7d32', '#c62828', '#6a1b9a', '#00695c', '#e65100', '#1a237e', '#00838f', '#37474f');
+  return $palette[((int)($candidate->id ?? 0)) % count($palette)];
 }
 
 function homeNewsImageUrl($value){
@@ -227,13 +251,32 @@ function homeNewsImageUrl($value){
 function homeNewsExcerpt($news, $length = 120){
   $text = trim(strip_tags((string)($news->event_description ?? '')));
   if($text === ''){ $text = trim(strip_tags((string)($news->event_content ?? ''))); }
+  $text = homeNewsFixText($text);
   if($text === ''){ return 'Nội dung đang được cập nhật.'; }
   return mb_strlen($text, 'UTF-8') > $length ? mb_substr($text, 0, $length, 'UTF-8').'...' : $text;
 }
 
 function homeNewsDateText($value){
   $time = $value ? strtotime((string)$value) : false;
-  return $time ? date('d/m/Y', $time) : '�ang cập nhật';
+  return $time ? date('d/m/Y', $time) : 'Đang cập nhật';
+}
+function homeNewsFixText($value){
+  $value = trim((string)$value);
+  if($value === ''){ return ''; }
+  if(function_exists('mb_convert_encoding') && preg_match('/(?:Ã.|Ä.|áº|á»|â€|Â)/u', $value)){
+    $converted = @mb_convert_encoding($value, 'UTF-8', 'Windows-1252');
+    if(is_string($converted) && $converted !== ''){ return $converted; }
+  }
+  return $value;
+}
+
+function homeNewsTitle($news){
+  $title = homeNewsFixText($news->event_name ?? '');
+  return $title !== '' ? $title : 'Bài viết đang cập nhật';
+}
+
+function homeNewsUrl($news){
+  return general::getInstance()->permalink((int)($news->id ?? 0), 'event');
 }
 ?>
 
@@ -506,13 +549,13 @@ function homeNewsDateText($value){
 
     <div style="width:300px;flex-shrink:0">
       <div class="hero-login-card">
-        <p>Đăng nhập để xem ngay việc làm phù hợp hơn!</p>
-        <span>Việc làm sẽ được gợi ý theo vị trí, kinh nghiệm và kỹ năng của bạn.</span>
-        <div class="btn-google">
+        <p>Đăng ký để trở thành thành viên của Vieclam.vn!</p>
+        <span>Tìm việc nhanh hơn, tìm ứng viên phù hợp và nhiều ưu tiên khác!.</span>
+        <!-- <div class="btn-google">
           <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 01-7.18-2.54H1.83v2.07A8 8 0 008.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 010-3.04V5.41H1.83a8 8 0 000 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 001.83 5.4L4.5 7.49a4.77 4.77 0 014.48-3.31z"/></svg>
           Đăng nhập bằng Google
-        </div>
-        <button class="btn-login-hero">Đăng ký</button>
+        </div> -->
+        <a href="<?php echo XC_URL;?>/dang-ky-tai-khoan.html"><button class="btn-login-hero">Đăng ký</button></a>
       </div>
     </div>
   </div>
@@ -680,7 +723,8 @@ function homeNewsDateText($value){
     transform: translateY(-65%) rotate(45deg);
     pointer-events: none;
   }
-  .featured-jobs-empty {
+  .featured-jobs-empty,
+  .latest-jobs-empty {
     display: none;
     padding: 24px;
     border: 1px dashed #d7dfe8;
@@ -1224,293 +1268,194 @@ function homeNewsDateText($value){
 
 <script>
   (function () {
-    var latestGrid = document.getElementById('latestJobsGrid');
-    var latestEmpty = document.getElementById('latestJobsEmpty');
-    var latestFilterSelect = document.getElementById('latestFilterSelect');
-    var latestFilterToggle = document.getElementById('latestFilterToggle');
-    var latestFilterLabel = document.getElementById('latestFilterLabel');
-    var latestFilterChips = document.getElementById('latestFilterChips');
-    var latestMobileFilterValue = document.getElementById('latestMobileFilterValue');
-    var latestMobileFilterIcon = document.getElementById('latestMobileFilterIcon');
-    var latestFilterPrev = document.getElementById('latestFilterPrev');
-    var latestFilterNext = document.getElementById('latestFilterNext');
-    var latestJobsPrev = document.getElementById('latestJobsPrev');
-    var latestJobsNext = document.getElementById('latestJobsNext');
-    var latestJobsDots = document.getElementById('latestJobsDots');
+    window.initHomeFilterJobs = function (config) {
+      var grid = document.getElementById(config.gridId);
+      var empty = document.getElementById(config.emptyId);
+      var pagination = document.getElementById(config.paginationId);
+      var dots = document.getElementById(config.dotsId);
+      var previous = document.getElementById(config.previousId);
+      var next = document.getElementById(config.nextId);
+      var filterSelect = document.getElementById(config.filterSelectId);
+      var filterToggle = document.getElementById(config.filterToggleId);
+      var filterLabel = document.getElementById(config.filterLabelId);
+      var filterOptions = Array.prototype.slice.call(document.querySelectorAll('#' + config.filterSelectId + ' [data-filter-type]'));
+      var chips = document.getElementById(config.chipsId);
+      var chipPrevious = document.getElementById(config.chipPreviousId);
+      var chipNext = document.getElementById(config.chipNextId);
+      var mobileValue = document.getElementById(config.mobileValueId);
+      var mobileIcon = document.getElementById(config.mobileIconId);
 
-    if (latestGrid) {
-      var latestActiveFilterType = 'all';
-      var latestActiveFilterValue = 'all';
-      var latestPage = 1;
-      var latestTotalPages = parseInt(latestGrid.getAttribute('data-total-pages'), 10) || 1;
-      var latestIsLoading = false;
-      var latestJobsPagination = document.getElementById('latestJobsPagination');
-      var latestFilterLabels = {
-        all: 'Lọc theo',
-        location: 'Địa điểm',
-        salary: 'Mức lương',
-        experience: 'Kinh nghiệm',
-        industry: 'Ngành nghề'
-      };
-      var latestFilterIcons = {
-        all: 'ti ti-filter',
-        location: 'ti ti-map-pin',
-        salary: 'ti ti-cash',
-        experience: 'ti ti-user-check',
-        industry: 'ti ti-briefcase'
-      };
-      var latestChipSets = {
-        all: [{ value: 'all', label: 'Tất cả' }],
-        location: [
-          { value: 'all', label: 'Tất cả' },
-          { value: 'hanoi', label: 'Hà Nội' },
-          { value: 'tphcm', label: 'TP.HCM' },
-          { value: 'danang', label: 'Đà Nẵng' },
-          { value: 'binhduong', label: 'Bình Dương' },
-          { value: 'cantho', label: 'Cần Thơ' }
-        ],
-        salary: [
-          { value: 'all', label: 'Tất cả' },
-          { value: '1-3', label: '1 - 3 triệu' },
-          { value: '3-5', label: '3 - 5 triệu' },
-          { value: '5-7', label: '5 - 7 triệu' },
-          { value: '7-10', label: '7 - 10 triệu' },
-          { value: '10-15', label: '10 - 15 triệu' },
-          { value: '15-20', label: '15 - 20 triệu' },
-          { value: '20+', label: 'Trên 20 triệu' }
-        ],
-        experience: [
-          { value: 'all', label: 'Tất cả' },
-          { value: 'none', label: 'Chưa có kinh nghiệm' },
-          { value: '1-2', label: '1 - 2 năm' },
-          { value: '3-5', label: '3 - 5 năm' },
-          { value: '5+', label: 'Trên 5 năm' }
-        ],
-        industry: [
-          { value: 'all', label: 'Tất cả' },
-          { value: 'finance', label: 'Tài chính - Ngân hàng' },
-          { value: 'sales', label: 'Bán hàng - Kinh doanh' },
-          { value: 'it', label: 'CNTT - Phần mềm' },
-          { value: 'marketing', label: 'Marketing' },
-          { value: 'hr', label: 'Nhân sự' },
-          { value: 'accounting', label: 'Kế toán' }
-        ]
-      };
+      if (!grid) return;
 
-      var latestScopedFilterOptions = Array.prototype.slice.call(
-        document.querySelectorAll('#latestFilterSelect [data-filter-type]')
-      );
+      var currentPage = 1;
+      var totalPages = parseInt(grid.getAttribute('data-total-pages'), 10) || 1;
+      var activeType = 'all';
+      var activeValue = 'all';
+      var isLoading = false;
+      var filterLabels = { all: 'Lọc theo', location: 'Địa điểm', salary: 'Mức lương', experience: 'Kinh nghiệm', industry: 'Ngành nghề' };
+      var filterIcons = { all: 'ti ti-filter', location: 'ti ti-map-pin', salary: 'ti ti-cash', experience: 'ti ti-user-check', industry: 'ti ti-briefcase' };
+      var filterValues = config.filterValues || { all: [{ value: 'all', label: 'Tất cả' }] };
 
-      function getLatestDotPages() {
-        if (latestTotalPages <= 3) {
-          var smallPages = [];
-          for (var i = 1; i <= latestTotalPages; i++) smallPages.push(i);
-          return smallPages;
+      function dotPages() {
+        if (totalPages <= 3) {
+          var pages = [];
+          for (var page = 1; page <= totalPages; page++) pages.push(page);
+          return pages;
         }
-        if (latestPage <= 1) return [1, 2, 3];
-        if (latestPage >= latestTotalPages) return [latestTotalPages - 2, latestTotalPages - 1, latestTotalPages];
-        return [latestPage - 1, latestPage, latestPage + 1];
+        if (currentPage <= 1) return [1, 2, 3];
+        if (currentPage >= totalPages) return [totalPages - 2, totalPages - 1, totalPages];
+        return [currentPage - 1, currentPage, currentPage + 1];
       }
 
-      function renderLatestPagination() {
-        if (!latestJobsDots) return;
-        while (latestJobsDots.firstChild) {
-          latestJobsDots.removeChild(latestJobsDots.firstChild);
-        }
-
-        getLatestDotPages().forEach(function (pageNumber) {
+      function renderPagination() {
+        if (pagination) pagination.style.display = totalPages > 1 ? 'flex' : 'none';
+        if (previous) previous.disabled = currentPage <= 1 || isLoading;
+        if (next) next.disabled = currentPage >= totalPages || isLoading;
+        if (!dots) return;
+        dots.innerHTML = '';
+        dotPages().forEach(function (page) {
           var dot = document.createElement('button');
           dot.type = 'button';
-          dot.className = 'job-page-dot';
-          dot.setAttribute('aria-label', 'Trang ' + pageNumber);
-          dot.setAttribute('data-page', pageNumber);
+          dot.className = page === currentPage ? 'job-page-dot active' : 'job-page-dot';
+          dot.setAttribute('aria-label', 'Trang ' + page);
+          dot.setAttribute('aria-current', page === currentPage ? 'page' : 'false');
           dot.addEventListener('click', function () {
-            loadLatestJobs(parseInt(this.getAttribute('data-page'), 10), true);
+            if (page !== currentPage) loadJobs(page);
           });
-          latestJobsDots.appendChild(dot);
-        });
-        Array.prototype.slice.call(latestJobsDots.querySelectorAll('.job-page-dot')).forEach(function (dot) {
-          var isActive = parseInt(dot.getAttribute('data-page'), 10) === latestPage;
-          dot.classList.toggle('active', isActive);
-          dot.setAttribute('aria-current', isActive ? 'page' : 'false');
+          dots.appendChild(dot);
         });
       }
 
-      function updateLatestControls() {
-        if (latestJobsPagination) {
-          latestJobsPagination.style.display = latestTotalPages > 1 ? 'flex' : 'none';
-        }
-        if (latestJobsPrev) {
-          latestJobsPrev.disabled = latestPage <= 1 || latestIsLoading;
-        }
-        if (latestJobsNext) {
-          latestJobsNext.disabled = latestPage >= latestTotalPages || latestIsLoading;
-        }
-        renderLatestPagination();
-      }
+      function renderFilterValues() {
+        if (!chips) return;
+        var values = filterValues[activeType] || filterValues.all || [{ value: 'all', label: 'Tất cả' }];
+        chips.innerHTML = '';
+        if (mobileValue) mobileValue.innerHTML = '';
+        if (mobileIcon) mobileIcon.className = filterIcons[activeType] || filterIcons.all;
 
-      function setLatestHtml(html) {
-        latestGrid.classList.add('featured-slide-leave');
-        window.setTimeout(function () {
-          latestGrid.innerHTML = html;
-          latestGrid.classList.remove('featured-slide-leave');
-          latestGrid.classList.add('featured-slide-enter');
-          window.setTimeout(function () {
-            latestGrid.classList.remove('featured-slide-enter');
-          }, 360);
-        }, 220);
-      }
-
-      function loadLatestJobs(targetPage, manual) {
-        if (latestIsLoading) return;
-        targetPage = Math.max(1, parseInt(targetPage, 10) || 1);
-        latestIsLoading = true;
-        updateLatestControls();
-        var url = '<?php echo XC_URL; ?>/api/homeFeaturedJobs?page=' + encodeURIComponent(targetPage) + '&filter_type=' + encodeURIComponent(latestActiveFilterType) + '&filter_value=' + encodeURIComponent(latestActiveFilterValue);
-        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-          .then(function (response) { return response.json(); })
-          .then(function (result) {
-            if (!result || Number(result.status) !== 200) return;
-            latestPage = parseInt(result.page, 10) || 1;
-            latestTotalPages = parseInt(result.total_pages, 10) || 1;
-            setLatestHtml(result.html || '');
-            if (latestEmpty) {
-              latestEmpty.style.display = result.html ? 'none' : 'block';
-            }
-          })
-          .catch(function () {
-            if (latestEmpty) latestEmpty.style.display = 'block';
-          })
-          .finally(function () {
-            latestIsLoading = false;
-            updateLatestControls();
-          });
-      }
-
-      function applyLatestFilters() {
-        latestPage = 1;
-        loadLatestJobs(1, true);
-      }
-
-      function renderLatestChips() {
-        if (!latestFilterChips) return;
-        var items = latestChipSets[latestActiveFilterType] || [];
-        latestFilterChips.innerHTML = '';
-        if (latestMobileFilterValue) {
-          latestMobileFilterValue.innerHTML = '';
-        }
-        if (latestMobileFilterIcon) {
-          latestMobileFilterIcon.className = latestFilterIcons[latestActiveFilterType] || 'ti ti-filter';
-        }
-
-        items.forEach(function (item) {
+        values.forEach(function (item) {
           var chip = document.createElement('button');
           chip.type = 'button';
-          chip.className = item.value === latestActiveFilterValue ? 'urgent-filter-chip active' : 'urgent-filter-chip';
-          chip.setAttribute('data-filter-value', item.value);
+          chip.className = item.value === activeValue ? 'urgent-filter-chip active' : 'urgent-filter-chip';
           chip.textContent = item.label;
           chip.addEventListener('click', function () {
-            latestActiveFilterValue = item.value;
-            latestPage = 1;
-            Array.prototype.slice.call(latestFilterChips.querySelectorAll('.urgent-filter-chip')).forEach(function (currentChip) {
-              currentChip.classList.toggle('active', currentChip === chip);
-            });
-            applyLatestFilters();
+            if (activeValue === item.value) return;
+            activeValue = item.value;
+            loadJobs(1);
           });
-          latestFilterChips.appendChild(chip);
+          chips.appendChild(chip);
 
-          if (latestMobileFilterValue) {
+          if (mobileValue) {
             var option = document.createElement('option');
             option.value = item.value;
             option.textContent = item.label;
-            option.selected = item.value === latestActiveFilterValue;
-            latestMobileFilterValue.appendChild(option);
+            option.selected = item.value === activeValue;
+            mobileValue.appendChild(option);
           }
         });
-
-        latestFilterChips.scrollLeft = 0;
       }
 
-      if (latestFilterToggle && latestFilterSelect) {
-        latestFilterToggle.addEventListener('click', function () {
-          var isOpen = latestFilterSelect.classList.toggle('open');
-          latestFilterToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      function setJobsHtml(html, direction) {
+        return new Promise(function (resolve) {
+          var outClass = direction === 'previous' ? 'urgent-slide-out-prev' : 'urgent-slide-out-next';
+          var inClass = direction === 'previous' ? 'urgent-slide-in-prev' : 'urgent-slide-in-next';
+          grid.classList.remove('urgent-slide-in-next', 'urgent-slide-in-prev', 'featured-slide-enter', 'featured-slide-leave');
+          grid.classList.add(outClass);
+          window.setTimeout(function () {
+            grid.innerHTML = html;
+            grid.classList.remove(outClass);
+            grid.classList.add(inClass);
+            window.setTimeout(function () {
+              grid.classList.remove(inClass);
+              resolve();
+            }, 350);
+          }, 220);
         });
       }
 
-      latestScopedFilterOptions.forEach(function (option) {
+      function loadJobs(page) {
+        if (isLoading) return;
+        var direction = page < currentPage ? 'previous' : 'next';
+        isLoading = true;
+        renderPagination();
+        var url = config.apiUrl + '?page=' + encodeURIComponent(page) + '&filter_type=' + encodeURIComponent(activeType) + '&filter_value=' + encodeURIComponent(activeValue);
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+          .then(function (response) { return response.json(); })
+          .then(function (result) {
+            if (!result || Number(result.status) !== 200) throw new Error('Không thể tải dữ liệu');
+            currentPage = parseInt(result.page, 10) || 1;
+            totalPages = parseInt(result.total_pages, 10) || 1;
+            if (empty) empty.style.display = result.html ? 'none' : 'block';
+            return setJobsHtml(result.html || '', direction);
+          })
+          .catch(function () {
+            if (empty) empty.style.display = 'block';
+          })
+          .finally(function () {
+            isLoading = false;
+            renderPagination();
+          });
+      }
+
+      if (filterToggle && filterSelect) {
+        filterToggle.addEventListener('click', function () {
+          var isOpen = filterSelect.classList.toggle('open');
+          filterToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
+      }
+      filterOptions.forEach(function (option) {
         option.addEventListener('click', function () {
-          latestActiveFilterType = option.getAttribute('data-filter-type');
-          latestActiveFilterValue = 'all';
-          latestPage = 1;
-
-          if (latestFilterLabel) {
-            latestFilterLabel.textContent = latestFilterLabels[latestActiveFilterType] || '';
-          }
-          latestScopedFilterOptions.forEach(function (item) {
+          activeType = option.getAttribute('data-filter-type') || 'all';
+          activeValue = 'all';
+          if (filterLabel) filterLabel.textContent = filterLabels[activeType] || filterLabels.all;
+          filterOptions.forEach(function (item) {
             var isActive = item === option;
             item.classList.toggle('active', isActive);
             item.setAttribute('aria-selected', isActive ? 'true' : 'false');
           });
-          if (latestFilterSelect) {
-            latestFilterSelect.classList.remove('open');
-          }
-          if (latestFilterToggle) {
-            latestFilterToggle.setAttribute('aria-expanded', 'false');
-          }
-
-          renderLatestChips();
-          applyLatestFilters();
+          if (filterSelect) filterSelect.classList.remove('open');
+          if (filterToggle) filterToggle.setAttribute('aria-expanded', 'false');
+          renderFilterValues();
+          loadJobs(1);
         });
       });
-
       document.addEventListener('click', function (event) {
-        if (latestFilterSelect && !latestFilterSelect.contains(event.target)) {
-          latestFilterSelect.classList.remove('open');
-          if (latestFilterToggle) {
-            latestFilterToggle.setAttribute('aria-expanded', 'false');
-          }
+        if (filterSelect && !filterSelect.contains(event.target)) {
+          filterSelect.classList.remove('open');
+          if (filterToggle) filterToggle.setAttribute('aria-expanded', 'false');
         }
       });
+      if (chipPrevious && chips) chipPrevious.addEventListener('click', function () { chips.scrollBy({ left: -220, behavior: 'smooth' }); });
+      if (chipNext && chips) chipNext.addEventListener('click', function () { chips.scrollBy({ left: 220, behavior: 'smooth' }); });
+      if (mobileValue) mobileValue.addEventListener('change', function () { activeValue = mobileValue.value; loadJobs(1); });
+      if (previous) previous.addEventListener('click', function () { if (currentPage > 1) loadJobs(currentPage - 1); });
+      if (next) next.addEventListener('click', function () { if (currentPage < totalPages) loadJobs(currentPage + 1); });
 
-      if (latestFilterPrev && latestFilterChips) {
-        latestFilterPrev.addEventListener('click', function () {
-          latestFilterChips.scrollBy({ left: -220, behavior: 'smooth' });
-        });
+      if (empty) {
+        empty.style.display = grid.children.length ? 'none' : 'block';
       }
-      if (latestFilterNext && latestFilterChips) {
-        latestFilterNext.addEventListener('click', function () {
-          latestFilterChips.scrollBy({ left: 220, behavior: 'smooth' });
-        });
-      }
-      if (latestMobileFilterValue) {
-        latestMobileFilterValue.addEventListener('change', function () {
-          latestActiveFilterValue = latestMobileFilterValue.value;
-          latestPage = 1;
-          Array.prototype.slice.call(latestFilterChips.querySelectorAll('.urgent-filter-chip')).forEach(function (chip) {
-            chip.classList.toggle('active', chip.getAttribute('data-filter-value') === latestActiveFilterValue);
-          });
-          applyLatestFilters();
-        });
-      }
-      if (latestJobsPrev) {
-        latestJobsPrev.addEventListener('click', function () {
-          if (latestPage > 1) {
-            loadLatestJobs(latestPage - 1, true);
-          }
-        });
-      }
-      if (latestJobsNext) {
-        latestJobsNext.addEventListener('click', function () {
-          if (latestPage < latestTotalPages) {
-            loadLatestJobs(latestPage + 1, true);
-          }
-        });
-      }
+      renderFilterValues();
+      renderPagination();
+    };
 
-      renderLatestChips();
-      updateLatestControls();
-    }
+    window.initHomeFilterJobs({
+      gridId: 'latestJobsGrid',
+      emptyId: 'latestJobsEmpty',
+      paginationId: 'latestJobsPagination',
+      dotsId: 'latestJobsDots',
+      previousId: 'latestJobsPrev',
+      nextId: 'latestJobsNext',
+      filterSelectId: 'latestFilterSelect',
+      filterToggleId: 'latestFilterToggle',
+      filterLabelId: 'latestFilterLabel',
+      chipsId: 'latestFilterChips',
+      chipPreviousId: 'latestFilterPrev',
+      chipNextId: 'latestFilterNext',
+      mobileValueId: 'latestMobileFilterValue',
+      mobileIconId: 'latestMobileFilterIcon',
+      apiUrl: '<?php echo XC_URL; ?>/api/homeFeaturedJobs',
+      filterValues: <?php echo $featured_job_filters_json ?: '{"all":[{"value":"all","label":"Tất cả"}],"location":[{"value":"all","label":"Tất cả"}],"salary":[{"value":"all","label":"Tất cả"}],"experience":[{"value":"all","label":"Tất cả"}],"industry":[{"value":"all","label":"Tất cả"}]}'; ?>
+    });
   })();
 </script>
 
@@ -1778,176 +1723,25 @@ function homeNewsDateText($value){
 
 <script>
   (function () {
-    var grid = document.getElementById('urgentJobsGrid');
-    var empty = document.getElementById('urgentJobsEmpty');
-    var pagination = document.getElementById('urgentJobsPagination');
-    var dots = document.getElementById('urgentJobsDots');
-    var previous = document.getElementById('urgentJobsPrev');
-    var next = document.getElementById('urgentJobsNext');
-    var filterSelect = document.getElementById('urgentFilterSelect');
-    var filterToggle = document.getElementById('urgentFilterToggle');
-    var filterLabel = document.getElementById('urgentFilterLabel');
-    var filterOptions = Array.prototype.slice.call(document.querySelectorAll('#urgentFilterSelect [data-filter-type]'));
-    var chips = document.getElementById('urgentSalaryChips');
-    var chipPrevious = document.getElementById('urgentSalaryPrev');
-    var chipNext = document.getElementById('urgentSalaryNext');
-    var mobileValue = document.getElementById('urgentMobileFilterValue');
-    var mobileIcon = document.getElementById('urgentMobileFilterIcon');
-
-    if (!grid) return;
-
-    var currentPage = 1;
-    var totalPages = parseInt(grid.getAttribute('data-total-pages'), 10) || 1;
-    var activeType = 'all';
-    var activeValue = 'all';
-    var isLoading = false;
-    var filterLabels = { all: 'Lọc theo', location: 'Địa điểm', salary: 'Mức lương', experience: 'Kinh nghiệm', industry: 'Ngành nghề' };
-    var filterIcons = { all: 'ti ti-filter', location: 'ti ti-map-pin', salary: 'ti ti-cash', experience: 'ti ti-user-check', industry: 'ti ti-briefcase' };
-    var filterValues = {
-      all: [{ value: 'all', label: 'Tất cả' }],
-      location: [{ value: 'all', label: 'Tất cả' }, { value: 'hanoi', label: 'Hà Nội' }, { value: 'tphcm', label: 'TP.HCM' }, { value: 'danang', label: 'Đà Nẵng' }, { value: 'binhduong', label: 'Bình Dương' }, { value: 'cantho', label: 'Cần Thơ' }],
-      salary: [{ value: 'all', label: 'Tất cả' }, { value: '1-3', label: '1 - 3 triệu' }, { value: '3-5', label: '3 - 5 triệu' }, { value: '5-7', label: '5 - 7 triệu' }, { value: '7-10', label: '7 - 10 triệu' }, { value: '10-15', label: '10 - 15 triệu' }, { value: '15-20', label: '15 - 20 triệu' }, { value: '20+', label: 'Trên 20 triệu' }],
-      experience: [{ value: 'all', label: 'Tất cả' }, { value: 'none', label: 'Chưa có kinh nghiệm' }, { value: '1-2', label: '1 - 2 năm' }, { value: '3-5', label: '3 - 5 năm' }, { value: '5+', label: 'Trên 5 năm' }],
-      industry: [{ value: 'all', label: 'Tất cả' }, { value: 'finance', label: 'Tài chính - Ngân hàng' }, { value: 'sales', label: 'Bán hàng - Kinh doanh' }, { value: 'it', label: 'CNTT - Phần mềm' }, { value: 'marketing', label: 'Marketing' }, { value: 'hr', label: 'Nhân sự' }, { value: 'accounting', label: 'Kế toán' }]
-    };
-
-    function dotPages() {
-      if (totalPages <= 3) {
-        var pages = [];
-        for (var page = 1; page <= totalPages; page++) pages.push(page);
-        return pages;
-      }
-      if (currentPage <= 1) return [1, 2, 3];
-      if (currentPage >= totalPages) return [totalPages - 2, totalPages - 1, totalPages];
-      return [currentPage - 1, currentPage, currentPage + 1];
-    }
-
-    function renderPagination() {
-      if (pagination) pagination.style.display = totalPages > 1 ? 'flex' : 'none';
-      if (previous) previous.disabled = currentPage <= 1 || isLoading;
-      if (next) next.disabled = currentPage >= totalPages || isLoading;
-      if (!dots) return;
-      dots.innerHTML = '';
-      dotPages().forEach(function (page) {
-        var dot = document.createElement('button');
-        dot.type = 'button';
-        dot.className = page === currentPage ? 'job-page-dot active' : 'job-page-dot';
-        dot.setAttribute('aria-label', 'Trang ' + page);
-        dot.setAttribute('aria-current', page === currentPage ? 'page' : 'false');
-        dot.addEventListener('click', function () {
-          if (page !== currentPage) loadUrgentJobs(page);
-        });
-        dots.appendChild(dot);
-      });
-    }
-
-    function renderFilterValues() {
-      if (!chips) return;
-      var values = filterValues[activeType] || filterValues.all;
-      chips.innerHTML = '';
-      if (mobileValue) mobileValue.innerHTML = '';
-      if (mobileIcon) mobileIcon.className = filterIcons[activeType] || filterIcons.all;
-
-      values.forEach(function (item) {
-        var chip = document.createElement('button');
-        chip.type = 'button';
-        chip.className = item.value === activeValue ? 'urgent-filter-chip active' : 'urgent-filter-chip';
-        chip.textContent = item.label;
-        chip.addEventListener('click', function () {
-          if (activeValue === item.value) return;
-          activeValue = item.value;
-          loadUrgentJobs(1);
-        });
-        chips.appendChild(chip);
-
-        if (mobileValue) {
-          var option = document.createElement('option');
-          option.value = item.value;
-          option.textContent = item.label;
-          option.selected = item.value === activeValue;
-          mobileValue.appendChild(option);
-        }
-      });
-    }
-
-    function setUrgentJobsHtml(html, direction) {
-      return new Promise(function (resolve) {
-        var outClass = direction === 'previous' ? 'urgent-slide-out-prev' : 'urgent-slide-out-next';
-        var inClass = direction === 'previous' ? 'urgent-slide-in-prev' : 'urgent-slide-in-next';
-        grid.classList.remove('urgent-slide-in-next', 'urgent-slide-in-prev');
-        grid.classList.add(outClass);
-        window.setTimeout(function () {
-          grid.innerHTML = html;
-          grid.classList.remove(outClass);
-          grid.classList.add(inClass);
-          window.setTimeout(function () {
-            grid.classList.remove(inClass);
-            resolve();
-          }, 350);
-        }, 220);
-      });
-    }
-
-    function loadUrgentJobs(page) {
-      if (isLoading) return;
-      var direction = page < currentPage ? 'previous' : 'next';
-      isLoading = true;
-      renderPagination();
-      var url = '<?php echo XC_URL; ?>/api/homeUrgentJobs?page=' + encodeURIComponent(page) + '&filter_type=' + encodeURIComponent(activeType) + '&filter_value=' + encodeURIComponent(activeValue);
-      fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-        .then(function (response) { return response.json(); })
-        .then(function (result) {
-          if (!result || Number(result.status) !== 200) throw new Error('Không thể tải dữ liệu');
-          currentPage = parseInt(result.page, 10) || 1;
-          totalPages = parseInt(result.total_pages, 10) || 1;
-          if (empty) empty.style.display = result.html ? 'none' : 'block';
-          return setUrgentJobsHtml(result.html || '', direction);
-        })
-        .catch(function () {
-          if (empty) empty.style.display = 'block';
-        })
-        .finally(function () {
-          isLoading = false;
-          renderPagination();
-        });
-    }
-
-    if (filterToggle && filterSelect) {
-      filterToggle.addEventListener('click', function () {
-        var isOpen = filterSelect.classList.toggle('open');
-        filterToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-      });
-    }
-    filterOptions.forEach(function (option) {
-      option.addEventListener('click', function () {
-        activeType = option.getAttribute('data-filter-type') || 'all';
-        activeValue = 'all';
-        if (filterLabel) filterLabel.textContent = filterLabels[activeType] || filterLabels.all;
-        filterOptions.forEach(function (item) {
-          var isActive = item === option;
-          item.classList.toggle('active', isActive);
-          item.setAttribute('aria-selected', isActive ? 'true' : 'false');
-        });
-        if (filterSelect) filterSelect.classList.remove('open');
-        if (filterToggle) filterToggle.setAttribute('aria-expanded', 'false');
-        renderFilterValues();
-        loadUrgentJobs(1);
-      });
+    if (typeof window.initHomeFilterJobs !== 'function') return;
+    window.initHomeFilterJobs({
+      gridId: 'urgentJobsGrid',
+      emptyId: 'urgentJobsEmpty',
+      paginationId: 'urgentJobsPagination',
+      dotsId: 'urgentJobsDots',
+      previousId: 'urgentJobsPrev',
+      nextId: 'urgentJobsNext',
+      filterSelectId: 'urgentFilterSelect',
+      filterToggleId: 'urgentFilterToggle',
+      filterLabelId: 'urgentFilterLabel',
+      chipsId: 'urgentSalaryChips',
+      chipPreviousId: 'urgentSalaryPrev',
+      chipNextId: 'urgentSalaryNext',
+      mobileValueId: 'urgentMobileFilterValue',
+      mobileIconId: 'urgentMobileFilterIcon',
+      apiUrl: '<?php echo XC_URL; ?>/api/homeUrgentJobs',
+      filterValues: <?php echo $urgent_job_filters_json ?: '{"all":[{"value":"all","label":"Tất cả"}],"location":[{"value":"all","label":"Tất cả"}],"salary":[{"value":"all","label":"Tất cả"}],"experience":[{"value":"all","label":"Tất cả"}],"industry":[{"value":"all","label":"Tất cả"}]}'; ?>
     });
-    document.addEventListener('click', function (event) {
-      if (filterSelect && !filterSelect.contains(event.target)) {
-        filterSelect.classList.remove('open');
-        if (filterToggle) filterToggle.setAttribute('aria-expanded', 'false');
-      }
-    });
-    if (chipPrevious && chips) chipPrevious.addEventListener('click', function () { chips.scrollBy({ left: -220, behavior: 'smooth' }); });
-    if (chipNext && chips) chipNext.addEventListener('click', function () { chips.scrollBy({ left: 220, behavior: 'smooth' }); });
-    if (mobileValue) mobileValue.addEventListener('change', function () { activeValue = mobileValue.value; loadUrgentJobs(1); });
-    if (previous) previous.addEventListener('click', function () { if (currentPage > 1) loadUrgentJobs(currentPage - 1); });
-    if (next) next.addEventListener('click', function () { if (currentPage < totalPages) loadUrgentJobs(currentPage + 1); });
-
-    renderFilterValues();
-    renderPagination();
   })();
 </script>
 
@@ -1992,13 +1786,30 @@ $featuredStudents = [
   ['name' => 'Trần Văn Khải', 'dob' => '17/03/2003', 'major' => 'Báo chí', 'color' => '#e65100', 'initials' => 'TK'],
   ['name' => 'Lê Thị Diệu', 'dob' => '03/09/2002', 'major' => 'Ngoại ngữ', 'color' => '#00695c', 'initials' => 'LD'],
 ];
+if(!empty($featured_candidates)){
+  $featuredStudents = array();
+  foreach($featured_candidates as $candidate){
+    $featuredStudents[] = array(
+      'name' => homeCandidateName($candidate),
+      'dob' => homeCandidateDateText($candidate),
+      'major' => homeCandidateMajorText($candidate),
+      'color' => homeCandidateAccentColor($candidate),
+      'initials' => homeCandidateInitials($candidate),
+      'url' => homeCandidateUrl($candidate),
+      'user_group' => $candidate->user_group ?? null,
+      'avatar' => homeCandidateAvatarUrl($candidate->avatar_url ?? $candidate->user_avatar_url ?? '')
+    );
+  }
+}else{
+  $featuredStudents = array();
+}
 $svPages = array_chunk($featuredStudents, 12);
 ?>
 <section class="sv-section">
   <div class="section-inner">
     <div class="section-header">
       <div class="section-title">Ứng viên nổi bật</div>
-      <a href="#" class="see-all">Xem tất cả <i class="ti ti-arrow-right"></i></a>
+      <a href="<?php echo XC_URL; ?>/quan-ly-ung-vien.html" class="see-all">Xem tất cả <i class="ti ti-arrow-right"></i></a>
     </div>
 
     <div id="svSliderWrap" style="overflow:hidden;position:relative;border-radius:12px">
@@ -2006,16 +1817,19 @@ $svPages = array_chunk($featuredStudents, 12);
         <?php foreach ($svPages as $pageStudents): ?>
         <div class="sv-grid" style="min-width:100%;box-sizing:border-box;flex-shrink:0">
           <?php foreach ($pageStudents as $s): ?>
-          <div class="sv-card">
-            <span class="sv-badge">Sinh viên</span>
+          <a href="<?= htmlspecialchars($s['url'] ?? '#', ENT_QUOTES, 'UTF-8') ?>" class="sv-card" style="display:block;text-decoration:none;color:inherit">
+            <!-- <span class="sv-badge">Ứng viên</span> -->
             <!-- <span class="sv-badge-xuat-sac">Xuất sắc</span> -->
             <div class="sv-avatar-wrap">
-              <div class="sv-avatar-fallback" style="background:<?= htmlspecialchars($s['color'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($s['initials'], ENT_QUOTES, 'UTF-8') ?></div>
+              <?php if(!empty($s['avatar'])): ?>
+                <img src="<?= htmlspecialchars($s['avatar'], ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($s['name'], ENT_QUOTES, 'UTF-8') ?>" class="sv-avatar-photo" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+              <?php endif; ?>
+              <div class="sv-avatar-fallback" style="background:<?= htmlspecialchars($s['color'], ENT_QUOTES, 'UTF-8') ?>;<?= !empty($s['avatar']) ? 'display:none' : '' ?>"><?= htmlspecialchars($s['initials'], ENT_QUOTES, 'UTF-8') ?></div>
             </div>
             <div class="sv-name" title="<?= htmlspecialchars($s['name'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($s['name'], ENT_QUOTES, 'UTF-8') ?></div>
             <div class="sv-dob"><i class="ti ti-calendar" style="font-size:10px;vertical-align:-1px"></i> <?= htmlspecialchars($s['dob'], ENT_QUOTES, 'UTF-8') ?></div>
             <div class="sv-major"><?= htmlspecialchars($s['major'], ENT_QUOTES, 'UTF-8') ?></div>
-          </div>
+          </a>
           <?php endforeach; ?>
         </div>
         <?php endforeach; ?>
@@ -2234,69 +2048,26 @@ $svPages = array_chunk($featuredStudents, 12);
   <div class="section-inner">
     <div class="section-header">
       <div class="section-title">Tin tức nổi bật</div>
-      <a href="#" class="see-all">Xem tất cả <i class="ti ti-arrow-right"></i></a>
+      <a href="<?php echo homeJobH(XC_URL.'/tin-tuc-su-kien.html'); ?>" class="see-all">Xem tất cả <i class="ti ti-arrow-right"></i></a>
     </div>
     <div class="featured-news-grid">
-      <a href="#" class="featured-news-card">
-        <div class="featured-news-thumb">
-          <img src="https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=900&q=80" alt="Xu hướng tuyển dụng 2026" loading="lazy">
-        </div>
-        <div class="featured-news-body">
-          <div class="featured-news-title">Xu hướng tuyển dụng 2026: Kỹ năng số tiếp tục lên ngôi</div>
-          <div class="featured-news-desc">Doanh nghiệp ưu tiên ứng viên có khả năng thích nghi nhanh, tư duy dữ liệu và kinh nghiệm làm việc với công cụ AI.</div>
-          <div class="featured-news-date"><i class="ti ti-calendar"></i> 20/05/2026</div>
-        </div>
-      </a>
-      <a href="#" class="featured-news-card">
-        <div class="featured-news-thumb">
-          <img src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=900&q=80" alt="Bí quyết phỏng vấn" loading="lazy">
-        </div>
-        <div class="featured-news-body">
-          <div class="featured-news-title">5 bí quyết giúp ứng viên ghi điểm trong buổi phỏng vấn</div>
-          <div class="featured-news-desc">Chuẩn bị câu chuyện nghề nghiệp rõ ràng, nghiên cứu công ty và đặt câu hỏi đúng trọng tâm để tạo ấn tượng tốt.</div>
-          <div class="featured-news-date"><i class="ti ti-calendar"></i> 18/05/2026</div>
-        </div>
-      </a>
-      <a href="#" class="featured-news-card">
-        <div class="featured-news-thumb">
-          <img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=900&q=80" alt="Cập nhật lương thưởng" loading="lazy">
-        </div>
-        <div class="featured-news-body">
-          <div class="featured-news-title">Cập nhật mức lương phổ biến của các ngành hot hiện nay</div>
-          <div class="featured-news-desc">Công nghệ thông tin, kinh doanh, marketing và tài chính vẫn là nhóm ngành có nhu cầu tuyển dụng ổn định.</div>
-          <div class="featured-news-date"><i class="ti ti-calendar"></i> 16/05/2026</div>
-        </div>
-      </a>
-      <a href="#" class="featured-news-card">
-        <div class="featured-news-thumb">
-          <img src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=900&q=80" alt="Việc làm cho sinh viên" loading="lazy">
-        </div>
-        <div class="featured-news-body">
-          <div class="featured-news-title">Sinh viên mới ra trường nên chuẩn bị gì khi tìm việc?</div>
-          <div class="featured-news-desc">Một CV ngắn gọn, portfolio phù hợp và thái độ học hỏi là nền tảng giúp sinh viên tăng cơ hội trúng tuyển.</div>
-          <div class="featured-news-date"><i class="ti ti-calendar"></i> 14/05/2026</div>
-        </div>
-      </a>
-      <a href="#" class="featured-news-card">
-        <div class="featured-news-thumb">
-          <img src="https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=900&q=80" alt="Môi trường làm việc" loading="lazy">
-        </div>
-        <div class="featured-news-body">
-          <div class="featured-news-title">Môi trường làm việc linh hoạt trở thành lợi thế cạnh tranh</div>
-          <div class="featured-news-desc">Nhiều công ty mở rộng chính sách hybrid, tăng phúc lợi sức khỏe và chú trọng trải nghiệm nhân viên.</div>
-          <div class="featured-news-date"><i class="ti ti-calendar"></i> 12/05/2026</div>
-        </div>
-      </a>
-      <a href="#" class="featured-news-card">
-        <div class="featured-news-thumb">
-          <img src="https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=900&q=80" alt="Nhà tuyển dụng" loading="lazy">
-        </div>
-        <div class="featured-news-body">
-          <div class="featured-news-title">Nhà tuyển dụng tăng tốc tìm kiếm nhân sự chất lượng cao</div>
-          <div class="featured-news-desc">Các vị trí quản lý, chuyên viên kinh doanh và nhân sự công nghệ đang được nhiều doanh nghiệp săn đón.</div>
-          <div class="featured-news-date"><i class="ti ti-calendar"></i> 10/05/2026</div>
-        </div>
-      </a>
+      <?php if(!empty($home_featured_news)): ?>
+        <?php foreach($home_featured_news as $news): ?>
+          <?php $newsTitle = homeNewsTitle($news); ?>
+          <a href="<?php echo homeJobH(homeNewsUrl($news)); ?>" class="featured-news-card">
+            <div class="featured-news-thumb">
+              <img src="<?php echo homeJobH(homeNewsImageUrl($news->event_image ?? '')); ?>" alt="<?php echo homeJobH($newsTitle); ?>" loading="lazy">
+            </div>
+            <div class="featured-news-body">
+              <div class="featured-news-title"><?php echo homeJobH($newsTitle); ?></div>
+              <div class="featured-news-desc"><?php echo homeJobH(homeNewsExcerpt($news, 150)); ?></div>
+              <div class="featured-news-date"><i class="ti ti-calendar"></i> <?php echo homeJobH(homeNewsDateText($news->event_created_date ?? '')); ?></div>
+            </div>
+          </a>
+        <?php endforeach; ?>
+      <?php else: ?>
+        <div style="grid-column:1 / -1; padding:24px 0; text-align:center; color:#667085;">Chưa có tin tức nổi bật.</div>
+      <?php endif; ?>
     </div>
   </div>
 </section>

@@ -423,6 +423,13 @@ Class general{
 				$fs = XC_URL."/tin-tuc-su-kien/".$bl->id."-".$this->bodau($bl->event_name).".html";
 				break;
 			}
+            case "market_result":
+			{
+				$db->query("SELECT * FROM hicrm_market_results WHERE id = '".$id."'");
+				$bl = $db->fetch_object(true);
+				$fs = XC_URL."/ket-qua-san-viec-lam/".$bl->id."-".$this->bodau($bl->result_title).".html";
+				break;
+			}
             case "depart":
 			{
 				$db->query("SELECT * FROM hicrm_departments WHERE id = '".$id."'");

@@ -48,7 +48,7 @@ function getCandidateName($candidate) {
 }
 
 function getCandidateRole($candidate) {
-  return $candidate->desired_position ?? 'Người tìm việc';
+  return $candidate->desired_position ?? 'Đang cập nhật';
 }
 
 function getCandidateCity($candidate) {
@@ -96,11 +96,40 @@ function getCandidateApplied($candidate) {
   return $days.' ngày trước';
 }
 
+function getCandidateSkills($candidate) {
+  $skillsText = trim((string)($candidate->soft_skills ?? ''));
+  if ($skillsText === '') return array();
+
+  $decoded = json_decode($skillsText, true);
+  if (is_array($decoded)) {
+    $skills = array();
+    foreach ($decoded as $item) {
+      $label = '';
+      if (is_array($item)) {
+        $label = trim((string)($item['skill'] ?? $item['name'] ?? ''));
+      } else {
+        $label = trim((string)$item);
+      }
+      if ($label !== '') {
+        $skills[] = $label;
+      }
+    }
+    return array_values(array_unique($skills));
+  }
+
+  return array_values(array_filter(array_map('trim', preg_split('/[\r\n,;|]+/u', $skillsText)), function($value) {
+    return $value !== '';
+  }));
+}
+
 global $db;
 $db->query("SELECT COUNT(id) AS total FROM hicrm_candidates WHERE status = 3 AND is_seeking = 1");
 $dbTotal = intval($db->fetch_object(true)->total);
 
-$db->query("SELECT COUNT(id) AS total FROM hicrm_candidates WHERE status = 3 AND is_seeking = 1 AND is_student_candidate = 1");
+$db->query("SELECT COUNT(ca.id) AS total
+            FROM hicrm_candidates ca
+            LEFT JOIN hicrm_users u ON u.id = ca.user_id
+            WHERE ca.status = 3 AND ca.is_seeking = 1 AND u.user_group = 4");
 $dbStudents = intval($db->fetch_object(true)->total);
 
 $db->query("SELECT COUNT(ca.id) AS total FROM hicrm_candidates ca WHERE ca.status = 3 AND ca.is_seeking = 1 AND 
@@ -208,28 +237,25 @@ $dbExperienced = intval($db->fetch_object(true)->total);
             $color = getCandidateColor($candidate);
             $appliedText = getCandidateApplied($candidate);
             
-            $skillsText = trim((string)($candidate->soft_skills ?? ''));
-            $skills = array_filter(array_map('trim', explode(',', $skillsText)), function($val) {
-                return $val !== '';
-            });
+            $skills = getCandidateSkills($candidate);
             
             $detailUrl = general::getInstance()->permalink((int)($candidate->id ?? 0), 'candidate_profile');
-            $cvUrl = isset($candidate->cv_file) && trim($candidate->cv_file) !== '' ? XC_URL . '/' . ltrim($candidate->cv_file, '/') : '#';
+            $cvUrl = isset($candidate->cv_url) && trim($candidate->cv_url) !== '' ? XC_URL . '/' . ltrim($candidate->cv_url, '/') : '#';
           ?>
-          <article class="cand-card">
+          <a href="<?php echo candidatePageH($detailUrl); ?>" class="cand-card" style="display:block;text-decoration:none;color:inherit;">
             <div class="cand-card-top">
-              <div class="cand-rank"><?php echo (int)($candidate->id ?? 0); ?></div>
+              <!-- <div class="cand-rank"><?php echo (int)($candidate->id ?? 0); ?></div>
               <div class="cand-card-actions">
-                <button type="button" class="card-action-btn fav" title="Yêu thích"><i class="ti ti-heart"></i></button>
+                <span class="card-action-btn fav" role="button" tabindex="0" title="Yêu thích"><i class="ti ti-heart"></i></span>
                 <?php if($cvUrl !== '#'): ?>
-                  <a href="<?php echo candidatePageH($cvUrl); ?>" target="_blank" class="card-action-btn" title="Tải CV"><i class="ti ti-download"></i></a>
+                  <span class="card-action-btn card-action-link" role="link" tabindex="0" data-href="<?php echo candidatePageH($cvUrl); ?>" title="Tải CV"><i class="ti ti-download"></i></span>
                 <?php endif; ?>
-              </div>
+              </div> -->
               <div class="cand-avatar" style="background:<?php echo candidatePageH($color); ?>">
                 <?php echo candidatePageH($initials); ?>
                 <div class="online-dot"></div>
               </div>
-              <div class="cand-name"><a href="<?php echo candidatePageH($detailUrl); ?>" style="text-decoration:none;color:inherit;"><?php echo candidatePageH($name); ?></a></div>
+              <div class="cand-name"><?php echo candidatePageH($name); ?></div>
               <div class="cand-role"><?php echo candidatePageH($role); ?></div>
               <div class="cand-meta">
                 <div class="cand-meta-row"><i class="ti ti-map-pin"></i><?php echo candidatePageH($city); ?></div>
@@ -241,24 +267,16 @@ $dbExperienced = intval($db->fetch_object(true)->total);
                 <div class="cand-info-item"><div class="cand-info-label">Mức lương</div><div class="cand-info-value"><?php echo candidatePageH($salary); ?></div></div>
                 <div class="cand-info-item"><div class="cand-info-label">Ngày nộp</div><div class="cand-info-value"><?php echo candidatePageH($appliedText); ?></div></div>
               </div>
-              <div class="cand-skills">
-                <?php if(!empty($skills)): ?>
-                  <?php foreach (array_slice($skills, 0, 4) as $skill): ?>
-                    <span class="skill-tag"><?php echo candidatePageH($skill); ?></span>
-                  <?php endforeach; ?>
-                <?php else: ?>
-                  <span class="skill-tag">Sẵn sàng học hỏi</span>
-                <?php endif; ?>
-              </div>
+              <!--  -->
             </div>
-            <div class="cand-card-footer">
+            <!-- <div class="cand-card-footer">
               <span class="cand-status-badge status-pass">Sẵn sàng làm việc</span>
               <div style="display:flex;align-items:center;gap:8px">
                 <div class="cand-score"><i class="ti ti-star-filled"></i>5.0</div>
-                <a href="<?php echo candidatePageH($detailUrl); ?>" class="btn-view" style="text-decoration:none;"><i class="ti ti-eye"></i> Xem</a>
+                <span class="btn-view"><i class="ti ti-eye"></i> Xem</span>
               </div>
-            </div>
-          </article>
+            </div> -->
+          </a>
         <?php endforeach; ?>
       <?php endif; ?>
     </div>
@@ -335,10 +353,34 @@ $dbExperienced = intval($db->fetch_object(true)->total);
 
   document.querySelectorAll('.card-action-btn.fav').forEach(function(btn){
     btn.addEventListener('click', function(event){
+      event.preventDefault();
       event.stopPropagation();
       btn.classList.toggle('active');
       var icon = btn.querySelector('i');
       if (icon) icon.className = btn.classList.contains('active') ? 'ti ti-heart-filled' : 'ti ti-heart';
+    });
+    btn.addEventListener('keydown', function(event){
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        btn.click();
+      }
+    });
+  });
+
+  document.querySelectorAll('.card-action-link').forEach(function(link){
+    link.addEventListener('click', function(event){
+      event.preventDefault();
+      event.stopPropagation();
+      var href = link.getAttribute('data-href');
+      if (href) {
+        window.open(href, '_blank', 'noopener');
+      }
+    });
+    link.addEventListener('keydown', function(event){
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        link.click();
+      }
     });
   });
 })();

@@ -35,6 +35,8 @@ Class adminController extends baseController
 			array('key' => 'students', 'name' => 'Quản lý sinh viên', 'parent' => '', 'sort' => 40),
 			array('key' => 'events', 'name' => 'Quản lý tin tức & sự kiện', 'parent' => 'news_section', 'sort' => 50),
 			array('key' => 'news_comments', 'name' => 'Quản lý bình luận tin tức', 'parent' => 'news_section', 'sort' => 51),
+			array('key' => 'customer_feedbacks', 'name' => 'Quản lý phản hồi khách hàng', 'parent' => '', 'sort' => 54),
+			array('key' => 'market_results', 'name' => 'Quản lý kết quả sàn', 'parent' => '', 'sort' => 55),
 			array('key' => 'google_meet', 'name' => 'Sàn việc làm online', 'parent' => '', 'sort' => 60),
 			array('key' => 'users', 'name' => 'Quản lý tài khoản', 'parent' => 'account_section', 'sort' => 70),
 			array('key' => 'groups', 'name' => 'Quản lý nhóm quyền', 'parent' => 'account_section', 'sort' => 71),
@@ -488,21 +490,60 @@ Class adminController extends baseController
 			KEY idx_comment_status (comment_status)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-		$db->query("CREATE TABLE IF NOT EXISTS hicrm_google_meet (
+		$db->query("CREATE TABLE IF NOT EXISTS hicrm_customer_feedback (
+			id int(11) NOT NULL AUTO_INCREMENT,
+			customer_name varchar(255) NOT NULL,
+			customer_phone varchar(255) NOT NULL,
+			customer_email varchar(255) NOT NULL,
+			customer_address varchar(255) NOT NULL,
+			content text NOT NULL,
+			status int(11) NOT NULL DEFAULT 0,
+			rating int(11) DEFAULT 0,
+			create_date datetime NOT NULL,
+			PRIMARY KEY (id),
+			KEY idx_status (status),
+			KEY idx_create_date (create_date)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci");
+
+		$db->query("CREATE TABLE IF NOT EXISTS hicrm_google_meets (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-			title varchar(255) NOT NULL,
-			meet_url varchar(500) NOT NULL,
-			host_name varchar(190) DEFAULT NULL,
-			meeting_date date DEFAULT NULL,
-			start_time varchar(20) DEFAULT NULL,
-			end_time varchar(20) DEFAULT NULL,
-			description text DEFAULT NULL,
-			meet_status tinyint(4) NOT NULL DEFAULT 1,
-			sort_order int(11) NOT NULL DEFAULT 0,
+			meeting_time datetime DEFAULT NULL,
+			employer_id bigint(20) unsigned DEFAULT NULL,
+			job_post_id bigint(20) unsigned DEFAULT NULL,
+			candidate_emails text DEFAULT NULL,
+			meet_url varchar(500) DEFAULT NULL,
+			status tinyint(4) NOT NULL DEFAULT 1,
+			created_by bigint(20) unsigned DEFAULT NULL,
 			created_at datetime DEFAULT CURRENT_TIMESTAMP,
 			updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 			PRIMARY KEY (id),
-			KEY idx_meet_status (meet_status)
+			KEY idx_meeting_time (meeting_time),
+			KEY idx_employer_id (employer_id),
+			KEY idx_job_post_id (job_post_id),
+			KEY idx_status (status)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+		$db->query("CREATE TABLE IF NOT EXISTS hicrm_market_results (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			result_title varchar(255) NOT NULL,
+			result_summary text DEFAULT NULL,
+			result_content longtext DEFAULT NULL,
+			result_image varchar(500) DEFAULT NULL,
+			result_date date DEFAULT NULL,
+			company_total int(11) NOT NULL DEFAULT 0,
+			position_total int(11) NOT NULL DEFAULT 0,
+			profile_total int(11) NOT NULL DEFAULT 0,
+			interview_total int(11) NOT NULL DEFAULT 0,
+			implementation_content longtext DEFAULT NULL,
+			highlight_content longtext DEFAULT NULL,
+			note_content text DEFAULT NULL,
+			result_status tinyint(4) NOT NULL DEFAULT 1,
+			created_by bigint(20) unsigned DEFAULT NULL,
+			created_at datetime DEFAULT CURRENT_TIMESTAMP,
+			updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			KEY idx_result_status_date (result_status, result_date),
+			KEY idx_created_by (created_by)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 		$db->query("CREATE TABLE IF NOT EXISTS hicrm_videos (
@@ -683,6 +724,410 @@ Class adminController extends baseController
 	{
 		$allowed = array('draft','pending','published','closed','rejected');
 		return in_array($status, $allowed) ? $status : 'pending';
+	}
+
+	private function escapeSpreadsheetXml($value)
+	{
+		return htmlspecialchars((string) $value, ENT_QUOTES | ENT_XML1, 'UTF-8');
+	}
+
+	private function buildSpreadsheetXmlRow($cells = array())
+	{
+		$row = '<Row>';
+		foreach($cells as $cell){
+			$type = isset($cell['type']) ? $cell['type'] : 'String';
+			$value = isset($cell['value']) ? $cell['value'] : '';
+			$row .= '<Cell><Data ss:Type="'.$this->escapeSpreadsheetXml($type).'">'.$this->escapeSpreadsheetXml($value).'</Data></Cell>';
+		}
+		$row .= '</Row>';
+		return $row;
+	}
+
+	private function buildSpreadsheetXmlWorksheet($name, $rows = array())
+	{
+		return '<Worksheet ss:Name="'.$this->escapeSpreadsheetXml($name).'"><Table>'.implode('', $rows).'</Table></Worksheet>';
+	}
+
+	private function buildEmployerPostReferenceMap($options = array())
+	{
+		$map = array();
+		if(!is_array($options)){
+			return $map;
+		}
+		foreach($options as $option){
+			if(isset($option->id)){
+				$map[(int) $option->id] = isset($option->label) ? (string) $option->label : '';
+			}
+		}
+		return $map;
+	}
+
+	private function exportEmployerPostImportTemplate()
+	{
+		$employers = $this->getEmployerOptions();
+		$job_categories = $this->getAdminReferenceOptions('hicrm_job_categories', 'job_category_name');
+		$provinces = $this->getAdminReferenceOptions('hicrm_provinces', 'province_name');
+		$salaries = $this->getAdminReferenceOptions('hicrm_salary', 'salary_name');
+
+		$data_rows = array();
+		$data_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'employer_id'),
+			array('value' => 'title'),
+			array('value' => 'job_category_id'),
+			array('value' => 'province_id'),
+			array('value' => 'quantity'),
+			array('value' => 'job_description'),
+			array('value' => 'experience_years'),
+			array('value' => 'degree_required'),
+			array('value' => 'salary_id'),
+			array('value' => 'benefits_description'),
+			array('value' => 'work_type'),
+			array('value' => 'address_detail'),
+			array('value' => 'deadline'),
+			array('value' => 'status')
+		));
+		$data_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('type' => 'Number', 'value' => ''),
+			array('value' => 'Nhân viên kinh doanh'),
+			array('type' => 'Number', 'value' => ''),
+			array('type' => 'Number', 'value' => ''),
+			array('type' => 'Number', 'value' => '2'),
+			array('value' => 'Mô tả công việc'),
+			array('type' => 'Number', 'value' => '1'),
+			array('value' => 'Cao đẳng'),
+			array('type' => 'Number', 'value' => ''),
+			array('value' => 'BHXH, thưởng KPI'),
+			array('value' => 'Toàn thời gian'),
+			array('value' => '123 Trần Phú'),
+			array('value' => date('Y-m-d', strtotime('+30 days'))),
+			array('value' => 'pending')
+		));
+
+		$guide_rows = array();
+		$guide_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'Cột'),
+			array('value' => 'Bắt buộc'),
+			array('value' => 'Kiểu dữ liệu'),
+			array('value' => 'Ghi chú')
+		));
+		$guide_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'employer_id'),
+			array('value' => 'Có'),
+			array('value' => 'Số nguyên'),
+			array('value' => 'Phải tồn tại trong sheet NhaTuyenDung')
+		));
+		$guide_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'title'),
+			array('value' => 'Có'),
+			array('value' => 'Chuỗi'),
+			array('value' => 'Tiêu đề bài đăng')
+		));
+		$guide_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'job_category_id'),
+			array('value' => 'Không'),
+			array('value' => 'Số nguyên'),
+			array('value' => 'Nếu nhập phải tồn tại trong sheet NganhNghe')
+		));
+		$guide_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'province_id'),
+			array('value' => 'Không'),
+			array('value' => 'Số nguyên'),
+			array('value' => 'Nếu nhập phải tồn tại trong sheet TinhThanh')
+		));
+		$guide_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'quantity'),
+			array('value' => 'Có'),
+			array('value' => 'Số nguyên >= 1'),
+			array('value' => 'Số lượng tuyển')
+		));
+		$guide_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'experience_years'),
+			array('value' => 'Không'),
+			array('value' => 'Số nguyên >= 0'),
+			array('value' => 'Số năm kinh nghiệm')
+		));
+		$guide_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'salary_id'),
+			array('value' => 'Không'),
+			array('value' => 'Số nguyên'),
+			array('value' => 'Nếu nhập phải tồn tại trong sheet MucLuong')
+		));
+		$guide_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'deadline'),
+			array('value' => 'Có'),
+			array('value' => 'Ngày YYYY-MM-DD'),
+			array('value' => 'Ví dụ: '.date('Y-m-d', strtotime('+30 days')))
+		));
+		$guide_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'status'),
+			array('value' => 'Có'),
+			array('value' => 'Chuỗi'),
+			array('value' => 'Chỉ nhận: draft, pending, published, closed, rejected')
+		));
+
+		$reference_to_rows = function($options, $labelHeader) {
+			$rows = array();
+			$rows[] = $this->buildSpreadsheetXmlRow(array(
+				array('value' => 'id'),
+				array('value' => $labelHeader)
+			));
+			if(is_array($options)){
+				foreach($options as $option){
+					$rows[] = $this->buildSpreadsheetXmlRow(array(
+						array('type' => 'Number', 'value' => isset($option->id) ? (int) $option->id : ''),
+						array('value' => isset($option->label) ? $option->label : '')
+					));
+				}
+			}
+			return $rows;
+		};
+
+		$xml = '<?xml version="1.0" encoding="UTF-8"?>'
+			.'<?mso-application progid="Excel.Sheet"?>'
+			.'<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"'
+			.' xmlns:o="urn:schemas-microsoft-com:office:office"'
+			.' xmlns:x="urn:schemas-microsoft-com:office:excel"'
+			.' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">'
+			.$this->buildSpreadsheetXmlWorksheet('DuLieuImport', $data_rows)
+			.$this->buildSpreadsheetXmlWorksheet('HuongDan', $guide_rows)
+			.$this->buildSpreadsheetXmlWorksheet('NhaTuyenDung', $reference_to_rows($employers, 'company_name'))
+			.$this->buildSpreadsheetXmlWorksheet('NganhNghe', $reference_to_rows($job_categories, 'job_category_name'))
+			.$this->buildSpreadsheetXmlWorksheet('TinhThanh', $reference_to_rows($provinces, 'province_name'))
+			.$this->buildSpreadsheetXmlWorksheet('MucLuong', $reference_to_rows($salaries, 'salary_name'))
+			.'</Workbook>';
+
+		header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+		header('Content-Disposition: attachment; filename="mau-import-bai-dang-tuyen-dung.xls"');
+		header('Cache-Control: max-age=0');
+		echo $xml;
+		exit();
+	}
+
+	private function exportStudentImportTemplate()
+	{
+		$job_categories = $this->getAdminReferenceOptions('hicrm_job_categories', 'job_category_name');
+
+		$data_rows = array();
+		$data_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'student_code'),
+			array('value' => 'student_name'),
+			array('value' => 'student_phone'),
+			array('value' => 'student_email'),
+			array('value' => 'student_class'),
+			array('value' => 'student_birthday'),
+			array('value' => 'student_gender'),
+			array('value' => 'student_major_id'),
+			array('value' => 'student_gpa'),
+			array('value' => 'student_rank'),
+			array('value' => 'student_description')
+		));
+		$data_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'SV001'),
+			array('value' => 'Nguyen Van A'),
+			array('value' => '0901234567'),
+			array('value' => 'sinhviena@example.com'),
+			array('value' => 'CNTT01'),
+			array('value' => '2003-09-01'),
+			array('type' => 'Number', 'value' => '1'),
+			array('type' => 'Number', 'value' => ''),
+			array('value' => '8.50'),
+			array('value' => 'Gioi'),
+			array('value' => 'Sinh vien nam cuoi')
+		));
+
+		$guide_rows = array();
+		$guide_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'Cột'),
+			array('value' => 'Bắt buộc'),
+			array('value' => 'Kiểu dữ liệu'),
+			array('value' => 'Ghi chú')
+		));
+		$guide_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'student_code'),
+			array('value' => 'Có'),
+			array('value' => 'Chuỗi'),
+			array('value' => 'Không được trùng trong hệ thống')
+		));
+		$guide_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'student_name'),
+			array('value' => 'Có'),
+			array('value' => 'Chuỗi'),
+			array('value' => 'Họ và tên sinh viên')
+		));
+		$guide_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'student_class'),
+			array('value' => 'Có'),
+			array('value' => 'Chuỗi'),
+			array('value' => 'Ví dụ: CNTT01')
+		));
+		$guide_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'student_birthday'),
+			array('value' => 'Có'),
+			array('value' => 'Ngày YYYY-MM-DD'),
+			array('value' => 'Ví dụ: 2003-09-01')
+		));
+		$guide_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'student_gender'),
+			array('value' => 'Có'),
+			array('value' => 'Số nguyên'),
+			array('value' => 'Chỉ nhận: 0, 1, 2. Xem sheet GioiTinh')
+		));
+		$guide_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'student_major_id'),
+			array('value' => 'Có'),
+			array('value' => 'Số nguyên'),
+			array('value' => 'Phải tồn tại trong sheet NganhHoc')
+		));
+		$guide_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'student_email'),
+			array('value' => 'Không'),
+			array('value' => 'Email'),
+			array('value' => 'Nếu nhập phải đúng định dạng email')
+		));
+		$guide_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'student_gpa'),
+			array('value' => 'Không'),
+			array('value' => 'Số từ 0 đến 10'),
+			array('value' => 'Có thể để trống')
+		));
+
+		$gender_rows = array(
+			$this->buildSpreadsheetXmlRow(array(
+				array('value' => 'id'),
+				array('value' => 'gender_name')
+			)),
+			$this->buildSpreadsheetXmlRow(array(
+				array('type' => 'Number', 'value' => '0'),
+				array('value' => 'Khac')
+			)),
+			$this->buildSpreadsheetXmlRow(array(
+				array('type' => 'Number', 'value' => '1'),
+				array('value' => 'Nam')
+			)),
+			$this->buildSpreadsheetXmlRow(array(
+				array('type' => 'Number', 'value' => '2'),
+				array('value' => 'Nu')
+			))
+		);
+
+		$major_rows = array();
+		$major_rows[] = $this->buildSpreadsheetXmlRow(array(
+			array('value' => 'id'),
+			array('value' => 'job_category_name')
+		));
+		if(is_array($job_categories)){
+			foreach($job_categories as $category){
+				$major_rows[] = $this->buildSpreadsheetXmlRow(array(
+					array('type' => 'Number', 'value' => isset($category->id) ? (int) $category->id : ''),
+					array('value' => isset($category->label) ? $category->label : '')
+				));
+			}
+		}
+
+		$xml = '<?xml version="1.0" encoding="UTF-8"?>'
+			.'<?mso-application progid="Excel.Sheet"?>'
+			.'<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"'
+			.' xmlns:o="urn:schemas-microsoft-com:office:office"'
+			.' xmlns:x="urn:schemas-microsoft-com:office:excel"'
+			.' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">'
+			.$this->buildSpreadsheetXmlWorksheet('DuLieuImport', $data_rows)
+			.$this->buildSpreadsheetXmlWorksheet('HuongDan', $guide_rows)
+			.$this->buildSpreadsheetXmlWorksheet('GioiTinh', $gender_rows)
+			.$this->buildSpreadsheetXmlWorksheet('NganhHoc', $major_rows)
+			.'</Workbook>';
+
+		header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+		header('Content-Disposition: attachment; filename="mau-import-sinh-vien.xls"');
+		header('Cache-Control: max-age=0');
+		echo $xml;
+		exit();
+	}
+
+	private function parseEmployerPostImportSpreadsheetXml($file_path)
+	{
+		$result = array(
+			'header' => array(),
+			'rows' => array(),
+			'error' => ''
+		);
+		if(!function_exists('simplexml_load_file')){
+			$result['error'] = 'Máy chủ chưa hỗ trợ đọc file XML.';
+			return $result;
+		}
+		$xml = @simplexml_load_file($file_path);
+		if(!$xml){
+			$result['error'] = 'Không thể đọc file mẫu import XML.';
+			return $result;
+		}
+		$xml->registerXPathNamespace('ss', 'urn:schemas-microsoft-com:office:spreadsheet');
+		$worksheets = $xml->xpath('//ss:Worksheet');
+		if(!is_array($worksheets) || empty($worksheets)){
+			$result['error'] = 'Không tìm thấy sheet dữ liệu trong file import.';
+			return $result;
+		}
+		$data_sheet = null;
+		foreach($worksheets as $worksheet){
+			$attrs = $worksheet->attributes('urn:schemas-microsoft-com:office:spreadsheet');
+			$sheet_name = isset($attrs['Name']) ? (string) $attrs['Name'] : '';
+			if($sheet_name === 'DuLieuImport'){
+				$data_sheet = $worksheet;
+				break;
+			}
+		}
+		if($data_sheet === null){
+			$data_sheet = $worksheets[0];
+		}
+		$rows = $data_sheet->xpath('./ss:Table/ss:Row');
+		if(!is_array($rows) || empty($rows)){
+			$result['error'] = 'Sheet dữ liệu đang trống.';
+			return $result;
+		}
+		foreach($rows as $row_index => $row){
+			$cells = $row->xpath('./ss:Cell');
+			$values = array();
+			if(is_array($cells)){
+				foreach($cells as $cell){
+					$data_nodes = $cell->xpath('./ss:Data');
+					$values[] = isset($data_nodes[0]) ? trim((string) $data_nodes[0]) : '';
+				}
+			}
+			if($row_index === 0){
+				$result['header'] = $values;
+			}else{
+				$result['rows'][] = $values;
+			}
+		}
+		return $result;
+	}
+
+	private function parseEmployerPostImportFile($file_path, $extension)
+	{
+		$extension = strtolower((string) $extension);
+		if(in_array($extension, array('xml', 'xls'))){
+			return $this->parseEmployerPostImportSpreadsheetXml($file_path);
+		}
+		$result = array(
+			'header' => array(),
+			'rows' => array(),
+			'error' => ''
+		);
+		$handle = fopen($file_path, 'r');
+		if(!$handle){
+			$result['error'] = 'Không thể mở file import.';
+			return $result;
+		}
+		$header = fgetcsv($handle, 0, ',');
+		if(is_array($header)){
+			$result['header'] = array_map('trim', $header);
+			while(($row = fgetcsv($handle, 0, ',')) !== false){
+				$result['rows'][] = $row;
+			}
+		}
+		fclose($handle);
+		if(empty($result['header'])){
+			$result['error'] = 'File import không có dòng tiêu đề.';
+		}
+		return $result;
 	}
 
 	public function users($para)
@@ -982,6 +1427,9 @@ Class adminController extends baseController
 		global $db;
 		
 		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ header("Location: ".XC_URL."/admin/login"); }
+		if(isset($_GET['download_template']) && (int) $_GET['download_template'] === 1){
+			$this->exportStudentImportTemplate();
+		}
 		if(isset($para[1]) && $para[1] == "add"){
 			$this->view->data['method'] = 'add';
 			$user_category = $userModel->get_user_category();
@@ -1012,6 +1460,7 @@ Class adminController extends baseController
 		else{
 			//get student list
 			$db->query("SELECT * FROM hicrm_student_profile ORDER BY id DESC"); 
+			$this->view->data['job_categories'] = $this->getAdminReferenceOptions('hicrm_job_categories', 'job_category_name');
 			$this->view->data['active_menu'] = "students";
 			$this->view->data['students'] = $db->fetch_object();
 			$this->view->admintmp("students");
@@ -1069,9 +1518,23 @@ Class adminController extends baseController
 	{
 		global $db;
 		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ header("Location: ".XC_URL."/admin/login"); return; }
-		$db->query("SELECT * FROM hicrm_images WHERE image_status NOT IN(99) ORDER BY id DESC");
+		$page = (isset($_GET['page']) && (int)$_GET['page'] > 0) ? (int)$_GET['page'] : 1;
+		$per_page = 20;
+		$base_sql = "FROM hicrm_images WHERE image_status NOT IN(99)";
+		$db->query("SELECT COUNT(id) AS total ".$base_sql);
+		$total_images = (int)$db->fetch_object(true)->total;
+		$total_pages = max(1, ceil($total_images / $per_page));
+		if($page > $total_pages){
+			$page = $total_pages;
+		}
+		$offset = ($page - 1) * $per_page;
+		$db->query("SELECT * ".$base_sql." ORDER BY id DESC LIMIT ".$offset.",".$per_page);
 		$this->view->data['active_menu'] = "images";
 		$this->view->data['images'] = $db->fetch_object();
+		$this->view->data['page'] = $page;
+		$this->view->data['per_page'] = $per_page;
+		$this->view->data['total_images'] = $total_images;
+		$this->view->data['total_pages'] = $total_pages;
 		$this->view->admintmp("images");
 	}
 	public function bookings(){
@@ -1142,15 +1605,28 @@ Class adminController extends baseController
 		global $db;
 		$method = $para[1];
 		$id = $para[2];
+		$page = (isset($_GET['page']) && (int)$_GET['page'] > 0) ? (int)$_GET['page'] : 1;
+		$per_page = 20;
 		// echo $id;
 		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ header("Location: ".XC_URL."/admin/login"); }
-		$db->query("SELECT *, e.id as eid FROM hicrm_events as e
+		$base_sql = "FROM hicrm_events as e
 					LEFT JOIN hicrm_users as u ON e.event_user_created = u.id
-					LEFT JOIN hicrm_categories as c ON e.event_type = c.id WHERE e.event_status NOT IN (99) ORDER BY e.event_created_date DESC
-					");
+					LEFT JOIN hicrm_categories as c ON e.event_type = c.id
+					WHERE e.event_status NOT IN (99)";
+		$db->query("SELECT COUNT(e.id) AS total ".$base_sql);
+		$total_events = (int)$db->fetch_object(true)->total;
+		$total_pages = max(1, ceil($total_events / $per_page));
+		if($page > $total_pages){
+			$page = $total_pages;
+		}
+		$offset = ($page - 1) * $per_page;
+		$db->query("SELECT *, e.id as eid ".$base_sql." ORDER BY e.event_created_date DESC LIMIT ".$offset.",".$per_page);
 		$events = $db->fetch_object();
+		$db->query("SELECT * FROM hicrm_categories WHERE category_status NOT IN (99) ORDER BY category_orderby ASC, id DESC");
+		$event_categories = $db->fetch_object();
 		// $db->query("SELECT * FROM hicrm_dmtype");
 		$this->view->data['active_menu'] = "events";
+		$this->view->data['event_categories'] = is_array($event_categories) ? $event_categories : array();
 		if(isset($method) && $method == 'add'){
 			$this->view->data['method'] = 'add';
 			$this->view->admintmp("event-form");
@@ -1173,7 +1649,11 @@ Class adminController extends baseController
 		}
 		else{
 		$dmtype = $db->fetch_object();
-		$this->view->data["events"] = $events;
+		$this->view->data["events"] = is_array($events) ? $events : array();
+		$this->view->data['page'] = $page;
+		$this->view->data['per_page'] = $per_page;
+		$this->view->data['total_events'] = $total_events;
+		$this->view->data['total_pages'] = $total_pages;
 		// $this->view->data["dmtype"] = $dmtype;
 		$this->view->admintmp("events");
 		}
@@ -1189,36 +1669,42 @@ Class adminController extends baseController
 			$id = isset($_POST['comment_id']) ? intval($_POST['comment_id']) : 0;
 			if($_POST['newscomment_action'] == 'reply' && $id > 0){
 				$reply = isset($_POST['admin_reply']) ? $db->escapestring(trim($_POST['admin_reply'])) : '';
-				$db->query("UPDATE hicrm_news_comments SET admin_reply = '".$reply."', updated_at = NOW() WHERE id = '".$id."' LIMIT 1");
+				$reply_user_id = isset($_SESSION['user']['id']) ? intval($_SESSION['user']['id']) : 0;
+				$db->query("UPDATE hicrm_event_comments SET admin_reply = '".$reply."', reply_user_id = '".$reply_user_id."', replied_at = NOW(), updated_at = NOW() WHERE id = '".$id."' LIMIT 1");
 				$this->setAdminFlash('success', 'Đã lưu phản hồi bình luận.');
 			}elseif($_POST['newscomment_action'] == 'delete' && $id > 0){
-				$db->query("DELETE FROM hicrm_news_comments WHERE id = '".$id."' LIMIT 1");
-				$this->setAdminFlash('success', 'Đã xóa bình luận.');
+				$db->query("UPDATE hicrm_event_comments SET status = 99, updated_at = NOW() WHERE id = '".$id."' LIMIT 1");
+				$this->setAdminFlash('success', 'Đã ẩn bình luận.');
 			}
 			$this->adminRedirect('/admin/newscomments');
 		}
 
 		$where = array("1=1");
+		$where[] = "nc.status <> 99";
 		$keyword = isset($_GET['keyword']) ? trim($_GET['keyword']) : '';
-		$news_title_column = $this->getFirstExistingColumn('hicrm_news', array('new_title', 'news_title', 'title', 'post_title'));
 		if($keyword !== ''){
 			$kw = $db->escapestring($keyword);
 			$keyword_where = array(
-				"nc.author_name LIKE '%".$kw."%'",
-				"nc.author_email LIKE '%".$kw."%'",
-				"nc.comment_content LIKE '%".$kw."%'"
+				"nc.comment_name LIKE '%".$kw."%'",
+				"nc.comment_email LIKE '%".$kw."%'",
+				"nc.comment_content LIKE '%".$kw."%'",
+				"cu.full_name LIKE '%".$kw."%'",
+				"cu.user_email LIKE '%".$kw."%'",
+				"cu.user_phone LIKE '%".$kw."%'"
 			);
-			if($news_title_column !== ''){
-				$keyword_where[] = "n.".$news_title_column." LIKE '%".$kw."%'";
-			}
+			$keyword_where[] = "e.event_name LIKE '%".$kw."%'";
 			$where[] = "(".implode(" OR ", $keyword_where).")";
 		}
-		$news_join = $news_title_column !== '' ? "LEFT JOIN hicrm_news n ON nc.news_id = n.id" : "";
-		$news_select = $news_title_column !== '' ? "n.".$news_title_column." AS new_title," : "'' AS new_title,";
-		$db->query("SELECT nc.*, ".$news_select." u.full_name AS user_name
-			FROM hicrm_news_comments nc
-			LEFT JOIN hicrm_users u ON nc.user_id = u.id
-			".$news_join."
+		$db->query("SELECT nc.*,
+			e.event_name AS event_title,
+			COALESCE(NULLIF(cu.full_name, ''), NULLIF(nc.comment_name, ''), 'Ẩn danh') AS commenter_name,
+			COALESCE(NULLIF(cu.user_email, ''), NULLIF(nc.comment_email, '')) AS commenter_email,
+			COALESCE(NULLIF(cu.user_phone, ''), '') AS commenter_phone,
+			ru.full_name AS reply_user_name
+			FROM hicrm_event_comments nc
+			LEFT JOIN hicrm_events e ON nc.event_id = e.id
+			LEFT JOIN hicrm_users cu ON nc.user_id = cu.id
+			LEFT JOIN hicrm_users ru ON nc.reply_user_id = ru.id
 			WHERE ".implode(' AND ', $where)."
 			ORDER BY nc.created_at DESC, nc.id DESC");
 		$comments = $db->fetch_object();
@@ -1228,6 +1714,75 @@ Class adminController extends baseController
 		$this->view->data['newscomment_keyword'] = $keyword;
 		$this->view->data['newscomment_flash'] = $this->getAdminFlash();
 		$this->view->admintmp("newscomments");
+	}
+
+	public function customerfeedbacks($para = array())
+	{
+		global $db;
+		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ $this->adminRedirect('/admin/login'); }
+		$this->ensureAdminFeatureTables();
+
+		$method = isset($para[1]) ? trim((string)$para[1]) : '';
+		$id = isset($para[2]) ? intval($para[2]) : 0;
+
+		if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['customer_feedback_action'])){
+			$action = trim((string)$_POST['customer_feedback_action']);
+			$postId = isset($_POST['id']) ? intval($_POST['id']) : 0;
+
+			if($action === 'delete' && $postId > 0){
+				$db->query("DELETE FROM hicrm_customer_feedback WHERE id = '".$postId."' LIMIT 1");
+				$this->setAdminFlash('success', 'Đã xóa phản hồi khách hàng.');
+			}
+
+			$this->adminRedirect('/admin/customerfeedbacks');
+		}
+
+		$page = (isset($_GET['page']) && intval($_GET['page']) > 0) ? intval($_GET['page']) : 1;
+		$perPage = 10;
+		$keyword = isset($_GET['keyword']) ? trim($_GET['keyword']) : '';
+		$where = array("1=1");
+
+		if($keyword !== ''){
+			$kw = $db->escapestring($keyword);
+			$where[] = "(customer_name LIKE '%".$kw."%' OR customer_phone LIKE '%".$kw."%' OR customer_email LIKE '%".$kw."%' OR customer_address LIKE '%".$kw."%' OR content LIKE '%".$kw."%')";
+		}
+
+		$baseSql = "FROM hicrm_customer_feedback WHERE ".implode(' AND ', $where);
+		$db->query("SELECT COUNT(id) AS total ".$baseSql);
+		$totalFeedbacks = intval($db->fetch_object(true)->total);
+		$totalPages = max(1, ceil($totalFeedbacks / $perPage));
+		if($page > $totalPages){ $page = $totalPages; }
+		$offset = ($page - 1) * $perPage;
+
+		$db->query("SELECT * ".$baseSql." ORDER BY create_date DESC, id DESC LIMIT ".$offset.",".$perPage);
+		$items = $db->fetch_object();
+
+		$detailItem = null;
+		if($method === 'detail' && $id > 0){
+			$db->query("SELECT * FROM hicrm_customer_feedback WHERE id = '".$id."' LIMIT 1");
+			$detailItem = $db->fetch_object(true);
+			if(!$detailItem){
+				$this->setAdminFlash('info', 'Không tìm thấy phản hồi khách hàng.');
+				$this->adminRedirect('/admin/customerfeedbacks');
+			}
+		}
+
+		$this->view->data['active_menu'] = "customerfeedbacks";
+		$this->view->data['customer_feedbacks'] = is_array($items) ? $items : array();
+		$this->view->data['customer_feedback_page'] = $page;
+		$this->view->data['customer_feedback_per_page'] = $perPage;
+		$this->view->data['customer_feedback_total'] = $totalFeedbacks;
+		$this->view->data['customer_feedback_total_pages'] = $totalPages;
+		$this->view->data['customer_feedback_keyword'] = $keyword;
+		$this->view->data['customer_feedback_detail'] = $detailItem;
+		$this->view->data['customer_feedback_flash'] = $this->getAdminFlash();
+
+		if($method === 'detail' && $id > 0){
+			$this->view->admintmp("customer-feedback-detail");
+			return;
+		}
+
+		$this->view->admintmp("customer-feedbacks");
 	}
 	public function products($para)
 	{
@@ -1632,36 +2187,31 @@ Class adminController extends baseController
 		if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['googlemeet_action'])){
 			$id = isset($_POST['id']) ? intval($_POST['id']) : 0;
 			if($_POST['googlemeet_action'] === 'save'){
-				$title = $db->escapestring(trim(isset($_POST['title']) ? $_POST['title'] : ''));
-				$url = $db->escapestring(trim(isset($_POST['meet_url']) ? $_POST['meet_url'] : ''));
-				$host = $db->escapestring(trim(isset($_POST['host_name']) ? $_POST['host_name'] : ''));
-				$meeting_date = $db->escapestring(trim(isset($_POST['meeting_date']) ? $_POST['meeting_date'] : ''));
-				$start_time = $db->escapestring(trim(isset($_POST['start_time']) ? $_POST['start_time'] : ''));
-				$end_time = $db->escapestring(trim(isset($_POST['end_time']) ? $_POST['end_time'] : ''));
-				$description = $db->escapestring(trim(isset($_POST['description']) ? $_POST['description'] : ''));
-				$status = isset($_POST['meet_status']) ? intval($_POST['meet_status']) : 1;
-				$sort_order = isset($_POST['sort_order']) ? intval($_POST['sort_order']) : 0;
+				$meeting_time = $db->escapestring(trim(isset($_POST['meeting_time']) ? $_POST['meeting_time'] : ''));
+				$employer_id = isset($_POST['employer_id']) ? intval($_POST['employer_id']) : 0;
+				$job_post_id = isset($_POST['job_post_id']) ? intval($_POST['job_post_id']) : 0;
+				$candidate_emails = $db->escapestring(trim(isset($_POST['candidate_emails']) ? $_POST['candidate_emails'] : ''));
+				$meet_url = $db->escapestring(trim(isset($_POST['meet_url']) ? $_POST['meet_url'] : ''));
+				$status = isset($_POST['status']) ? intval($_POST['status']) : 1;
+				$created_by = isset($_SESSION['user']['id']) ? intval($_SESSION['user']['id']) : 0;
 				if($id > 0){
-					$db->query("UPDATE hicrm_google_meet SET
-						title = '".$title."',
-						meet_url = '".$url."',
-						host_name = '".$host."',
-						meeting_date = ".($meeting_date !== '' ? "'".$meeting_date."'" : "NULL").",
-						start_time = '".$start_time."',
-						end_time = '".$end_time."',
-						description = '".$description."',
-						meet_status = '".$status."',
-						sort_order = '".$sort_order."',
+					$db->query("UPDATE hicrm_google_meets SET
+						meeting_time = ".($meeting_time !== '' ? "'".$meeting_time."'" : "NULL").",
+						employer_id = ".($employer_id > 0 ? "'".$employer_id."'" : "NULL").",
+						job_post_id = ".($job_post_id > 0 ? "'".$job_post_id."'" : "NULL").",
+						candidate_emails = '".$candidate_emails."',
+						meet_url = '".$meet_url."',
+						status = '".$status."',
 						updated_at = NOW()
 						WHERE id = '".$id."' LIMIT 1");
 					$this->setAdminFlash('success', 'Đã cập nhật phiên Google Meet.');
 				}else{
-					$db->query("INSERT INTO hicrm_google_meet(title, meet_url, host_name, meeting_date, start_time, end_time, description, meet_status, sort_order, created_at, updated_at)
-						VALUES ('".$title."','".$url."','".$host."',".($meeting_date !== '' ? "'".$meeting_date."'" : "NULL").",'".$start_time."','".$end_time."','".$description."','".$status."','".$sort_order."',NOW(),NOW())");
+					$db->query("INSERT INTO hicrm_google_meets(meeting_time, employer_id, job_post_id, candidate_emails, meet_url, status, created_by, created_at, updated_at)
+						VALUES (".($meeting_time !== '' ? "'".$meeting_time."'" : "NULL").",".($employer_id > 0 ? "'".$employer_id."'" : "NULL").",".($job_post_id > 0 ? "'".$job_post_id."'" : "NULL").",'".$candidate_emails."','".$meet_url."','".$status."','".$created_by."',NOW(),NOW())");
 					$this->setAdminFlash('success', 'Đã thêm phiên Google Meet mới.');
 				}
 			}elseif($_POST['googlemeet_action'] === 'delete' && $id > 0){
-				$db->query("DELETE FROM hicrm_google_meet WHERE id = '".$id."' LIMIT 1");
+				$db->query("DELETE FROM hicrm_google_meets WHERE id = '".$id."' LIMIT 1");
 				$this->setAdminFlash('success', 'Đã xóa phiên Google Meet.');
 			}
 			$this->adminRedirect('/admin/googlemeet');
@@ -1670,16 +2220,150 @@ Class adminController extends baseController
 		$edit_id = isset($_GET['edit']) ? intval($_GET['edit']) : 0;
 		$edit_item = null;
 		if($edit_id > 0){
-			$db->query("SELECT * FROM hicrm_google_meet WHERE id = '".$edit_id."' LIMIT 1");
+			$db->query("SELECT * FROM hicrm_google_meets WHERE id = '".$edit_id."' LIMIT 1");
 			$edit_item = $db->fetch_object(true);
 		}
-		$db->query("SELECT * FROM hicrm_google_meet ORDER BY meeting_date DESC, sort_order ASC, id DESC");
+		$employers = array();
+		if($this->adminTableExists('hicrm_employers')){
+			$db->query("SELECT id, company_name FROM hicrm_employers ORDER BY company_name ASC");
+			$employers = $db->fetch_object();
+		}
+		$job_posts = array();
+		if($this->adminTableExists('hicrm_job_posts')){
+			$db->query("SELECT p.id, p.title, p.employer_id, e.company_name
+				FROM hicrm_job_posts p
+				LEFT JOIN hicrm_employers e ON p.employer_id = e.id
+				ORDER BY p.created_at DESC, p.id DESC");
+			$job_posts = $db->fetch_object();
+		}
+		$db->query("SELECT gm.*, e.company_name, p.title AS job_title, u.full_name AS created_by_name
+			FROM hicrm_google_meets gm
+			LEFT JOIN hicrm_employers e ON gm.employer_id = e.id
+			LEFT JOIN hicrm_job_posts p ON gm.job_post_id = p.id
+			LEFT JOIN hicrm_users u ON gm.created_by = u.id
+			ORDER BY gm.meeting_time DESC, gm.id DESC");
 		$items = $db->fetch_object();
 		$this->view->data['active_menu'] = "googlemeet";
 		$this->view->data['googlemeet_items'] = is_array($items) ? $items : array();
 		$this->view->data['googlemeet_edit'] = $edit_item;
+		$this->view->data['googlemeet_employers'] = is_array($employers) ? $employers : array();
+		$this->view->data['googlemeet_job_posts'] = is_array($job_posts) ? $job_posts : array();
 		$this->view->data['googlemeet_flash'] = $this->getAdminFlash();
 		$this->view->admintmp("googlemeet");
+	}
+
+	public function marketresults($para = array())
+	{
+		global $db;
+		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ $this->adminRedirect('/admin/login'); }
+		$this->ensureAdminFeatureTables();
+
+		$method = isset($para[1]) ? trim((string)$para[1]) : '';
+		$id = isset($para[2]) ? intval($para[2]) : 0;
+
+		if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['market_result_action'])){
+			$action = trim((string)$_POST['market_result_action']);
+			$postId = isset($_POST['id']) ? intval($_POST['id']) : 0;
+
+			if($action === 'save'){
+				$title = $db->escapestring(trim(isset($_POST['result_title']) ? $_POST['result_title'] : ''));
+				$summary = $db->escapestring(trim(isset($_POST['result_summary']) ? $_POST['result_summary'] : ''));
+				$content = $db->escapestring(trim(isset($_POST['result_content']) ? $_POST['result_content'] : ''));
+				$image = $db->escapestring(trim(isset($_POST['result_image']) ? $_POST['result_image'] : ''));
+				$resultDate = $db->escapestring(trim(isset($_POST['result_date']) ? $_POST['result_date'] : ''));
+				$companyTotal = isset($_POST['company_total']) ? intval($_POST['company_total']) : 0;
+				$positionTotal = isset($_POST['position_total']) ? intval($_POST['position_total']) : 0;
+				$profileTotal = isset($_POST['profile_total']) ? intval($_POST['profile_total']) : 0;
+				$interviewTotal = isset($_POST['interview_total']) ? intval($_POST['interview_total']) : 0;
+				$implementationContent = $db->escapestring(trim(isset($_POST['implementation_content']) ? $_POST['implementation_content'] : ''));
+				$highlightContent = $db->escapestring(trim(isset($_POST['highlight_content']) ? $_POST['highlight_content'] : ''));
+				$noteContent = $db->escapestring(trim(isset($_POST['note_content']) ? $_POST['note_content'] : ''));
+				$status = isset($_POST['result_status']) ? intval($_POST['result_status']) : 1;
+				$createdBy = isset($_SESSION['user']['id']) ? intval($_SESSION['user']['id']) : 0;
+
+				if($title === ''){
+					$this->setAdminFlash('info', 'Vui lòng nhập tên đợt kết quả sàn.');
+					$this->adminRedirect($postId > 0 ? '/admin/marketresults/edit/'.$postId : '/admin/marketresults/add');
+				}
+
+				if($postId > 0){
+					$db->query("UPDATE hicrm_market_results SET
+						result_title = '".$title."',
+						result_summary = '".$summary."',
+						result_content = '".$content."',
+						result_image = '".$image."',
+						result_date = ".($resultDate !== '' ? "'".$resultDate."'" : "NULL").",
+						company_total = '".$companyTotal."',
+						position_total = '".$positionTotal."',
+						profile_total = '".$profileTotal."',
+						interview_total = '".$interviewTotal."',
+						implementation_content = '".$implementationContent."',
+						highlight_content = '".$highlightContent."',
+						note_content = '".$noteContent."',
+						result_status = '".$status."',
+						updated_at = NOW()
+						WHERE id = '".$postId."' LIMIT 1");
+					$this->setAdminFlash('success', 'Đã cập nhật kết quả sàn.');
+				}else{
+					$db->query("INSERT INTO hicrm_market_results(
+						result_title, result_summary, result_content, result_image, result_date,
+						company_total, position_total, profile_total, interview_total,
+						implementation_content, highlight_content, note_content,
+						result_status, created_by, created_at, updated_at
+					) VALUES (
+						'".$title."','".$summary."','".$content."','".$image."',".($resultDate !== '' ? "'".$resultDate."'" : "NULL").",
+						'".$companyTotal."','".$positionTotal."','".$profileTotal."','".$interviewTotal."',
+						'".$implementationContent."','".$highlightContent."','".$noteContent."',
+						'".$status."','".$createdBy."',NOW(),NOW()
+					)");
+					$this->setAdminFlash('success', 'Đã thêm kết quả sàn mới.');
+				}
+				$this->adminRedirect('/admin/marketresults');
+			}elseif($action === 'delete' && $postId > 0){
+				$db->query("DELETE FROM hicrm_market_results WHERE id = '".$postId."' LIMIT 1");
+				$this->setAdminFlash('success', 'Đã xóa kết quả sàn.');
+				$this->adminRedirect('/admin/marketresults');
+			}
+		}
+
+		$page = (isset($_GET['page']) && intval($_GET['page']) > 0) ? intval($_GET['page']) : 1;
+		$perPage = 20;
+		$baseSql = "FROM hicrm_market_results mr
+			LEFT JOIN hicrm_users u ON mr.created_by = u.id
+			WHERE 1=1";
+		$db->query("SELECT COUNT(mr.id) AS total ".$baseSql);
+		$totalResults = intval($db->fetch_object(true)->total);
+		$totalPages = max(1, ceil($totalResults / $perPage));
+		if($page > $totalPages){ $page = $totalPages; }
+		$offset = ($page - 1) * $perPage;
+
+		$db->query("SELECT mr.*, u.full_name AS created_by_name ".$baseSql." ORDER BY mr.result_date DESC, mr.id DESC LIMIT ".$offset.",".$perPage);
+		$items = $db->fetch_object();
+
+		$editItem = null;
+		if($method === 'edit' && $id > 0){
+			$db->query("SELECT * FROM hicrm_market_results WHERE id = '".$id."' LIMIT 1");
+			$editItem = $db->fetch_object(true);
+		}
+
+		$this->view->data['active_menu'] = "marketresults";
+		$this->view->data['market_results'] = is_array($items) ? $items : array();
+		$this->view->data['market_results_page'] = $page;
+		$this->view->data['market_results_per_page'] = $perPage;
+		$this->view->data['market_results_total'] = $totalResults;
+		$this->view->data['market_results_total_pages'] = $totalPages;
+		$this->view->data['market_result_edit'] = $editItem;
+		$this->view->data['market_result_flash'] = $this->getAdminFlash();
+
+		if($method === 'add'){
+			$this->view->admintmp("market-result-form");
+			return;
+		}
+		if($method === 'edit' && $id > 0){
+			$this->view->admintmp("market-result-form");
+			return;
+		}
+		$this->view->admintmp("market-results");
 	}
 
 	public function videos($para = array())
@@ -1691,30 +2375,28 @@ Class adminController extends baseController
 		if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['video_action'])){
 			$id = isset($_POST['id']) ? intval($_POST['id']) : 0;
 			if($_POST['video_action'] === 'save'){
-				$title = $db->escapestring(trim(isset($_POST['title']) ? $_POST['title'] : ''));
+				$video_name = $db->escapestring(trim(isset($_POST['video_name']) ? $_POST['video_name'] : ''));
+				$video_employee = isset($_POST['video_employee']) ? intval($_POST['video_employee']) : 0;
 				$video_url = $db->escapestring(trim(isset($_POST['video_url']) ? $_POST['video_url'] : ''));
-				$thumbnail_url = $db->escapestring(trim(isset($_POST['thumbnail_url']) ? $_POST['thumbnail_url'] : ''));
-				$description = $db->escapestring(trim(isset($_POST['description']) ? $_POST['description'] : ''));
+				$video_description = $db->escapestring(trim(isset($_POST['video_description']) ? $_POST['video_description'] : ''));
 				$status = isset($_POST['video_status']) ? intval($_POST['video_status']) : 1;
-				$sort_order = isset($_POST['sort_order']) ? intval($_POST['sort_order']) : 0;
 				if($id > 0){
 					$db->query("UPDATE hicrm_videos SET
-						title = '".$title."',
+						video_name = '".$video_name."',
+						video_employee = '".$video_employee."',
 						video_url = '".$video_url."',
-						thumbnail_url = '".$thumbnail_url."',
-						description = '".$description."',
+						video_description = '".$video_description."',
 						video_status = '".$status."',
-						sort_order = '".$sort_order."',
-						updated_at = NOW()
+						video_created_at = NOW()
 						WHERE id = '".$id."' LIMIT 1");
 					$this->setAdminFlash('success', 'Đã cập nhật video.');
 				}else{
-					$db->query("INSERT INTO hicrm_videos(title, video_url, thumbnail_url, description, video_status, sort_order, created_at, updated_at)
-						VALUES ('".$title."','".$video_url."','".$thumbnail_url."','".$description."','".$status."','".$sort_order."',NOW(),NOW())");
+					$db->query("INSERT INTO hicrm_videos(video_name, video_employee, video_url, video_description, video_status, video_created_at)
+						VALUES ('".$video_name."','".$video_employee."','".$video_url."','".$video_description."','".$status."',NOW())");
 					$this->setAdminFlash('success', 'Đã thêm video mới.');
 				}
 			}elseif($_POST['video_action'] === 'delete' && $id > 0){
-				$db->query("DELETE FROM hicrm_videos WHERE id = '".$id."' LIMIT 1");
+				$db->query("UPDATE hicrm_videos SET video_status = 99 WHERE id = '".$id."' LIMIT 1");
 				$this->setAdminFlash('success', 'Đã xóa video.');
 			}
 			$this->adminRedirect('/admin/videos');
@@ -1726,12 +2408,46 @@ Class adminController extends baseController
 			$db->query("SELECT * FROM hicrm_videos WHERE id = '".$edit_id."' LIMIT 1");
 			$edit_item = $db->fetch_object(true);
 		}
-		$db->query("SELECT * FROM hicrm_videos ORDER BY sort_order ASC, id DESC");
+		$employees = array();
+		$video_employee_join = "";
+		$video_employee_select = "'' AS responsible_name";
+		if($this->adminTableExists('hicrm_employees') && $this->adminColumnExists('hicrm_employees', 'employee_name')){
+			$db->query("SELECT id, employee_name FROM hicrm_employees WHERE employee_status NOT IN(99) ORDER BY employee_name ASC, id DESC");
+			$employees = $db->fetch_object();
+			$video_employee_join = "LEFT JOIN hicrm_employees e ON v.video_employee = e.id";
+			$video_employee_select = "e.employee_name AS responsible_name";
+		}elseif($this->adminTableExists('hicrm_users') && $this->adminColumnExists('hicrm_users', 'full_name')){
+			$user_conditions = "1=1";
+			if($this->adminColumnExists('hicrm_users', 'user_status')){
+				$user_conditions .= " AND user_status NOT IN(99)";
+			}
+			$db->query("SELECT id, full_name AS employee_name FROM hicrm_users WHERE ".$user_conditions." ORDER BY full_name ASC, id DESC");
+			$employees = $db->fetch_object();
+			$video_employee_join = "LEFT JOIN hicrm_users e ON v.video_employee = e.id";
+			$video_employee_select = "e.full_name AS responsible_name";
+		}
+		$page = (isset($_GET['page']) && (int)$_GET['page'] > 0) ? (int)$_GET['page'] : 1;
+		$per_page = 20;
+		$base_sql = "FROM hicrm_videos v ".$video_employee_join." WHERE v.video_status NOT IN (99)";
+		$db->query("SELECT COUNT(v.id) AS total ".$base_sql);
+		$total_row = $db->fetch_object(true);
+		$total_videos = isset($total_row->total) ? (int)$total_row->total : 0;
+		$total_pages = max(1, ceil($total_videos / $per_page));
+		if($page > $total_pages){
+			$page = $total_pages;
+		}
+		$offset = ($page - 1) * $per_page;
+		$db->query("SELECT v.*, ".$video_employee_select." ".$base_sql." ORDER BY v.video_created_at DESC, v.id DESC LIMIT ".$offset.",".$per_page);
 		$items = $db->fetch_object();
 		$this->view->data['active_menu'] = "videos";
 		$this->view->data['videos'] = is_array($items) ? $items : array();
 		$this->view->data['video_edit'] = $edit_item;
+		$this->view->data['video_employees'] = is_array($employees) ? $employees : array();
 		$this->view->data['video_flash'] = $this->getAdminFlash();
+		$this->view->data['page'] = $page;
+		$this->view->data['per_page'] = $per_page;
+		$this->view->data['total_videos'] = $total_videos;
+		$this->view->data['total_pages'] = $total_pages;
 		$this->view->admintmp("videos");
 	}
 	
@@ -1903,12 +2619,7 @@ Class adminController extends baseController
 	}
 	public function feedback()
 	{
-		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ header("Location: ".XC_URL."/admin/login"); }
-		global $db;
-		$db->query("SELECT * FROM hicrm_customer_feedback ORDER BY create_date DESC
-		");
-		$this->view->data["feedback"] = $db->fetch_object();
-		$this->view->show("backend/feedback");
+		$this->customerfeedbacks(func_get_args());
 	}
 	public function fees()
 	{
@@ -2020,6 +2731,10 @@ Class adminController extends baseController
 			return;
 		}
 
+		if(isset($_GET['download_template']) && (int) $_GET['download_template'] === 1){
+			$this->exportEmployerPostImportTemplate();
+		}
+
 		if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['employer_post_action'])){
 			$action = $_POST['employer_post_action'];
 			$id = isset($_POST['id']) ? intval($_POST['id']) : 0;
@@ -2109,47 +2824,177 @@ Class adminController extends baseController
 					$this->setAdminFlash('info', 'Vui lòng chọn ít nhất một bài đăng để duyệt.');
 				}
 			}elseif($action === 'import' && isset($_FILES['import_file']['tmp_name']) && is_uploaded_file($_FILES['import_file']['tmp_name'])){
-				$handle = fopen($_FILES['import_file']['tmp_name'], 'r');
-				$imported = 0;
-				if($handle){
-					$header = fgetcsv($handle, 0, ',');
-					if(is_array($header)){
-						$header = array_map('trim', $header);
-						while(($row = fgetcsv($handle, 0, ',')) !== false){
-							$item = array();
-							foreach($header as $idx => $key){
-								$item[$key] = isset($row[$idx]) ? trim($row[$idx]) : '';
+				$file_ext = strtolower(pathinfo($_FILES['import_file']['name'], PATHINFO_EXTENSION));
+				$allowed_ext = array('csv', 'xml', 'xls');
+				if(!in_array($file_ext, $allowed_ext)){
+					$this->setAdminFlash('info', 'File import không hợp lệ. Vui lòng dùng file mẫu Excel .xls hoặc file CSV.');
+				}else{
+					$parsed = $this->parseEmployerPostImportFile($_FILES['import_file']['tmp_name'], $file_ext);
+					if($parsed['error'] !== ''){
+						$this->setAdminFlash('info', $parsed['error']);
+					}else{
+						$header = array_map('trim', is_array($parsed['header']) ? $parsed['header'] : array());
+						$required_header = array(
+							'employer_id', 'title', 'job_category_id', 'province_id', 'quantity', 'job_description',
+							'experience_years', 'degree_required', 'salary_id', 'benefits_description', 'work_type',
+							'address_detail', 'deadline', 'status'
+						);
+						$missing_header = array_values(array_diff($required_header, $header));
+						if(!empty($missing_header)){
+							$this->setAdminFlash('info', 'Thiếu cột trong file import: '.implode(', ', $missing_header).'.');
+						}else{
+							$employer_map = $this->buildEmployerPostReferenceMap($this->getEmployerOptions());
+							$job_category_map = $this->buildEmployerPostReferenceMap($this->getAdminReferenceOptions('hicrm_job_categories', 'job_category_name'));
+							$province_map = $this->buildEmployerPostReferenceMap($this->getAdminReferenceOptions('hicrm_provinces', 'province_name'));
+							$salary_map = $this->buildEmployerPostReferenceMap($this->getAdminReferenceOptions('hicrm_salary', 'salary_name'));
+							$allowed_statuses = array('draft','pending','published','closed','rejected');
+							$imported = 0;
+							$errors = array();
+
+							foreach($parsed['rows'] as $row_index => $row){
+								$item = array();
+								foreach($header as $idx => $key){
+									$item[$key] = isset($row[$idx]) ? trim((string) $row[$idx]) : '';
+								}
+								$display_row = $row_index + 2;
+								$is_empty_row = true;
+								foreach($item as $value){
+									if(trim((string) $value) !== ''){
+										$is_empty_row = false;
+										break;
+									}
+								}
+								if($is_empty_row){
+									continue;
+								}
+
+								$row_errors = array();
+								$title_raw = isset($item['title']) ? trim($item['title']) : '';
+								if($title_raw === ''){
+									$row_errors[] = 'cột title bắt buộc';
+								}
+
+								$employer_raw = isset($item['employer_id']) ? trim($item['employer_id']) : '';
+								if($employer_raw === ''){
+									$row_errors[] = 'cột employer_id bắt buộc';
+									$employer_id = 0;
+								}elseif(!preg_match('/^\d+$/', $employer_raw)){
+									$row_errors[] = 'employer_id phải là số nguyên';
+									$employer_id = 0;
+								}else{
+									$employer_id = (int) $employer_raw;
+									if(!isset($employer_map[$employer_id])){
+										$row_errors[] = 'employer_id không tồn tại trong danh mục';
+									}
+								}
+
+								$validate_optional_reference = function($field_name, $label, $map) use ($item, &$row_errors) {
+									$raw = isset($item[$field_name]) ? trim($item[$field_name]) : '';
+									if($raw === ''){
+										return 'NULL';
+									}
+									if(!preg_match('/^\d+$/', $raw)){
+										$row_errors[] = $label.' phải là số nguyên';
+										return 'NULL';
+									}
+									$id = (int) $raw;
+									if(!isset($map[$id])){
+										$row_errors[] = $label.' không tồn tại trong danh mục';
+										return 'NULL';
+									}
+									return $id;
+								};
+
+								$job_category_id = $validate_optional_reference('job_category_id', 'job_category_id', $job_category_map);
+								$province_id = $validate_optional_reference('province_id', 'province_id', $province_map);
+								$salary_id = $validate_optional_reference('salary_id', 'salary_id', $salary_map);
+
+								$quantity_raw = isset($item['quantity']) ? trim($item['quantity']) : '';
+								if($quantity_raw === ''){
+									$row_errors[] = 'cột quantity bắt buộc';
+									$quantity = 1;
+								}elseif(!preg_match('/^\d+$/', $quantity_raw)){
+									$row_errors[] = 'quantity phải là số nguyên dương';
+									$quantity = 1;
+								}else{
+									$quantity = max(1, (int) $quantity_raw);
+								}
+
+								$experience_raw = isset($item['experience_years']) ? trim($item['experience_years']) : '';
+								if($experience_raw === ''){
+									$experience = 0;
+								}elseif(!preg_match('/^\d+$/', $experience_raw)){
+									$row_errors[] = 'experience_years phải là số nguyên >= 0';
+									$experience = 0;
+								}else{
+									$experience = (int) $experience_raw;
+								}
+
+								$deadline_raw = isset($item['deadline']) ? trim($item['deadline']) : '';
+								if($deadline_raw === ''){
+									$row_errors[] = 'cột deadline bắt buộc';
+									$deadline = date('Y-m-d', strtotime('+30 days'));
+								}else{
+									$deadline_obj = DateTime::createFromFormat('Y-m-d', $deadline_raw);
+									$deadline_errors = DateTime::getLastErrors();
+									$deadline_has_errors = is_array($deadline_errors) && (($deadline_errors['warning_count'] > 0) || ($deadline_errors['error_count'] > 0));
+									if(!$deadline_obj || $deadline_has_errors){
+										$row_errors[] = 'deadline phải đúng định dạng YYYY-MM-DD';
+										$deadline = date('Y-m-d', strtotime('+30 days'));
+									}else{
+										$deadline = $deadline_obj->format('Y-m-d');
+									}
+								}
+
+								$status_raw = isset($item['status']) ? trim($item['status']) : 'pending';
+								if($status_raw === ''){
+									$status_raw = 'pending';
+								}
+								if(!in_array($status_raw, $allowed_statuses)){
+									$row_errors[] = 'status không hợp lệ';
+								}
+								$status = $this->normalizeJobPostStatus($status_raw);
+
+								if(!empty($row_errors)){
+									$errors[] = 'Dòng '.$display_row.': '.implode('; ', $row_errors).'.';
+									continue;
+								}
+
+								$title = $db->escapestring($title_raw);
+								$description = isset($item['job_description']) ? $db->escapestring($item['job_description']) : '';
+								$degree = isset($item['degree_required']) ? $db->escapestring($item['degree_required']) : '';
+								$work_type = isset($item['work_type']) ? $db->escapestring($item['work_type']) : '';
+								$address = isset($item['address_detail']) ? $db->escapestring($item['address_detail']) : '';
+								$benefits = isset($item['benefits_description']) ? $db->escapestring($item['benefits_description']) : '';
+
+								$insert_columns = "employer_id, job_category_id, province_id, title, quantity, job_description, experience_years, degree_required, salary_id, benefits_description, work_type, address_detail, deadline, status";
+								$insert_values = "'".$employer_id."',".($job_category_id === 'NULL' ? "NULL" : "'".$job_category_id."'").",".($province_id === 'NULL' ? "NULL" : "'".$province_id."'").",'".$title."','".$quantity."','".$description."','".$experience."','".$degree."',".($salary_id === 'NULL' ? "NULL" : "'".$salary_id."'").",'".$benefits."','".$work_type."','".$address."','".$deadline."','".$status."'";
+								if($has_published_at){
+									$insert_columns .= ", published_at";
+									$insert_values .= ",".($status === 'published' ? "NOW()" : "NULL");
+								}
+								$insert_columns .= ", created_at, updated_at";
+								$insert_values .= ", NOW(), NOW()";
+								$db->query("INSERT INTO hicrm_job_posts(".$insert_columns.") VALUES (".$insert_values.")");
+								$imported++;
 							}
-							$title = isset($item['title']) ? $db->escapestring($item['title']) : '';
-							if($title === ''){ continue; }
-							$employer_id = isset($item['employer_id']) ? intval($item['employer_id']) : 0;
-							$job_category_id = (isset($item['job_category_id']) && $item['job_category_id'] !== '') ? intval($item['job_category_id']) : "NULL";
-							$province_id = (isset($item['province_id']) && $item['province_id'] !== '') ? intval($item['province_id']) : "NULL";
-							$salary_id = (isset($item['salary_id']) && $item['salary_id'] !== '') ? intval($item['salary_id']) : "NULL";
-							$quantity = isset($item['quantity']) ? intval($item['quantity']) : 1;
-							$description = isset($item['job_description']) ? $db->escapestring($item['job_description']) : '';
-							$experience = isset($item['experience_years']) ? intval($item['experience_years']) : 0;
-							$degree = isset($item['degree_required']) ? $db->escapestring($item['degree_required']) : '';
-							$work_type = isset($item['work_type']) ? $db->escapestring($item['work_type']) : '';
-							$address = isset($item['address_detail']) ? $db->escapestring($item['address_detail']) : '';
-							$benefits = isset($item['benefits_description']) ? $db->escapestring($item['benefits_description']) : '';
-							$deadline = isset($item['deadline']) && $item['deadline'] !== '' ? $db->escapestring($item['deadline']) : date('Y-m-d', strtotime('+30 days'));
-							$status = $this->normalizeJobPostStatus(isset($item['status']) ? $item['status'] : 'pending');
-							$insert_columns = "employer_id, job_category_id, province_id, title, quantity, job_description, experience_years, degree_required, salary_id, benefits_description, work_type, address_detail, deadline, status";
-							$insert_values = "'".$employer_id."',".($job_category_id === "NULL" ? "NULL" : "'".$job_category_id."'").",".($province_id === "NULL" ? "NULL" : "'".$province_id."'").",'".$title."','".$quantity."','".$description."','".$experience."','".$degree."',".($salary_id === "NULL" ? "NULL" : "'".$salary_id."'").",'".$benefits."','".$work_type."','".$address."','".$deadline."','".$status."'";
-							if($has_published_at){
-								$insert_columns .= ", published_at";
-								$insert_values .= ",".($status === 'published' ? "NOW()" : "NULL");
+
+							if(!empty($errors)){
+								$message = 'Import thành công '.$imported.' bài đăng.';
+								if($imported === 0){
+									$message = 'Chưa import được bài đăng nào.';
+								}
+								$message .= ' Lỗi dữ liệu: '.implode(' ', array_slice($errors, 0, 10));
+								if(count($errors) > 10){
+									$message .= ' Còn thêm '.(count($errors) - 10).' lỗi khác.';
+								}
+								$this->setAdminFlash('info', $message);
+							}else{
+								$this->setAdminFlash('success', 'Đã import '.$imported.' bài đăng tuyển dụng từ file dữ liệu.');
 							}
-							$insert_columns .= ", created_at, updated_at";
-							$insert_values .= ", NOW(), NOW()";
-							$db->query("INSERT INTO hicrm_job_posts(".$insert_columns.") VALUES (".$insert_values.")");
-							$imported++;
 						}
 					}
-					fclose($handle);
 				}
-				$this->setAdminFlash('success', 'Đã import '.$imported.' bài đăng tuyển dụng từ file CSV.');
 			}
 			$this->adminRedirect('/admin/employers/posts');
 		}

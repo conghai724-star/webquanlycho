@@ -2,6 +2,33 @@
 
 Class homeController Extends baseController
 {
+    private function ensureMarketResultTable()
+    {
+        global $db;
+        $db->query("CREATE TABLE IF NOT EXISTS hicrm_market_results (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            result_title varchar(255) NOT NULL,
+            result_summary text DEFAULT NULL,
+            result_content longtext DEFAULT NULL,
+            result_image varchar(500) DEFAULT NULL,
+            result_date date DEFAULT NULL,
+            company_total int(11) NOT NULL DEFAULT 0,
+            position_total int(11) NOT NULL DEFAULT 0,
+            profile_total int(11) NOT NULL DEFAULT 0,
+            interview_total int(11) NOT NULL DEFAULT 0,
+            implementation_content longtext DEFAULT NULL,
+            highlight_content longtext DEFAULT NULL,
+            note_content text DEFAULT NULL,
+            result_status tinyint(4) NOT NULL DEFAULT 1,
+            created_by bigint(20) unsigned DEFAULT NULL,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY idx_result_status_date (result_status, result_date),
+            KEY idx_created_by (created_by)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    }
+
 	public function index()
     {
         
@@ -180,10 +207,87 @@ Class homeController Extends baseController
     public function introduce_process(){
         $this->view->show("quy-trinh-san-viec-lam");
     }
-     public function results_jobs(){
+     public function results_jobs($para = array()){
+        global $db;
+        $this->ensureMarketResultTable();
+        $page = 1;
+        if(is_array($para) && count($para) > 0){
+            foreach($para as $index => $value){
+                if($value === "page" && isset($para[$index + 1]) && intval($para[$index + 1]) > 0){
+                    $page = intval($para[$index + 1]);
+                    break;
+                }
+                if(intval($value) > 0){
+                    $page = intval($value);
+                    break;
+                }
+            }
+        }
+        if(isset($_GET['page']) && intval($_GET['page']) > 0){
+            $page = intval($_GET['page']);
+        }
+        $perPage = 10;
+
+        $db->query("SELECT COUNT(id) AS total FROM hicrm_market_results WHERE result_status = 1");
+        $totalResults = intval($db->fetch_object(true)->total);
+        $totalPages = max(1, ceil($totalResults / $perPage));
+        if($page > $totalPages){ $page = $totalPages; }
+        $offset = ($page - 1) * $perPage;
+
+        $db->query("SELECT * FROM hicrm_market_results WHERE result_status = 1 ORDER BY result_date DESC, id DESC LIMIT ".$offset.",".$perPage);
+        $results = $db->fetch_object();
+
+        $db->query("SELECT 
+                COUNT(id) AS total_rounds,
+                COALESCE(SUM(company_total), 0) AS total_companies,
+                COALESCE(SUM(position_total), 0) AS total_positions,
+                COALESCE(SUM(profile_total), 0) AS total_profiles,
+                COALESCE(SUM(interview_total), 0) AS total_interviews
+            FROM hicrm_market_results WHERE result_status = 1");
+        $summary = $db->fetch_object(true);
+
+        $this->view->data['market_results'] = is_array($results) ? $results : array();
+        $this->view->data['market_results_page'] = $page;
+        $this->view->data['market_results_per_page'] = $perPage;
+        $this->view->data['market_results_total'] = $totalResults;
+        $this->view->data['market_results_total_pages'] = $totalPages;
+        $this->view->data['market_results_summary'] = $summary;
         $this->view->show("ket-qua-san-viec-lam");
     }
+    public function results_detail($para = array()){
+        global $db;
+        $this->ensureMarketResultTable();
+        $resultId = is_array($para) && isset($para[1]) && preg_match('/^(\d+)/', (string)$para[1], $matches) ? intval($matches[1]) : 0;
+        if($resultId <= 0 && isset($_GET['id'])){ $resultId = intval($_GET['id']); }
+        if($resultId <= 0){ header("Location: ".XC_URL."/ket-qua-san-viec-lam.html"); exit(); }
+
+        $db->query("SELECT * FROM hicrm_market_results WHERE id = '".$resultId."' AND result_status = 1 LIMIT 1");
+        if($db->num_row() <= 0){ header("Location: ".XC_URL."/ket-qua-san-viec-lam.html"); exit(); }
+        $result = $db->fetch_object(true);
+
+        $db->query("SELECT id, result_title, result_date, result_image FROM hicrm_market_results WHERE result_status = 1 AND id <> '".$resultId."' ORDER BY result_date DESC, id DESC LIMIT 4");
+        $related = $db->fetch_object();
+
+        $this->view->data['market_result_detail'] = $result;
+        $this->view->data['market_result_related'] = is_array($related) ? $related : array();
+        $this->view->show("ket-qua-san-viec-lam-detail");
+    }
     public function online_jobs(){
+        global $db;
+        $meetings = array();
+
+        $db->query("SHOW TABLES LIKE 'hicrm_google_meets'");
+        if($db->num_row() > 0){
+            $db->query("SELECT gm.*, e.company_name, p.title AS job_title
+                FROM hicrm_google_meets gm
+                LEFT JOIN hicrm_employers e ON gm.employer_id = e.id
+                LEFT JOIN hicrm_job_posts p ON gm.job_post_id = p.id
+                WHERE gm.status = 1
+                ORDER BY gm.meeting_time DESC, gm.id DESC");
+            $meetings = $db->fetch_object();
+        }
+
+        $this->view->data['online_meetings'] = is_array($meetings) ? $meetings : array();
         $this->view->show("san-viec-lam-online");
     }
     public function contact(){
@@ -237,6 +341,7 @@ Class homeController Extends baseController
             `id` int(11) NOT NULL AUTO_INCREMENT,
             `event_id` int(11) NOT NULL,
             `parent_id` int(11) DEFAULT NULL,
+            `user_id` int(11) DEFAULT NULL,
             `comment_name` varchar(255) NOT NULL,
             `comment_email` varchar(255) DEFAULT NULL,
             `comment_content` text NOT NULL,
@@ -248,8 +353,13 @@ Class homeController Extends baseController
             `replied_at` datetime DEFAULT NULL,
             PRIMARY KEY (`id`),
             KEY `idx_event_status_created` (`event_id`,`status`,`created_at`),
-            KEY `idx_status_created` (`status`,`created_at`)
+            KEY `idx_status_created` (`status`,`created_at`),
+            KEY `idx_user_id` (`user_id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8");
+        $db->query("SHOW COLUMNS FROM `hicrm_event_comments` LIKE 'user_id'");
+        if($db->num_row() <= 0){
+            $db->query("ALTER TABLE `hicrm_event_comments` ADD COLUMN `user_id` int(11) DEFAULT NULL AFTER `parent_id`");
+        }
         $newsId = is_array($para) && isset($para[1]) && preg_match('/^(\d+)/', (string)$para[1], $matches) ? intval($matches[1]) : 0;
         if($newsId <= 0 && isset($_GET['id'])){ $newsId = intval($_GET['id']); }
         if($newsId <= 0){ header("Location: ".XC_URL."/tin-tuc-su-kien.html"); exit(); }
@@ -261,34 +371,48 @@ Class homeController Extends baseController
         $this->view->data['related_news'] = $db->fetch_object();
         $db->query("SELECT * FROM hicrm_events WHERE event_status = 1 AND id <> '".$newsId."' ORDER BY event_created_date DESC, id DESC LIMIT 6");
         $this->view->data['more_news'] = $db->fetch_object();
-        $db->query("SELECT * FROM hicrm_event_comments WHERE event_id = '".$newsId."' AND status = 1 ORDER BY created_at DESC, id DESC");
+        $db->query("SELECT ec.*,
+                COALESCE(NULLIF(u.full_name, ''), NULLIF(ec.comment_name, ''), 'An danh') AS commenter_name,
+                COALESCE(NULLIF(ru.full_name, ''), 'Ban quan tri') AS reply_user_name
+            FROM hicrm_event_comments ec
+            LEFT JOIN hicrm_users u ON u.id = ec.user_id
+            LEFT JOIN hicrm_users ru ON ru.id = ec.reply_user_id
+            WHERE ec.event_id = '".$newsId."' AND ec.status = 1
+            ORDER BY COALESCE(ec.parent_id, ec.id) DESC, ec.parent_id ASC, ec.created_at ASC, ec.id ASC");
         $this->view->data['news_comments'] = $db->fetch_object();
         $this->view->show("tintuc_detail");
     }
     public function add_news_comment() {
         global $db;
+        header('Content-Type: application/json');
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if(!(isset($_SESSION['user']['id']) && intval($_SESSION['user']['id']) > 0)){
+                echo json_encode(array('status' => 'error', 'message' => 'Vui lòng đăng nhập để bình luận.', 'login_required' => true));
+                exit();
+            }
             $eventId = isset($_POST['event_id']) ? intval($_POST['event_id']) : 0;
             $parentId = isset($_POST['parent_id']) && $_POST['parent_id'] !== '' ? intval($_POST['parent_id']) : 'NULL';
-            $name = trim(isset($_POST['comment_name']) ? $_POST['comment_name'] : '');
-            $email = trim(isset($_POST['comment_email']) ? $_POST['comment_email'] : '');
             $content = trim(isset($_POST['comment_content']) ? $_POST['comment_content'] : '');
+            $userId = intval($_SESSION['user']['id']);
 
-            if ($eventId > 0 && $name !== '' && $content !== '') {
+            $db->query("SELECT full_name, user_email FROM hicrm_users WHERE id = '".$userId."' LIMIT 1");
+            $user = $db->num_row() > 0 ? $db->fetch_object(true) : null;
+            $name = $user && trim((string)$user->full_name) !== '' ? trim((string)$user->full_name) : (strstr((string)($_SESSION['user']['email'] ?? ''), '@', true) ?: 'Tài khoản');
+            $email = $user && isset($user->user_email) ? trim((string)$user->user_email) : trim((string)($_SESSION['user']['email'] ?? ''));
+
+            if ($eventId > 0 && $content !== '') {
                 $escName = $db->escapestring($name);
                 $escEmail = $db->escapestring($email);
                 $escContent = $db->escapestring($content);
                 $parentIdVal = $parentId === 'NULL' ? 'NULL' : intval($parentId);
 
-                $db->query("INSERT INTO `hicrm_event_comments` (`event_id`, `parent_id`, `comment_name`, `comment_email`, `comment_content`, `status`, `created_at`) 
-                            VALUES ('".$eventId."', ".$parentIdVal.", '".$escName."', '".$escEmail."', '".$escContent."', 1, NOW())");
+                $db->query("INSERT INTO `hicrm_event_comments` (`event_id`, `parent_id`, `user_id`, `comment_name`, `comment_email`, `comment_content`, `status`, `created_at`) 
+                            VALUES ('".$eventId."', ".$parentIdVal.", '".$userId."', '".$escName."', '".$escEmail."', '".$escContent."', 1, NOW())");
                 
-                header('Content-Type: application/json');
                 echo json_encode(array('status' => 'success', 'message' => 'Bình luận thành công!'));
                 exit();
             }
         }
-        header('Content-Type: application/json');
         echo json_encode(array('status' => 'error', 'message' => 'Dữ liệu không hợp lệ.'));
         exit();
     }

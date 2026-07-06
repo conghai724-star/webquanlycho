@@ -148,10 +148,16 @@ Class apiController extends baseController
 		}
 		switch($filterType){
 			case 'location':
+				if(preg_match('/^loc_(\d+)$/', $filterValue, $matches)){
+					return " AND p.province_id = '".intval($matches[1])."'";
+				}
 				$map = array('hanoi' => 'ha noi', 'tphcm' => 'ho chi minh', 'danang' => 'da nang', 'binhduong' => 'binh duong', 'cantho' => 'can tho');
 				if(!isset($map[$filterValue])){ return ''; }
 				return " AND LOWER(CONVERT(pr.province_name USING utf8mb4)) LIKE '%".$db->escapestring($map[$filterValue])."%'";
 			case 'salary':
+				if(preg_match('/^sal_(\d+)$/', $filterValue, $matches)){
+					return " AND p.salary_id = '".intval($matches[1])."'";
+				}
 				$map = array(
 					'1-3' => array(1, 3),
 					'3-5' => array(3, 5),
@@ -164,6 +170,9 @@ Class apiController extends baseController
 				if(!isset($map[$filterValue])){ return ''; }
 				return " AND LOWER(CONVERT(s.salary_name USING utf8mb4)) LIKE '%".$map[$filterValue][0]."%' AND LOWER(CONVERT(s.salary_name USING utf8mb4)) LIKE '%".$map[$filterValue][1]."%'";
 			case 'industry':
+				if(preg_match('/^cat_(\d+)$/', $filterValue, $matches)){
+					return " AND p.job_category_id = '".intval($matches[1])."'";
+				}
 				$map = array(
 					'finance' => array('tai chinh', 'ngan hang'),
 					'sales' => array('kinh doanh', 'ban hang', 'sales'),
@@ -182,6 +191,15 @@ Class apiController extends baseController
 				}
 				return " AND (".implode(' OR ', $likes).")";
 			case 'experience':
+				if(preg_match('/^exp_(\d+)$/', $filterValue, $matches)){
+					$experience = intval($matches[1]);
+					$normalizedExperience = "CASE
+						WHEN COALESCE(NULLIF(TRIM(p.experience_years), ''), '0') REGEXP '^[0-9]+$'
+							THEN CAST(COALESCE(NULLIF(TRIM(p.experience_years), ''), '0') AS UNSIGNED)
+						ELSE 0
+					END";
+					return " AND ".$normalizedExperience." = '".$experience."'";
+				}
 				if($filterValue === 'none'){ return " AND (COALESCE(p.experience_years, '') = '' OR p.experience_years = '0')"; }
 				if($filterValue === '1-2'){ return " AND CAST(COALESCE(NULLIF(p.experience_years, ''), '0') AS UNSIGNED) BETWEEN 1 AND 2"; }
 				if($filterValue === '3-5'){ return " AND CAST(COALESCE(NULLIF(p.experience_years, ''), '0') AS UNSIGNED) BETWEEN 3 AND 5"; }
@@ -195,7 +213,7 @@ Class apiController extends baseController
 		global $db;
 		$page = max(1, intval(isset($_GET['page']) ? $_GET['page'] : 1));
 		$perPage = 15;
-		$where = " WHERE p.status = 'published' AND COALESCE(p.published_at, p.created_at) >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+		$where = " WHERE p.status = 'published' AND COALESCE(p.published_at, p.created_at) >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
 		$where .= $this->homeApiFilterWhere($_GET['filter_type'] ?? 'all', $_GET['filter_value'] ?? 'all');
 		$from = " FROM hicrm_job_posts p LEFT JOIN hicrm_employers e ON e.id = p.employer_id LEFT JOIN hicrm_job_categories c ON c.id = p.job_category_id LEFT JOIN hicrm_provinces pr ON pr.id = p.province_id LEFT JOIN hicrm_salary s ON s.id = p.salary_id";
 		$db->query("SELECT COUNT(p.id) AS total".$from.$where);
@@ -573,6 +591,132 @@ Class apiController extends baseController
 		
 		echo json_encode($result);
 	}
+	public function libraryImageAdd(){
+		global $db;
+		$result = array();
+		$image_name = isset($_POST['image_name']) ? $db->escapestring(trim($_POST['image_name'])) : '';
+		$image_user_created = isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : 0;
+		$image_created_date = date('Y-m-d H:i:s');
+		$image_status = 1;
+		$FinalFilenameFront = "";
+		$expensions = array("jpeg","jpg","png","gif","webp");
+		if($image_name === ''){
+			$result['status'] = 500;
+			$result['message'] = 'Vui lòng nhập tên hình ảnh';
+			echo json_encode($result);
+			return;
+		}
+		if(!isset($_FILES['image_file']) || !isset($_FILES['image_file']['name']) || $_FILES['image_file']['name'] === ''){
+			$result['status'] = 500;
+			$result['message'] = 'Vui lòng chọn hình ảnh';
+			echo json_encode($result);
+			return;
+		}
+		$errors = array();
+		$file_size = $_FILES['image_file']['size'];
+		$file_tmp = $_FILES['image_file']['tmp_name'];
+		$file_ext = strtolower(pathinfo($_FILES['image_file']['name'], PATHINFO_EXTENSION));
+		$FinalFilename = preg_replace('`[^a-z0-9-_.]`i','',$_FILES['image_file']['name']);
+		$FinalFilenameFront = md5(time())."-".$FinalFilename;
+		if(in_array($file_ext, $expensions) === false){
+			$errors[] = "Extension not allowed, please choose a .png, .jpg, .gif, .webp file.";
+		}
+		if($file_size > 10485760){
+			$errors[] = 'File size must be max 10Mb';
+		}
+		if(empty($errors) == false){
+			$result['status'] = 500;
+			$result['message'] = $errors[0];
+			echo json_encode($result);
+			return;
+		}
+		if(!move_uploaded_file($file_tmp, "./uploads/images/".$FinalFilenameFront)){
+			$result['status'] = 500;
+			$result['message'] = 'Không thể tải ảnh lên';
+			echo json_encode($result);
+			return;
+		}
+		$db->query("INSERT INTO hicrm_images (image_name, image_url, image_user_created, image_created_date, image_status) VALUES('".$image_name."','".$FinalFilenameFront."','".$image_user_created."','".$image_created_date."','".$image_status."')");
+		$result['status'] = 200;
+		$result['message'] = 'Thêm hình ảnh thành công';
+		$result["url"] = XC_URL."/uploads/images/".$FinalFilenameFront;
+		echo json_encode($result);
+	}
+	public function libraryImageUpdate(){
+		global $db;
+		$result = array();
+		$id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+		$image_name = isset($_POST['image_name']) ? $db->escapestring(trim($_POST['image_name'])) : '';
+		if($id <= 0){
+			$result['status'] = 500;
+			$result['message'] = 'Không tìm thấy hình ảnh';
+			echo json_encode($result);
+			return;
+		}
+		if($image_name === ''){
+			$result['status'] = 500;
+			$result['message'] = 'Vui lòng nhập tên hình ảnh';
+			echo json_encode($result);
+			return;
+		}
+		$db->query("SELECT * FROM hicrm_images WHERE id = '".$id."' AND image_status NOT IN(99) LIMIT 1");
+		$image = $db->fetch_object(true);
+		if(!$image){
+			$result['status'] = 500;
+			$result['message'] = 'Hình ảnh không tồn tại';
+			echo json_encode($result);
+			return;
+		}
+		$updateimage = "";
+		if(isset($_FILES['image_file']) && isset($_FILES['image_file']['name']) && $_FILES['image_file']['name'] !== ''){
+			$expensions = array("jpeg","jpg","png","gif","webp");
+			$errors = array();
+			$file_size = $_FILES['image_file']['size'];
+			$file_tmp = $_FILES['image_file']['tmp_name'];
+			$file_ext = strtolower(pathinfo($_FILES['image_file']['name'], PATHINFO_EXTENSION));
+			$FinalFilename = preg_replace('`[^a-z0-9-_.]`i','',$_FILES['image_file']['name']);
+			$FinalFilenameFront = md5(time())."-".$FinalFilename;
+			if(in_array($file_ext, $expensions) === false){
+				$errors[] = "Extension not allowed, please choose a .png, .jpg, .gif, .webp file.";
+			}
+			if($file_size > 10485760){
+				$errors[] = 'File size must be max 10Mb';
+			}
+			if(empty($errors) == false){
+				$result['status'] = 500;
+				$result['message'] = $errors[0];
+				echo json_encode($result);
+				return;
+			}
+			if(!move_uploaded_file($file_tmp, "./uploads/images/".$FinalFilenameFront)){
+				$result['status'] = 500;
+				$result['message'] = 'Không thể tải ảnh lên';
+				echo json_encode($result);
+				return;
+			}
+			$updateimage = ", image_url = '".$FinalFilenameFront."'";
+		}
+		$db->query("UPDATE hicrm_images SET image_name = '".$image_name."'".$updateimage." WHERE id = '".$id."' LIMIT 1");
+		$result['status'] = 200;
+		$result['message'] = 'Cập nhật hình ảnh thành công';
+		echo json_encode($result);
+	}
+	public function libraryImageDelete(){
+		global $db;
+		$result = array();
+		$id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+		$db->query("SELECT * FROM hicrm_images WHERE id = '".$id."' LIMIT 1");
+		$db->fetch_object(true);
+		if($db->num_row()){
+			$db->query("UPDATE hicrm_images SET image_status = 99 WHERE id = '".$id."'");
+			$result["status"] = 200;
+			$result['message'] = 'Đã xóa hình ảnh';
+		}else{
+			$result['message'] = "Không tìm thấy hình ảnh";
+			$result["status"] = 500;
+		}
+		echo json_encode($result);
+	}
     public function load_work_schedule(){
 		global $db;
 		$id = $_POST['id'];
@@ -650,13 +794,35 @@ Class apiController extends baseController
 	}
 	public function addFeedback(){
 	    global $db;
-		$result = array();
+		$result = array(
+			'status' => 400,
+			'message' => 'Gửi yêu cầu liên hệ thất bại.',
+			'return_url' => XC_URL.'/lien-he.html'
+		);
 		$date = date("Y-m-d H:i:s");
-		$rating = $_POST['rating'];
-		$db->query("INSERT INTO hicrm_customer_feedback(customer_name, customer_phone, customer_email, customer_address, content, status, rating, create_date) VALUES ('".$_POST['customer_name']."','".$_POST['customer_phone']."','".$_POST['customer_email']."','".$_POST['customer_address']."','".$_POST['content']."','0','".$rating."','".$date."')");
+		$customer_name = trim(isset($_POST['customer_name']) ? $_POST['customer_name'] : '');
+		$customer_phone = trim(isset($_POST['customer_phone']) ? $_POST['customer_phone'] : '');
+		$customer_email = trim(isset($_POST['customer_email']) ? $_POST['customer_email'] : '');
+		$customer_address = trim(isset($_POST['customer_address']) ? $_POST['customer_address'] : '');
+		$content = trim(isset($_POST['content']) ? $_POST['content'] : '');
+		$rating = isset($_POST['rating']) ? intval($_POST['rating']) : 0;
+
+		if($customer_name === '' || $customer_phone === '' || $customer_email === '' || $customer_address === '' || $content === ''){
+			$result['message'] = 'Vui lòng nhập đầy đủ họ tên, số điện thoại, email, địa chỉ và nội dung liên hệ.';
+			echo json_encode($result);
+			return;
+		}
+
+		if(!filter_var($customer_email, FILTER_VALIDATE_EMAIL)){
+			$result['message'] = 'Email không đúng định dạng.';
+			echo json_encode($result);
+			return;
+		}
+
+		$db->query("INSERT INTO hicrm_customer_feedback(customer_name, customer_phone, customer_email, customer_address, content, status, rating, create_date) VALUES ('".$db->escapestring($customer_name)."','".$db->escapestring($customer_phone)."','".$db->escapestring($customer_email)."','".$db->escapestring($customer_address)."','".$db->escapestring($content)."','0','".$rating."','".$date."')");
 		
 		$result['status'] = 200;
-		$result['message'] = "Cảm ơn Quý khách đã gửi phản hồi. Chúng tôi rất trân trọng ý kiến của bạn.";
+		$result['message'] = "Gửi yêu cầu liên hệ thành công!";
 		echo json_encode($result);
 	}
 	public function approveBooking()
@@ -793,17 +959,21 @@ Class apiController extends baseController
 	public function events()
 	{
 		global $db;
-		$event_name = $_POST['event_name'];
-		$event_description = $_POST['event_description'];
-		$event_content = $db->escapestring($_POST['event_content']);
-		$event_user_created = $_POST['event_user_created'];
+		$event_name = isset($_POST['event_name']) ? $db->escapestring($_POST['event_name']) : '';
+		$event_description = isset($_POST['event_description']) ? $db->escapestring($_POST['event_description']) : '';
+		$event_content = isset($_POST['event_content']) ? $db->escapestring($_POST['event_content']) : '';
+		$user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
+		$event_type = isset($_POST['event_type']) ? intval($_POST['event_type']) : 0;
+		$event_hot = isset($_POST['event_hot']) ? intval($_POST['event_hot']) : 0;
+		$event_user_created = isset($_POST['event_user_created']) ? intval($_POST['event_user_created']) : 0;
+		$event_status = isset($_POST['event_status']) ? intval($_POST['event_status']) : 0;
 		$event_created_date = date('Y-m-d H:i:s');
 		$FinalFilenameFront = "";
 		$FinalFilenameFront2 = "";
 		$expensions = array("jpeg","jpg","png");
-		$method = $_POST['method'];
+		$method = isset($_POST['method']) ? $_POST['method'] : '';
 		$result = array();
-		$id = $_POST['eid'];
+		$id = isset($_POST['eid']) ? intval($_POST['eid']) : 0;
 		
 		if(isset($method) && $method == "add")
 		{
@@ -837,8 +1007,8 @@ Class apiController extends baseController
 				}
 				
 			}
-			$db->query("INSERT INTO hicrm_events(event_name,event_description,event_content,event_image,event_user_created,event_status,event_created_date)
-			VALUES('".$_POST['event_name']."','".$_POST['event_description']."','".$event_content."','".$FinalFilenameFront."','".$event_user_created."',1,'".$event_created_date."')");
+			$db->query("INSERT INTO hicrm_events(user_id,event_name,event_description,event_content,event_image,event_type,event_hot,event_user_created,event_status,event_created_date)
+			VALUES('".$user_id."','".$event_name."','".$event_description."','".$event_content."','".$FinalFilenameFront."','".$event_type."','".$event_hot."','".$event_user_created."','".$event_status."','".$event_created_date."')");
 			$result["status"] = 200;
 			$result["url"] = XC_URL."/uploads/events/".$FinalFilenameFront;
 			$result["id"] = $FinalFilenameFront;
@@ -884,7 +1054,7 @@ Class apiController extends baseController
 				
 				$updateimage = ($FinalFilenameFront != "")? ", event_image = '".$FinalFilenameFront."'" : "";
 				// echo "UPDATE hicrm_events SET event_name = '".$_POST['event_name']."',event_description = '".$_POST['event_description']."', event_content = '".$event_content."'".$updateimage." WHERE id = '".$id."'";
-				$db->query("UPDATE hicrm_events SET event_name = '".$_POST['event_name']."',event_description = '".$_POST['event_description']."', event_content = '".$event_content."'".$updateimage." WHERE id = '".$id."'");
+				$db->query("UPDATE hicrm_events SET user_id = '".$user_id."', event_name = '".$event_name."', event_description = '".$event_description."', event_content = '".$event_content."', event_type = '".$event_type."', event_hot = '".$event_hot."', event_user_created = '".$event_user_created."', event_status = '".$event_status."', event_created_date = '".$event_created_date."'".$updateimage." WHERE id = '".$id."'");
 				$result["status"] = 200;
 				$result['message'] = 'Sửa thành công';
 				$result['returnUrl'] = XC_URL."/admin/events";
@@ -5227,21 +5397,18 @@ public function addstudent()
 
 		$file = $_FILES['student_file'];
 		$extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-		$rows = array();
+		$parsed = $this->parseStudentImportFile($file['tmp_name'], $extension);
 
-		if ($extension === 'csv') {
-			$rows = $this->parseCsvFile($file['tmp_name']);
-		} elseif ($extension === 'xlsx') {
-			$rows = $this->parseXlsxFile($file['tmp_name']);
-		} else {
+		if ($parsed['error'] !== '') {
 			echo json_encode(array(
 				'success' => false,
 				'status' => 400,
-				'message' => 'Chỉ chấp nhận file .xlsx hoặc .csv.'
+				'message' => $parsed['error']
 			));
 			return;
 		}
 
+		$rows = $parsed['rows'];
 		if (empty($rows) || count($rows) < 2) {
 			echo json_encode(array(
 				'success' => false,
@@ -5265,6 +5432,27 @@ public function addstudent()
 			'student_rank',
 			'student_description'
 		);
+		$requiredColumns = array(
+			'student_code',
+			'student_name',
+			'student_class',
+			'student_birthday',
+			'student_gender',
+			'student_major_id'
+		);
+		$missingColumns = array_values(array_diff($requiredColumns, $header));
+		if (!empty($missingColumns)) {
+			echo json_encode(array(
+				'success' => false,
+				'status' => 400,
+				'message' => 'Thiếu cột bắt buộc trong file import.',
+				'errors' => array('Thiếu cột: '.implode(', ', $missingColumns).'.')
+			));
+			return;
+		}
+
+		$majorMap = $this->getStudentMajorReferenceMap();
+		$fileStudentCodes = array();
 
 		$inserted = 0;
 		$skipped = 0;
@@ -5284,35 +5472,121 @@ public function addstudent()
 				$record[$columnName] = isset($row[$columnIndex]) ? trim($row[$columnIndex]) : '';
 			}
 
+			$displayRow = $rowIndex + 1;
 			$studentCode = trim($record['student_code']);
 			$studentName = trim($record['student_name']);
+			$rowErrors = array();
 
-			if ($studentCode === '' || $studentName === '') {
+			if ($studentCode === '') {
+				$rowErrors[] = 'cột student_code bắt buộc';
+			}
+			if ($studentName === '') {
+				$rowErrors[] = 'cột student_name bắt buộc';
+			}
+
+			if ($studentCode !== '') {
+				$studentCodeKey = strtolower($studentCode);
+				if (isset($fileStudentCodes[$studentCodeKey])) {
+					$rowErrors[] = 'student_code bị trùng trong file import';
+				} else {
+					$fileStudentCodes[$studentCodeKey] = true;
+				}
+			}
+
+			$studentClassRaw = trim($record['student_class']);
+			if ($studentClassRaw === '') {
+				$rowErrors[] = 'cột student_class bắt buộc';
+			}
+
+			$studentBirthdayRaw = trim($record['student_birthday']);
+			if ($studentBirthdayRaw === '') {
+				$rowErrors[] = 'cột student_birthday bắt buộc';
+				$studentBirthday = '1970-01-01';
+			} else {
+				$birthdayObj = DateTime::createFromFormat('Y-m-d', $studentBirthdayRaw);
+				$birthdayErrors = DateTime::getLastErrors();
+				$birthdayHasErrors = is_array($birthdayErrors) && (($birthdayErrors['warning_count'] > 0) || ($birthdayErrors['error_count'] > 0));
+				if (!$birthdayObj || $birthdayHasErrors) {
+					$rowErrors[] = 'student_birthday phải đúng định dạng YYYY-MM-DD';
+					$studentBirthday = '1970-01-01';
+				} else {
+					$studentBirthday = $birthdayObj->format('Y-m-d');
+				}
+			}
+
+			$studentGenderRaw = trim($record['student_gender']);
+			if ($studentGenderRaw === '') {
+				$rowErrors[] = 'cột student_gender bắt buộc';
+				$studentGender = 0;
+			} elseif (!preg_match('/^\d+$/', $studentGenderRaw)) {
+				$rowErrors[] = 'student_gender phải là số nguyên';
+				$studentGender = 0;
+			} else {
+				$studentGender = (int) $studentGenderRaw;
+				if (!in_array($studentGender, array(0, 1, 2), true)) {
+					$rowErrors[] = 'student_gender chỉ nhận các giá trị 0, 1, 2';
+				}
+			}
+
+			$studentMajorRaw = trim($record['student_major_id']);
+			if ($studentMajorRaw === '') {
+				$rowErrors[] = 'cột student_major_id bắt buộc';
+				$studentMajorId = 0;
+			} elseif (!preg_match('/^\d+$/', $studentMajorRaw)) {
+				$rowErrors[] = 'student_major_id phải là số nguyên';
+				$studentMajorId = 0;
+			} else {
+				$studentMajorId = (int) $studentMajorRaw;
+				if (!isset($majorMap[$studentMajorId])) {
+					$rowErrors[] = 'student_major_id không tồn tại trong danh mục';
+				}
+			}
+
+			$studentEmailRaw = trim($record['student_email']);
+			if ($studentEmailRaw !== '' && !filter_var($studentEmailRaw, FILTER_VALIDATE_EMAIL)) {
+				$rowErrors[] = 'student_email không đúng định dạng email';
+			}
+
+			$studentPhoneRaw = trim($record['student_phone']);
+			if ($studentPhoneRaw !== '' && !preg_match('/^[0-9+\-\s().]{8,20}$/', $studentPhoneRaw)) {
+				$rowErrors[] = 'student_phone không đúng định dạng số điện thoại';
+			}
+
+			$studentGpaRaw = trim($record['student_gpa']);
+			if ($studentGpaRaw === '') {
+				$studentGpa = null;
+			} elseif (!is_numeric($studentGpaRaw)) {
+				$rowErrors[] = 'student_gpa phải là số';
+				$studentGpa = null;
+			} else {
+				$studentGpa = (float) $studentGpaRaw;
+				if ($studentGpa < 0 || $studentGpa > 10) {
+					$rowErrors[] = 'student_gpa phải nằm trong khoảng 0 đến 10';
+				}
+			}
+
+			if (!empty($rowErrors)) {
 				$skipped++;
-				$errors[] = 'Dòng '.($rowIndex + 1).': thiếu mã hoặc tên sinh viên.';
+				$errors[] = 'Dòng '.$displayRow.': '.implode('; ', $rowErrors).'.';
 				continue;
 			}
 
 			$db->query("SELECT id FROM hicrm_student_profile WHERE student_code = '".$db->escapestring($studentCode)."' LIMIT 1");
 			if ($db->num_row()) {
 				$skipped++;
-				$errors[] = 'Dòng '.($rowIndex + 1).': mã sinh viên '.$studentCode.' đã tồn tại, bỏ qua.';
+				$errors[] = 'Dòng '.$displayRow.': mã sinh viên '.$studentCode.' đã tồn tại trong hệ thống.';
 				continue;
 			}
 
-			$studentClassRaw = $record['student_class'];
-			$studentBirthday = $record['student_birthday'] ?: '1970-01-01';
-			$studentGender = is_numeric($record['student_gender']) ? (int)$record['student_gender'] : 0;
-			$studentMajorId = is_numeric($record['student_major_id']) ? (int)$record['student_major_id'] : 1;
-			$studentGpa = $record['student_gpa'] !== '' ? $db->escapestring($record['student_gpa']) : null;
+			$studentGpaValue = $studentGpa !== null ? number_format($studentGpa, 2, '.', '') : null;
 			$studentRank = $db->escapestring($record['student_rank']);
 			$studentDescription = $db->escapestring($record['student_description']);
 
-			$studentPhone = $db->escapestring($record['student_phone']);
-			$studentEmail = $db->escapestring($record['student_email']);
-			$studentClassValue = $db->escapestring($studentClassRaw !== '' ? $studentClassRaw : '1');
+			$studentPhone = $db->escapestring($studentPhoneRaw);
+			$studentEmail = $db->escapestring($studentEmailRaw);
+			$studentClassValue = $db->escapestring($studentClassRaw);
 
-			$db->query("INSERT INTO hicrm_student_profile (student_code, student_name, student_phone, student_email, student_class, student_birthday, student_gender, student_major_id, student_gpa, student_rank, student_description) VALUES ('".$db->escapestring($studentCode)."', '".$db->escapestring($studentName)."', '".$studentPhone."', '".$studentEmail."', '".$studentClassValue."', '".$db->escapestring($studentBirthday)."', '".$studentGender."', '".$studentMajorId."', ".($studentGpa !== null ? "'".$studentGpa."'" : 'NULL').", '".$studentRank."', '".$studentDescription."')");
+			$db->query("INSERT INTO hicrm_student_profile (student_code, student_name, student_phone, student_email, student_class, student_birthday, student_gender, student_major_id, student_gpa, student_rank, student_description) VALUES ('".$db->escapestring($studentCode)."', '".$db->escapestring($studentName)."', '".$studentPhone."', '".$studentEmail."', '".$studentClassValue."', '".$db->escapestring($studentBirthday)."', '".$studentGender."', '".$studentMajorId."', ".($studentGpaValue !== null ? "'".$studentGpaValue."'" : 'NULL').", '".$studentRank."', '".$studentDescription."')");
 			$inserted++;
 		}
 
@@ -5324,6 +5598,44 @@ public function addstudent()
 			'errors' => $errors,
 			'message' => 'Import hoàn tất.'
 		));
+	}
+
+	private function parseStudentImportFile($filePath, $extension)
+	{
+		$rows = array();
+		$error = '';
+		if ($extension === 'csv') {
+			$rows = $this->parseCsvFile($filePath);
+		} elseif ($extension === 'xlsx') {
+			$rows = $this->parseXlsxFile($filePath);
+		} elseif ($extension === 'xls' || $extension === 'xml') {
+			$rows = $this->parseSpreadsheetXmlFile($filePath);
+		} else {
+			$error = 'Chỉ chấp nhận file .xls, .xml, .xlsx hoặc .csv.';
+		}
+
+		if ($error === '' && empty($rows)) {
+			$error = 'File trống hoặc không đọc được dữ liệu import.';
+		}
+
+		return array(
+			'rows' => $rows,
+			'error' => $error
+		);
+	}
+
+	private function getStudentMajorReferenceMap()
+	{
+		global $db;
+		$map = array();
+		$db->query("SELECT id, job_category_name FROM hicrm_job_categories ORDER BY job_category_name ASC, id ASC");
+		$rows = $db->fetch_object();
+		if (is_array($rows)) {
+			foreach ($rows as $row) {
+				$map[(int) $row->id] = isset($row->job_category_name) ? $row->job_category_name : '';
+			}
+		}
+		return $map;
 	}
 
 	private function parseCsvFile($filePath, $delimiter = ',')
@@ -5339,6 +5651,57 @@ public function addstudent()
 			$rows[] = $data;
 		}
 		fclose($handle);
+		return $rows;
+	}
+
+	private function parseSpreadsheetXmlFile($filePath)
+	{
+		$rows = array();
+		if (!function_exists('simplexml_load_file')) {
+			return $rows;
+		}
+
+		$xml = @simplexml_load_file($filePath);
+		if (!$xml) {
+			return $rows;
+		}
+
+		$xml->registerXPathNamespace('ss', 'urn:schemas-microsoft-com:office:spreadsheet');
+		$worksheets = $xml->xpath('//ss:Worksheet');
+		if (!is_array($worksheets) || empty($worksheets)) {
+			return $rows;
+		}
+
+		$dataSheet = null;
+		foreach ($worksheets as $worksheet) {
+			$attrs = $worksheet->attributes('urn:schemas-microsoft-com:office:spreadsheet');
+			$sheetName = isset($attrs['Name']) ? (string) $attrs['Name'] : '';
+			if ($sheetName === 'DuLieuImport') {
+				$dataSheet = $worksheet;
+				break;
+			}
+		}
+		if ($dataSheet === null) {
+			$dataSheet = $worksheets[0];
+		}
+
+		$rowNodes = $dataSheet->xpath('./ss:Table/ss:Row');
+		if (!is_array($rowNodes) || empty($rowNodes)) {
+			return $rows;
+		}
+
+		foreach ($rowNodes as $rowNode) {
+			$cellNodes = $rowNode->xpath('./ss:Cell');
+			$current = array();
+			if (is_array($cellNodes)) {
+				foreach ($cellNodes as $cellNode) {
+					$dataNodes = $cellNode->xpath('./ss:Data');
+					$current[] = isset($dataNodes[0]) ? trim((string) $dataNodes[0]) : '';
+				}
+			}
+			$rows[] = $current;
+		}
+
 		return $rows;
 	}
 

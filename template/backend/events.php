@@ -1,4 +1,48 @@
-<?php include_once "header.php";?>
+<?php
+include_once "header.php";
+$events = is_array($events) ? $events : array();
+$page = isset($page) ? (int) $page : 1;
+$per_page = isset($per_page) ? (int) $per_page : 20;
+$total_events = isset($total_events) ? (int) $total_events : count($events);
+$total_pages = isset($total_pages) ? (int) $total_pages : 1;
+$row_offset = max(0, ($page - 1) * $per_page);
+
+if (!function_exists('backendEventTitleExcerpt')) {
+	function backendEventTitleExcerpt($value, $limit = 60) {
+		$value = trim((string) $value);
+		if ($value === '') {
+			return '';
+		}
+		if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+			return mb_strlen($value, 'UTF-8') > $limit ? mb_substr($value, 0, $limit, 'UTF-8').'...' : $value;
+		}
+		return strlen($value) > $limit ? substr($value, 0, $limit).'...' : $value;
+	}
+}
+
+if (!function_exists('backendEventBuildUrl')) {
+	function backendEventBuildUrl($targetPage) {
+		return XC_URL.'/admin/events?page='.(int) $targetPage;
+	}
+}
+
+if (!function_exists('backendEventPaginationItems')) {
+	function backendEventPaginationItems($currentPage, $totalPages) {
+		$currentPage = max(1, (int) $currentPage);
+		$totalPages = max(1, (int) $totalPages);
+		if ($totalPages <= 7) {
+			return range(1, $totalPages);
+		}
+		if ($currentPage <= 4) {
+			return array(1, 2, 3, 4, 5, 'ellipsis', $totalPages);
+		}
+		if ($currentPage >= $totalPages - 3) {
+			return array(1, 'ellipsis', $totalPages - 4, $totalPages - 3, $totalPages - 2, $totalPages - 1, $totalPages);
+		}
+		return array(1, 'ellipsis', $currentPage - 1, $currentPage, $currentPage + 1, 'ellipsis', $totalPages);
+	}
+}
+?>
 <script src="https://ajax.aspnetcdn.com/ajax/jquery.validate/1.9/jquery.validate.min.js" type="text/javascript"></script>
 <script>
 	$(document).ready(function(){
@@ -209,6 +253,52 @@
 label.error{
 	color:red;
 }
+.event-title-cell{
+	max-width: 320px;
+}
+.event-title-text{
+	display: inline-block;
+	max-width: 100%;
+	font-weight: 600;
+	color: #213547;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	vertical-align: middle;
+}
+.event-action-group{
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+.event-icon-btn{
+	width: 36px;
+	height: 36px;
+	border-radius: 12px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid rgba(58, 79, 114, 0.12);
+	background: #fff;
+	color: #314866;
+	transition: all .2s ease;
+}
+.event-icon-btn:hover{
+	transform: translateY(-1px);
+	color: #079aa2;
+	border-color: rgba(7, 154, 162, 0.35);
+}
+.event-icon-btn.is-edit{
+	color: #0d8b4c;
+}
+.event-icon-btn.is-delete{
+	color: #dc3545;
+}
+.event-icon-btn.is-delete:hover{
+	color: #b42318;
+	border-color: rgba(220, 53, 69, 0.35);
+}
 </style>
 <div class="content container-fluid">
    
@@ -222,7 +312,7 @@ label.error{
             </ul>
          </div>
          <div class="col-auto">
-             <a href="events/add" class="btn btn-primary" data-method = 'add' data-toggle="" data-target=".bd-example-modal-lg" >
+             <a href="<?php echo XC_URL; ?>/admin/events/add" class="btn btn-primary" data-method = 'add' data-toggle="" data-target=".bd-example-modal-lg" >
             Thêm mới
             </a>
             <!-- <a class="btn btn-primary filter-btn" href="javascript:void(0);" id="filter_search">
@@ -238,7 +328,7 @@ label.error{
          <div class="card card-table">
             <div class="card-body">
                <div class="table-responsive">
-                  <table id="table-events" class="table table-center table-hover datatable">
+                  <table id="table-events" class="table table-center table-hover">
                      <thead class="thead-light">
                         <tr>
                            <th>STT</th>
@@ -251,7 +341,7 @@ label.error{
                      </thead>
                      <tbody>
                         <?php 
-							$i = 1;
+							$i = $row_offset + 1;
 							foreach($events as $event)
                            {
                            ?>
@@ -260,8 +350,10 @@ label.error{
                               <?php echo $i;?>
                            </td>
 						   
-                           <td >
-                              <?php echo $event->event_name;?>
+                           <td class="event-title-cell">
+                              <span class="event-title-text" title="<?php echo htmlspecialchars($event->event_name, ENT_QUOTES, 'UTF-8'); ?>">
+                                 <?php echo htmlspecialchars(backendEventTitleExcerpt($event->event_name, 60), ENT_QUOTES, 'UTF-8'); ?>
+                              </span>
                            </td>
 						    <td id='image'>
 							<?php if($event->event_image != null){?>
@@ -272,15 +364,16 @@ label.error{
                            <td><?php echo $event->event_created_date;?></td>	
                            <td><?php echo $event->user_fullname;?></td>
                            <td>
-                              <div class="btn-group">
-								    <a href="events/edit/<?php echo $event->eid;?>" data-id = '<?php echo $event->eventid;?>' data-method='update' class="btn btn-sm btn-white text-success btn-edit" >Sửa</a>
-								   <button type="button" class="btn btn-sm btn-success dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-								   <span class="sr-only">Toggle Dropdown</span>
-								   </button>
-								   <div class="dropdown-menu">
-									  <a class="dropdown-item" href="events/detail/<?php echo $event->eid;?>">Xem</a>
-									  <a class="dropdown-item btn-delete-event" data-id="<?php echo $event->eid;?>" href="#" data-status="<?php echo $event->event_status;?>">Xoá</a>
-									  
+                              <div class="event-action-group">
+								    <a href="<?php echo XC_URL; ?>/admin/events/detail/<?php echo $event->eid;?>" class="event-icon-btn" title="Xem chi tiết" aria-label="Xem chi tiết">
+									   <i class="fa-regular fa-eye"></i>
+									</a>
+								    <a href="<?php echo XC_URL; ?>/admin/events/edit/<?php echo $event->eid;?>" data-id = '<?php echo $event->eventid;?>' data-method='update' class="event-icon-btn is-edit btn-edit" title="Sửa" aria-label="Sửa">
+									   <i class="fa-regular fa-pen-to-square"></i>
+									</a>
+									  <a class="event-icon-btn is-delete btn-delete-event" data-id="<?php echo $event->eid;?>" href="#" data-status="<?php echo $event->event_status;?>" title="Xóa" aria-label="Xóa">
+									     <i class="fa-regular fa-trash-can"></i>
+									  </a>
 								</div>
                            </td>
                         </tr>
@@ -291,6 +384,30 @@ label.error{
                      </tbody>
                   </table>
                </div>
+               <?php if ($total_pages > 1): ?>
+                  <div class="px-4 py-3 border-top d-flex flex-wrap justify-content-between align-items-center gap-3">
+                     <small class="text-muted">Tổng cộng <?php echo number_format($total_events, 0, ',', '.'); ?> tin, hiển thị <?php echo $per_page; ?> tin mỗi trang.</small>
+                     <nav aria-label="Phân trang tin tức">
+                        <ul class="pagination mb-0 justify-content-end flex-wrap">
+                           <li class="page-item <?php echo $page <= 1 ? 'disabled' : ''; ?>">
+                              <a class="page-link" href="<?php echo $page <= 1 ? '#' : htmlspecialchars(backendEventBuildUrl($page - 1), ENT_QUOTES, 'UTF-8'); ?>">Trước</a>
+                           </li>
+                           <?php foreach (backendEventPaginationItems($page, $total_pages) as $pagination_item): ?>
+                              <?php if ($pagination_item === 'ellipsis'): ?>
+                                 <li class="page-item disabled"><span class="page-link">...</span></li>
+                              <?php else: ?>
+                                 <li class="page-item <?php echo (int) $pagination_item === $page ? 'active' : ''; ?>">
+                                    <a class="page-link" href="<?php echo htmlspecialchars(backendEventBuildUrl($pagination_item), ENT_QUOTES, 'UTF-8'); ?>"><?php echo (int) $pagination_item; ?></a>
+                                 </li>
+                              <?php endif; ?>
+                           <?php endforeach; ?>
+                           <li class="page-item <?php echo $page >= $total_pages ? 'disabled' : ''; ?>">
+                              <a class="page-link" href="<?php echo $page >= $total_pages ? '#' : htmlspecialchars(backendEventBuildUrl($page + 1), ENT_QUOTES, 'UTF-8'); ?>">Sau</a>
+                           </li>
+                        </ul>
+                     </nav>
+                  </div>
+               <?php endif; ?>
             </div>
          </div>
       </div>

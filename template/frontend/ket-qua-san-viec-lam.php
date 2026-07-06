@@ -1,7 +1,66 @@
 <?php require "header.php"; ?>
+<?php
+$market_results = isset($market_results) && is_array($market_results) ? $market_results : array();
+$summary = isset($market_results_summary) && is_object($market_results_summary) ? $market_results_summary : (object) array(
+  'total_rounds' => 0,
+  'total_companies' => 0,
+  'total_positions' => 0,
+  'total_profiles' => 0,
+  'total_interviews' => 0
+);
+$page = isset($market_results_page) ? (int)$market_results_page : 1;
+$totalPages = isset($market_results_total_pages) ? (int)$market_results_total_pages : 1;
+
+if (!function_exists('marketResultImageUrl')) {
+  function marketResultImageUrl($value) {
+    $value = trim((string)$value);
+    if ($value === '') {
+      return 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=320&h=320&fit=crop';
+    }
+    if (preg_match('#^(https?:)?//#i', $value) || strpos($value, 'data:') === 0) {
+      return $value;
+    }
+    return XC_URL.'/uploads/images/'.ltrim($value, '/');
+  }
+}
+
+if (!function_exists('marketResultExcerpt')) {
+  function marketResultExcerpt($value, $limit = 150) {
+    $value = trim(strip_tags((string)$value));
+    if ($value === '') { return ''; }
+    if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+      return mb_strlen($value, 'UTF-8') > $limit ? mb_substr($value, 0, $limit, 'UTF-8').'...' : $value;
+    }
+    return strlen($value) > $limit ? substr($value, 0, $limit).'...' : $value;
+  }
+}
+
+if (!function_exists('marketResultPageUrl')) {
+  function marketResultPageUrl($targetPage) {
+    return XC_URL.'/ket-qua-san-viec-lam.html?page='.(int)$targetPage;
+  }
+}
+
+if (!function_exists('marketResultPaginationItems')) {
+  function marketResultPaginationItems($currentPage, $totalPages) {
+    $currentPage = max(1, (int)$currentPage);
+    $totalPages = max(1, (int)$totalPages);
+    if ($totalPages <= 7) {
+      return range(1, $totalPages);
+    }
+    if ($currentPage <= 4) {
+      return array(1, 2, 3, 4, 5, 'ellipsis', $totalPages);
+    }
+    if ($currentPage >= $totalPages - 3) {
+      return array(1, 'ellipsis', $totalPages - 4, $totalPages - 3, $totalPages - 2, $totalPages - 1, $totalPages);
+    }
+    return array(1, 'ellipsis', $currentPage - 1, $currentPage, $currentPage + 1, 'ellipsis', $totalPages);
+  }
+}
+?>
 
 <style>
-.market-results{background:#f5f8fc;color:#102033;overflow:hidden}.market-results *{box-sizing:border-box}.mr-container{max-width:none;margin:0 auto;padding:0 20px}.mr-hero{position:relative;background:linear-gradient(135deg,#0d4e96 0%,#123b64 54%,#884807 100%);color:#fff;padding:74px 0 62px;isolation:isolate}.mr-hero:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 14% 22%,rgba(255,255,255,.22),transparent 28%),radial-gradient(circle at 86% 12%,rgba(255,210,132,.2),transparent 30%);z-index:-1}.mr-hero:after{content:"";position:absolute;left:-6%;right:-6%;bottom:-58px;height:110px;background:#f5f8fc;border-radius:50% 50% 0 0/100% 100% 0 0;z-index:-1}.mr-hero-grid{display:grid;grid-template-columns:1fr .92fr;gap:42px;align-items:center}.mr-kicker,.mr-label{display:inline-flex;align-items:center;gap:8px;border-radius:999px;font-size:12px;font-weight:850}.mr-kicker{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.13);padding:8px 14px;margin-bottom:18px}.mr-hero h1{font-size:48px;line-height:1.1;font-weight:900;letter-spacing:-1px;margin:0 0 16px}.mr-hero h1 span{color:#ffe2a3}.mr-hero p{font-size:16px;line-height:1.82;color:rgba(255,255,255,.86);max-width:690px}.mr-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}.mr-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;padding:13px 20px;font-size:14px;font-weight:850;transition:.2s}.mr-btn.primary{background:#fff;color:#0d4e96;box-shadow:0 16px 34px rgba(0,0,0,.18)}.mr-btn.ghost{border:1px solid rgba(255,255,255,.26);background:rgba(255,255,255,.1);color:#fff}.mr-btn:hover{transform:translateY(-2px)}.mr-dashboard{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:30px;padding:20px;box-shadow:0 28px 80px rgba(0,0,0,.22);backdrop-filter:blur(12px)}.mr-dash-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}.mr-dash-title b{font-size:17px}.mr-dash-title span{font-size:12px;color:rgba(255,255,255,.72)}.mr-meter{display:grid;gap:12px}.mr-meter-row{background:#fff;color:#102033;border-radius:18px;padding:14px}.mr-meter-top{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;font-weight:800;margin-bottom:10px}.mr-bar{height:10px;border-radius:999px;background:#edf2f7;overflow:hidden}.mr-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#0d4e96,#22c55e)}.mr-main{position:relative;z-index:2;padding:58px 0 64px}.mr-label{background:#eef5ff;color:#0d4e96;border:1px solid #d7e8ff;padding:7px 13px}.mr-section-head{text-align:center;max-width:780px;margin:0 auto 30px}.mr-section-head h2{font-size:34px;line-height:1.22;margin:14px 0 10px;color:#101828}.mr-section-head p{font-size:14px;color:#667085;line-height:1.75}.mr-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}.mr-kpi{background:#fff;border:1px solid #e6edf7;border-radius:22px;padding:22px;box-shadow:0 16px 42px rgba(13,78,150,.07)}.mr-kpi i{width:44px;height:44px;border-radius:15px;background:#eef5ff;color:#0d4e96;display:grid;place-items:center;font-size:24px;margin-bottom:14px}.mr-kpi b{display:block;font-size:30px;color:#0d4e96}.mr-kpi span{display:block;font-size:13px;color:#667085;line-height:1.5;margin-top:5px}.connection-radio{position:absolute;opacity:0;pointer-events:none}.rounds-layout{display:grid;grid-template-columns:.95fr 1.05fr;gap:22px;align-items:start}.rounds-list{display:grid;grid-template-columns:1fr;gap:12px}.round-card{display:grid;grid-template-columns:78px 1fr auto;gap:14px;align-items:center;background:#fff;border:1px solid #e6edf7;border-radius:22px;padding:14px;box-shadow:0 12px 30px rgba(13,78,150,.06);cursor:pointer;transition:.2s;min-width:0}.round-card:hover{transform:translateY(-2px);border-color:#b9d7f6;box-shadow:0 16px 34px rgba(13,78,150,.1)}.round-avatar{width:78px;height:78px;border-radius:20px;overflow:hidden;background:#e9eef6;flex:0 0 auto}.round-avatar img{width:100%;height:100%;object-fit:cover;display:block}.round-body{min-width:0}.round-name{font-size:16px;font-weight:900;color:#101828;margin-bottom:5px;line-height:1.35}.round-desc{font-size:13px;color:#667085;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.round-date{display:inline-flex;align-items:center;gap:6px;margin-top:10px;background:#f0f7ff;color:#0d4e96;border:1px solid #d5e8ff;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:800}.round-arrow{width:36px;height:36px;border-radius:14px;background:#eef5ff;color:#0d4e96;display:grid;place-items:center;font-size:19px}.round-detail-panel{display:none;background:#fff;border:1px solid #e6edf7;border-radius:28px;padding:26px;box-shadow:0 20px 54px rgba(13,78,150,.1);min-width:0;position:sticky;top:86px}.detail-head{display:grid;grid-template-columns:96px 1fr;gap:18px;align-items:center;margin-bottom:20px}.detail-avatar{width:96px;height:96px;border-radius:24px;overflow:hidden;background:#e9eef6}.detail-avatar img{width:100%;height:100%;object-fit:cover;display:block}.detail-title h3{font-size:25px;line-height:1.22;margin-bottom:8px;color:#101828}.detail-title p{font-size:14px;color:#667085;line-height:1.7}.detail-date{display:inline-flex;align-items:center;gap:7px;color:#8a4a08;background:#fff7ed;border:1px solid #fed7aa;border-radius:999px;padding:7px 12px;font-size:12px;font-weight:850;margin-bottom:10px}.detail-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}.detail-stat{border-radius:18px;background:#f8fbff;border:1px solid #e5edf7;padding:14px;text-align:center}.detail-stat b{display:block;font-size:22px;color:#0d4e96}.detail-stat span{display:block;font-size:11px;color:#667085;line-height:1.4;margin-top:4px}.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}.detail-box{border:1px solid #e8eef6;border-radius:18px;background:#fbfdff;padding:16px}.detail-box h4{font-size:15px;margin-bottom:10px;color:#102033;display:flex;align-items:center;gap:8px}.detail-box h4 i{color:#0d4e96}.detail-box ul{display:grid;gap:8px;margin:0;padding:0;list-style:none}.detail-box li{display:flex;gap:8px;font-size:13px;line-height:1.55;color:#44546a}.detail-box li i{color:#16a34a;font-size:17px;flex:0 0 auto}.detail-note{margin-top:16px;border-radius:18px;background:linear-gradient(135deg,#102033,#0d4e96);color:#fff;padding:16px;font-size:13px;line-height:1.7}.detail-note b{color:#ffd08a}.mr-report{padding:62px 0;background:#fff}.report-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:22px;align-items:stretch}.report-panel{background:#f8fbff;border:1px solid #e6edf7;border-radius:26px;padding:24px}.report-panel h3{font-size:22px;margin-bottom:8px}.report-panel p{font-size:14px;color:#667085;line-height:1.7}.report-table{display:grid;gap:10px;margin-top:18px}.report-row{display:grid;grid-template-columns:1fr 90px 90px;gap:10px;align-items:center;background:#fff;border:1px solid #e8eef6;border-radius:16px;padding:13px}.report-row b{font-size:13px}.report-row span{font-size:13px;color:#667085;text-align:right}.report-row.header{background:#0d4e96;color:#fff}.report-row.header span{color:rgba(255,255,255,.82)}.feedback-card{background:linear-gradient(135deg,#102033,#0d4e96);color:#fff;border-radius:26px;padding:26px;box-shadow:0 20px 52px rgba(13,78,150,.18)}.feedback-card h3{font-size:24px;margin-bottom:12px}.feedback-list{display:grid;gap:12px}.feedback-item{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.13);border-radius:17px;padding:14px}.feedback-item p{font-size:13px;line-height:1.65;color:rgba(255,255,255,.82);margin-bottom:8px}.feedback-item b{font-size:13px;color:#ffd08a}.mr-cta{padding:54px 0;background:linear-gradient(135deg,#884807,#0d4e96);color:#fff}.mr-cta-inner{display:flex;align-items:center;justify-content:space-between;gap:26px}.mr-cta h2{font-size:30px;line-height:1.25;margin-bottom:8px}.mr-cta p{font-size:14px;color:rgba(255,255,255,.78);line-height:1.7;max-width:680px}#round-1:checked~.rounds-layout .detail-1,#round-2:checked~.rounds-layout .detail-2,#round-3:checked~.rounds-layout .detail-3,#round-4:checked~.rounds-layout .detail-4,#round-5:checked~.rounds-layout .detail-5{display:block}#round-1:checked~.rounds-layout label[for="round-1"],#round-2:checked~.rounds-layout label[for="round-2"],#round-3:checked~.rounds-layout label[for="round-3"],#round-4:checked~.rounds-layout label[for="round-4"],#round-5:checked~.rounds-layout label[for="round-5"]{border-color:#0d4e96;box-shadow:0 18px 40px rgba(13,78,150,.14);background:linear-gradient(180deg,#fff,#f7fbff)}#round-1:checked~.rounds-layout label[for="round-1"] .round-arrow,#round-2:checked~.rounds-layout label[for="round-2"] .round-arrow,#round-3:checked~.rounds-layout label[for="round-3"] .round-arrow,#round-4:checked~.rounds-layout label[for="round-4"] .round-arrow,#round-5:checked~.rounds-layout label[for="round-5"] .round-arrow{background:#0d4e96;color:#fff}.mr-kpi,.round-card,.round-detail-panel,.report-panel,.feedback-card{min-width:0}.mr-kpi span,.round-desc,.detail-title p,.detail-box li,.report-panel p,.feedback-item p{overflow-wrap:anywhere}@media(max-width:1024px){.mr-hero-grid,.rounds-layout,.report-grid{grid-template-columns:1fr}.mr-dashboard{max-width:680px;width:100%;margin:0 auto}.mr-kpis{grid-template-columns:repeat(2,1fr)}.round-detail-panel{position:relative;top:auto}.detail-stats{grid-template-columns:repeat(2,1fr)}}@media(max-width:760px){.mr-container{padding:0 16px}.mr-hero{padding:52px 0 50px}.mr-hero h1{font-size:36px;letter-spacing:0}.mr-hero p{font-size:14px}.mr-main,.mr-report{padding:46px 0}.mr-section-head h2,.mr-cta h2{font-size:27px}.mr-kpis{grid-template-columns:1fr}.round-card{grid-template-columns:64px 1fr;align-items:start;border-radius:20px}.round-avatar{width:64px;height:64px;border-radius:18px}.round-arrow{display:none}.detail-head{grid-template-columns:72px 1fr}.detail-avatar{width:72px;height:72px;border-radius:20px}.detail-title h3{font-size:21px}.detail-grid{grid-template-columns:1fr}.report-row{grid-template-columns:1fr}.report-row span{text-align:left}.mr-cta-inner{flex-direction:column;align-items:flex-start}.mr-cta .mr-btn{width:100%}}@media(max-width:480px){.mr-container{padding:0 12px}.mr-hero h1{font-size:29px}.mr-kicker,.mr-label{font-size:12px;padding:7px 10px}.mr-actions{flex-direction:column}.mr-btn{width:100%}.mr-dashboard,.round-detail-panel,.report-panel,.feedback-card{padding:18px;border-radius:22px}.mr-kpi{padding:18px;border-radius:18px}.mr-kpi b{font-size:25px}.detail-stats{grid-template-columns:1fr}.detail-head{grid-template-columns:1fr}.mr-cta{padding:42px 0}}
+.market-results{background:#f5f8fc;color:#102033;overflow:hidden}.market-results *{box-sizing:border-box}.mr-container{max-width:none;margin:0 auto;padding:0 20px}.mr-hero{position:relative;background:linear-gradient(135deg,#0d4e96 0%,#123b64 54%,#884807 100%);color:#fff;padding:74px 0 62px;isolation:isolate}.mr-hero:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 14% 22%,rgba(255,255,255,.22),transparent 28%),radial-gradient(circle at 86% 12%,rgba(255,210,132,.2),transparent 30%);z-index:-1}.mr-hero:after{content:"";position:absolute;left:-6%;right:-6%;bottom:-58px;height:110px;background:#f5f8fc;border-radius:50% 50% 0 0/100% 100% 0 0;z-index:-1}.mr-hero-grid{display:grid;grid-template-columns:1fr .92fr;gap:42px;align-items:center}.mr-kicker,.mr-label{display:inline-flex;align-items:center;gap:8px;border-radius:999px;font-size:12px;font-weight:850}.mr-kicker{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.13);padding:8px 14px;margin-bottom:18px}.mr-hero h1{font-size:48px;line-height:1.1;font-weight:900;letter-spacing:-1px;margin:0 0 16px}.mr-hero h1 span{color:#ffe2a3}.mr-hero p{font-size:16px;line-height:1.82;color:rgba(255,255,255,.86);max-width:690px}.mr-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}.mr-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;padding:13px 20px;font-size:14px;font-weight:850;transition:.2s}.mr-btn.primary{background:#fff;color:#0d4e96;box-shadow:0 16px 34px rgba(0,0,0,.18)}.mr-btn.ghost{border:1px solid rgba(255,255,255,.26);background:rgba(255,255,255,.1);color:#fff}.mr-btn:hover{transform:translateY(-2px)}.mr-dashboard{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:30px;padding:20px;box-shadow:0 28px 80px rgba(0,0,0,.22);backdrop-filter:blur(12px)}.mr-dash-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}.mr-dash-title b{font-size:17px}.mr-dash-title span{font-size:12px;color:rgba(255,255,255,.72)}.mr-meter{display:grid;gap:12px}.mr-meter-row{background:#fff;color:#102033;border-radius:18px;padding:14px}.mr-meter-top{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;font-weight:800;margin-bottom:10px}.mr-bar{height:10px;border-radius:999px;background:#edf2f7;overflow:hidden}.mr-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#0d4e96,#22c55e)}.mr-main{position:relative;z-index:2;padding:58px 0 64px}.mr-label{background:#eef5ff;color:#0d4e96;border:1px solid #d7e8ff;padding:7px 13px}.mr-section-head{text-align:center;max-width:780px;margin:0 auto 30px}.mr-section-head h2{font-size:34px;line-height:1.22;margin:14px 0 10px;color:#101828}.mr-section-head p{font-size:14px;color:#667085;line-height:1.75}.mr-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}.mr-kpi{background:#fff;border:1px solid #e6edf7;border-radius:22px;padding:22px;box-shadow:0 16px 42px rgba(13,78,150,.07)}.mr-kpi i{width:44px;height:44px;border-radius:15px;background:#eef5ff;color:#0d4e96;display:grid;place-items:center;font-size:24px;margin-bottom:14px}.mr-kpi b{display:block;font-size:30px;color:#0d4e96}.mr-kpi span{display:block;font-size:13px;color:#667085;line-height:1.5;margin-top:5px}.rounds-list{display:grid;grid-template-columns:1fr;gap:12px}.round-card{display:grid;grid-template-columns:78px 1fr auto;gap:14px;align-items:center;background:#fff;border:1px solid #e6edf7;border-radius:22px;padding:14px;box-shadow:0 12px 30px rgba(13,78,150,.06);transition:.2s;min-width:0;text-decoration:none}.round-card:hover{transform:translateY(-2px);border-color:#b9d7f6;box-shadow:0 16px 34px rgba(13,78,150,.1)}.round-avatar{width:78px;height:78px;border-radius:20px;overflow:hidden;background:#e9eef6;flex:0 0 auto}.round-avatar img{width:100%;height:100%;object-fit:cover;display:block}.round-body{min-width:0}.round-name{font-size:16px;font-weight:900;color:#101828;margin-bottom:5px;line-height:1.35}.round-desc{font-size:13px;color:#667085;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.round-date{display:inline-flex;align-items:center;gap:6px;margin-top:10px;background:#f0f7ff;color:#0d4e96;border:1px solid #d5e8ff;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:800}.round-arrow{width:36px;height:36px;border-radius:14px;background:#eef5ff;color:#0d4e96;display:grid;place-items:center;font-size:19px}.mr-empty{background:#fff;border:1px solid #e6edf7;border-radius:22px;padding:30px;text-align:center;color:#667085}.mr-pagination{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:28px}.mr-page-link,.mr-page-current,.mr-page-dots{min-width:42px;height:42px;padding:0 14px;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}.mr-page-link{background:#fff;border:1px solid #d9e7f6;color:#1d3557;text-decoration:none}.mr-page-link:hover{border-color:#0d4e96;color:#0d4e96}.mr-page-current{background:#0d4e96;border:1px solid #0d4e96;color:#fff}.mr-page-dots{color:#98a2b3}.mr-cta{padding:54px 0;background:linear-gradient(135deg,#884807,#0d4e96);color:#fff}.mr-cta-inner{display:flex;align-items:center;justify-content:space-between;gap:26px}.mr-cta h2{font-size:30px;line-height:1.25;margin-bottom:8px}.mr-cta p{font-size:14px;color:rgba(255,255,255,.78);line-height:1.7;max-width:680px}@media(max-width:1024px){.mr-hero-grid{grid-template-columns:1fr}.mr-dashboard{max-width:680px;width:100%;margin:0 auto}.mr-kpis{grid-template-columns:repeat(2,1fr)}}@media(max-width:760px){.mr-container{padding:0 16px}.mr-hero{padding:52px 0 50px}.mr-hero h1{font-size:36px;letter-spacing:0}.mr-hero p{font-size:14px}.mr-main{padding:46px 0}.mr-section-head h2,.mr-cta h2{font-size:27px}.mr-kpis{grid-template-columns:1fr}.round-card{grid-template-columns:64px 1fr;align-items:start;border-radius:20px}.round-avatar{width:64px;height:64px;border-radius:18px}.round-arrow{display:none}.mr-cta-inner{flex-direction:column;align-items:flex-start}.mr-cta .mr-btn{width:100%}}@media(max-width:480px){.mr-container{padding:0 12px}.mr-hero h1{font-size:29px}.mr-kicker,.mr-label{font-size:12px;padding:7px 10px}.mr-actions{flex-direction:column}.mr-btn{width:100%}.mr-dashboard{padding:18px;border-radius:22px}.mr-kpi{padding:18px;border-radius:18px}.mr-kpi b{font-size:25px}.mr-cta{padding:42px 0}}
 </style>
 
 <main class="market-results">
@@ -10,13 +69,32 @@
       <div>
         <div class="mr-kicker"><i class="ti ti-chart-bar"></i> Kết quả sàn việc làm</div>
         <h1>Theo dõi từng đợt kết nối tuyển dụng <span>rõ ràng và trực quan</span></h1>
-        <p>Mỗi đợt kết nối được hiển thị bằng một box riêng gồm hình đại diện, tên chương trình, mô tả và ngày tổ chức. Bấm vào từng box để xem thống kê, nội dung triển khai và kết quả chi tiết.</p>
+        <p>Mỗi đợt kết nối được hiển thị bằng một box riêng. Chọn từng box để xem chi tiết chương trình, thống kê tuyển dụng và kết quả nổi bật của đợt kết nối đó.</p>
         <div class="mr-actions">
           <a class="mr-btn primary" href="#connectionRounds"><i class="ti ti-layout-cards"></i> Xem từng đợt</a>
-          <a class="mr-btn ghost" href="quy-trinh-san-viec-lam.php"><i class="ti ti-route"></i> Quy trình sàn</a>
+          <a class="mr-btn ghost" href="<?php echo XC_URL; ?>/quy-trinh-san-viec-lam.html"><i class="ti ti-route"></i> Quy trình sàn</a>
         </div>
       </div>
-      
+      <div class="mr-dashboard">
+        <div class="mr-dash-title">
+          <b>Tổng quan kết quả</b>
+          <span>Cập nhật theo dữ liệu hệ thống</span>
+        </div>
+        <div class="mr-meter">
+          <div class="mr-meter-row">
+            <div class="mr-meter-top"><span>Doanh nghiệp tham gia</span><strong><?php echo (int)$summary->total_companies; ?></strong></div>
+            <div class="mr-bar"><div class="mr-fill" style="width:<?php echo min(100, max(22, (int)$summary->total_companies)); ?>%"></div></div>
+          </div>
+          <div class="mr-meter-row">
+            <div class="mr-meter-top"><span>Hồ sơ ứng tuyển</span><strong><?php echo (int)$summary->total_profiles; ?></strong></div>
+            <div class="mr-bar"><div class="mr-fill" style="width:<?php echo min(100, max(22, (int)$summary->total_profiles / 10)); ?>%"></div></div>
+          </div>
+          <div class="mr-meter-row">
+            <div class="mr-meter-top"><span>Lượt phỏng vấn</span><strong><?php echo (int)$summary->total_interviews; ?></strong></div>
+            <div class="mr-bar"><div class="mr-fill" style="width:<?php echo min(100, max(22, (int)$summary->total_interviews / 8)); ?>%"></div></div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -25,96 +103,56 @@
       <div class="mr-section-head">
         <span class="mr-label"><i class="ti ti-calendar-stats"></i> Các đợt kết nối</span>
         <h2>Danh sách kết quả theo từng chương trình</h2>
+        <p>Mỗi trang hiển thị tối đa 10 box. Bấm vào từng box để chuyển tới trang chi tiết của đợt kết nối tương ứng.</p>
       </div>
 
-      <!-- <div class="mr-kpis">
-        <div class="mr-kpi"><i class="ti ti-calendar-event"></i><b>05</b><span>Số lượng đợt đẫ kết nối</span></div>
-        <div class="mr-kpi"><i class="ti ti-building"></i><b>128</b><span>Doanh nghiệp và đơn vị đối tác tham gia nhiều nhất trong một đợt kết nối</span></div>
-        <div class="mr-kpi"><i class="ti ti-file-cv"></i><b>2.840</b><span>Hồ sơ ứng tuyển được gửi qua sàn</span></div>
-        <div class="mr-kpi"><i class="ti ti-user-check"></i><b>746</b><span>Lượt ứng viên được hẹn phỏng vấn</span></div>
-      </div> -->
-
-      <input class="connection-radio" type="radio" name="connectionRound" id="round-1" checked>
-      <input class="connection-radio" type="radio" name="connectionRound" id="round-2">
-      <input class="connection-radio" type="radio" name="connectionRound" id="round-3">
-      <input class="connection-radio" type="radio" name="connectionRound" id="round-4">
-      <input class="connection-radio" type="radio" name="connectionRound" id="round-5">
-
-      <div class="rounds-layout">
-        <div class="rounds-list">
-          <label class="round-card" for="round-1">
-            <div class="round-avatar"><img src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=180&h=180&fit=crop" alt="Ngày hội việc làm tháng 05/2026"></div>
-            <div class="round-body"><div class="round-name">Ngày hội việc làm tháng 05/2026</div><div class="round-desc">Kết nối sinh viên năm cuối với doanh nghiệp tuyển dụng chính thức và thực tập sinh.</div><div class="round-date"><i class="ti ti-calendar"></i> 18/05/2026</div></div>
-            <div class="round-arrow"><i class="ti ti-chevron-right"></i></div>
-          </label>
-          <label class="round-card" for="round-2">
-            <div class="round-avatar"><img src="https://images.unsplash.com/photo-1552664730-d307ca884978?w=180&h=180&fit=crop" alt="Kết nối doanh nghiệp du lịch dịch vụ"></div>
-            <div class="round-body"><div class="round-name">Kết nối doanh nghiệp Du lịch - Dịch vụ</div><div class="round-desc">Tập trung nhóm vị trí lễ tân, vận hành tour, nhà hàng khách sạn và chăm sóc khách hàng.</div><div class="round-date"><i class="ti ti-calendar"></i> 22/04/2026</div></div>
-            <div class="round-arrow"><i class="ti ti-chevron-right"></i></div>
-          </label>
-          <label class="round-card" for="round-3">
-            <div class="round-avatar"><img src="https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=180&h=180&fit=crop" alt="Phiên tuyển dụng công nghệ thông tin"></div>
-            <div class="round-body"><div class="round-name">Phiên tuyển dụng Công nghệ thông tin</div><div class="round-desc">Doanh nghiệp phần mềm phỏng vấn nhanh các vị trí lập trình, kiểm thử và hỗ trợ kỹ thuật.</div><div class="round-date"><i class="ti ti-calendar"></i> 28/03/2026</div></div>
-            <div class="round-arrow"><i class="ti ti-chevron-right"></i></div>
-          </label>
-          <label class="round-card" for="round-4">
-            <div class="round-avatar"><img src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=180&h=180&fit=crop" alt="Tuần lễ thực tập doanh nghiệp"></div>
-            <div class="round-body"><div class="round-name">Tuần lễ thực tập doanh nghiệp</div><div class="round-desc">Tổng hợp nhu cầu thực tập từ doanh nghiệp địa phương và hướng dẫn sinh viên chuẩn bị hồ sơ.</div><div class="round-date"><i class="ti ti-calendar"></i> 12/02/2026</div></div>
-            <div class="round-arrow"><i class="ti ti-chevron-right"></i></div>
-          </label>
-          <label class="round-card" for="round-5">
-            <div class="round-avatar"><img src="https://images.unsplash.com/photo-1560439514-4e9645039924?w=180&h=180&fit=crop" alt="Kết nối việc làm bán thời gian"></div>
-            <div class="round-body"><div class="round-name">Kết nối việc làm bán thời gian</div><div class="round-desc">Đợt kết nối dành cho sinh viên cần việc linh hoạt theo ca, ưu tiên khu vực Kon Tum.</div><div class="round-date"><i class="ti ti-calendar"></i> 15/01/2026</div></div>
-            <div class="round-arrow"><i class="ti ti-chevron-right"></i></div>
-          </label>
-        </div>
-
-        <div class="rounds-details">
-          <article class="round-detail-panel detail-1">
-            <div class="detail-head"><div class="detail-avatar"><img src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=220&h=220&fit=crop" alt="Ngày hội việc làm tháng 05/2026"></div><div class="detail-title"><div class="detail-date"><i class="ti ti-calendar"></i> 18/05/2026</div><h3>Ngày hội việc làm tháng 05/2026</h3><p>Chương trình kết nối trực tiếp giữa sinh viên năm cuối, cựu sinh viên và doanh nghiệp tuyển dụng tại khuôn viên trường.</p></div></div>
-            <div class="detail-stats"><div class="detail-stat"><b>42</b><span>Doanh nghiệp</span></div><div class="detail-stat"><b>186</b><span>Vị trí tuyển</span></div><div class="detail-stat"><b>920</b><span>Hồ sơ gửi</span></div><div class="detail-stat"><b>238</b><span>Lịch phỏng vấn</span></div></div>
-            <div class="detail-grid"><div class="detail-box"><h4><i class="ti ti-list-check"></i> Nội dung triển khai</h4><ul><li><i class="ti ti-circle-check"></i> Tổ chức gian hàng tuyển dụng trực tiếp.</li><li><i class="ti ti-circle-check"></i> Tư vấn CV và phỏng vấn nhanh cho sinh viên.</li><li><i class="ti ti-circle-check"></i> Gửi danh sách hồ sơ quan tâm cho doanh nghiệp.</li></ul></div><div class="detail-box"><h4><i class="ti ti-chart-bar"></i> Kết quả nổi bật</h4><ul><li><i class="ti ti-circle-check"></i> 76% doanh nghiệp phản hồi trong 7 ngày.</li><li><i class="ti ti-circle-check"></i> 238 ứng viên được mời phỏng vấn.</li><li><i class="ti ti-circle-check"></i> Nhóm ngành CNTT và dịch vụ có nhu cầu cao nhất.</li></ul></div></div>
-            <div class="detail-note"><b>Ghi chú:</b> Dữ liệu có thể thay bằng thống kê thật từ cơ sở dữ liệu, ví dụ số doanh nghiệp, số hồ sơ, số phỏng vấn và trạng thái tuyển dụng.</div>
-          </article>
-
-          <article class="round-detail-panel detail-2">
-            <div class="detail-head"><div class="detail-avatar"><img src="https://images.unsplash.com/photo-1552664730-d307ca884978?w=220&h=220&fit=crop" alt="Kết nối doanh nghiệp Du lịch - Dịch vụ"></div><div class="detail-title"><div class="detail-date"><i class="ti ti-calendar"></i> 22/04/2026</div><h3>Kết nối doanh nghiệp Du lịch - Dịch vụ</h3><p>Đợt kết nối chuyên đề cho các vị trí dịch vụ, lưu trú, vận hành tour và chăm sóc khách hàng.</p></div></div>
-            <div class="detail-stats"><div class="detail-stat"><b>24</b><span>Doanh nghiệp</span></div><div class="detail-stat"><b>96</b><span>Vị trí tuyển</span></div><div class="detail-stat"><b>410</b><span>Hồ sơ gửi</span></div><div class="detail-stat"><b>124</b><span>Lịch phỏng vấn</span></div></div>
-            <div class="detail-grid"><div class="detail-box"><h4><i class="ti ti-list-check"></i> Nội dung triển khai</h4><ul><li><i class="ti ti-circle-check"></i> Phân loại hồ sơ theo ca làm và địa điểm.</li><li><i class="ti ti-circle-check"></i> Workshop tác phong dịch vụ khách hàng.</li><li><i class="ti ti-circle-check"></i> Kết nối doanh nghiệp lưu trú và nhà hàng.</li></ul></div><div class="detail-box"><h4><i class="ti ti-chart-bar"></i> Kết quả nổi bật</h4><ul><li><i class="ti ti-circle-check"></i> 68 hồ sơ được đưa vào vòng phỏng vấn hai.</li><li><i class="ti ti-circle-check"></i> 18 doanh nghiệp tiếp tục đăng tin đợt sau.</li><li><i class="ti ti-circle-check"></i> Nhu cầu cao ở nhóm lễ tân và vận hành.</li></ul></div></div>
-            <div class="detail-note"><b>Ghi chú:</b> Phù hợp hiển thị các đợt kết nối theo ngành nghề để người xem dễ lọc kết quả.</div>
-          </article>
-
-          <article class="round-detail-panel detail-3">
-            <div class="detail-head"><div class="detail-avatar"><img src="https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=220&h=220&fit=crop" alt="Phiên tuyển dụng Công nghệ thông tin"></div><div class="detail-title"><div class="detail-date"><i class="ti ti-calendar"></i> 28/03/2026</div><h3>Phiên tuyển dụng Công nghệ thông tin</h3><p>Phiên kết nối nhóm doanh nghiệp phần mềm, hỗ trợ kỹ thuật, lập trình web và kiểm thử ứng dụng.</p></div></div>
-            <div class="detail-stats"><div class="detail-stat"><b>18</b><span>Doanh nghiệp</span></div><div class="detail-stat"><b>82</b><span>Vị trí tuyển</span></div><div class="detail-stat"><b>360</b><span>Hồ sơ gửi</span></div><div class="detail-stat"><b>142</b><span>Lịch phỏng vấn</span></div></div>
-            <div class="detail-grid"><div class="detail-box"><h4><i class="ti ti-list-check"></i> Nội dung triển khai</h4><ul><li><i class="ti ti-circle-check"></i> Kiểm tra nhanh portfolio và GitHub cá nhân.</li><li><i class="ti ti-circle-check"></i> Phỏng vấn kỹ thuật nhóm lập trình web.</li><li><i class="ti ti-circle-check"></i> Tư vấn lộ trình fresher và intern.</li></ul></div><div class="detail-box"><h4><i class="ti ti-chart-bar"></i> Kết quả nổi bật</h4><ul><li><i class="ti ti-circle-check"></i> 39 ứng viên được mời test kỹ thuật.</li><li><i class="ti ti-circle-check"></i> 88% doanh nghiệp đánh giá hồ sơ rõ ràng.</li><li><i class="ti ti-circle-check"></i> Nhu cầu cao ở web, QA và helpdesk.</li></ul></div></div>
-            <div class="detail-note"><b>Ghi chú:</b> Các chỉ số chi tiết có thể mở rộng thêm theo ngành, kỹ năng hoặc doanh nghiệp.</div>
-          </article>
-
-          <article class="round-detail-panel detail-4">
-            <div class="detail-head"><div class="detail-avatar"><img src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=220&h=220&fit=crop" alt="Tuần lễ thực tập doanh nghiệp"></div><div class="detail-title"><div class="detail-date"><i class="ti ti-calendar"></i> 12/02/2026</div><h3>Tuần lễ thực tập doanh nghiệp</h3><p>Đợt tổng hợp cơ hội thực tập cho sinh viên chuẩn bị đi thực tế, ưu tiên doanh nghiệp tại Kon Tum và khu vực lân cận.</p></div></div>
-            <div class="detail-stats"><div class="detail-stat"><b>31</b><span>Doanh nghiệp</span></div><div class="detail-stat"><b>128</b><span>Suất thực tập</span></div><div class="detail-stat"><b>690</b><span>Hồ sơ gửi</span></div><div class="detail-stat"><b>156</b><span>Lượt xác nhận</span></div></div>
-            <div class="detail-grid"><div class="detail-box"><h4><i class="ti ti-list-check"></i> Nội dung triển khai</h4><ul><li><i class="ti ti-circle-check"></i> Thu thập vị trí thực tập theo ngành học.</li><li><i class="ti ti-circle-check"></i> Hướng dẫn chuẩn bị hồ sơ thực tập.</li><li><i class="ti ti-circle-check"></i> Điều phối danh sách sinh viên theo doanh nghiệp.</li></ul></div><div class="detail-box"><h4><i class="ti ti-chart-bar"></i> Kết quả nổi bật</h4><ul><li><i class="ti ti-circle-check"></i> 156 lượt xác nhận tiếp nhận thực tập.</li><li><i class="ti ti-circle-check"></i> 22 doanh nghiệp có nhu cầu hợp tác dài hạn.</li><li><i class="ti ti-circle-check"></i> Nhóm kế toán và dịch vụ có lượng đăng ký cao.</li></ul></div></div>
-            <div class="detail-note"><b>Ghi chú:</b> Có thể dùng loại box này để theo dõi riêng chương trình thực tập theo học kỳ.</div>
-          </article>
-
-          <article class="round-detail-panel detail-5">
-            <div class="detail-head"><div class="detail-avatar"><img src="https://images.unsplash.com/photo-1560439514-4e9645039924?w=220&h=220&fit=crop" alt="Kết nối việc làm bán thời gian"></div><div class="detail-title"><div class="detail-date"><i class="ti ti-calendar"></i> 15/01/2026</div><h3>Kết nối việc làm bán thời gian</h3><p>Đợt kết nối các vị trí linh hoạt theo ca, phù hợp sinh viên cần thêm thu nhập nhưng vẫn đảm bảo lịch học.</p></div></div>
-            <div class="detail-stats"><div class="detail-stat"><b>13</b><span>Doanh nghiệp</span></div><div class="detail-stat"><b>44</b><span>Vị trí tuyển</span></div><div class="detail-stat"><b>460</b><span>Hồ sơ gửi</span></div><div class="detail-stat"><b>86</b><span>Lịch phỏng vấn</span></div></div>
-            <div class="detail-grid"><div class="detail-box"><h4><i class="ti ti-list-check"></i> Nội dung triển khai</h4><ul><li><i class="ti ti-circle-check"></i> Phân loại vị trí theo khung giờ làm việc.</li><li><i class="ti ti-circle-check"></i> Ưu tiên địa điểm gần trường và ký túc xá.</li><li><i class="ti ti-circle-check"></i> Cảnh báo các vị trí thiếu thông tin minh bạch.</li></ul></div><div class="detail-box"><h4><i class="ti ti-chart-bar"></i> Kết quả nổi bật</h4><ul><li><i class="ti ti-circle-check"></i> 86 ứng viên được hẹn trao đổi trực tiếp.</li><li><i class="ti ti-circle-check"></i> 91% vị trí có lịch làm linh hoạt.</li><li><i class="ti ti-circle-check"></i> Nhu cầu cao ở bán hàng và hỗ trợ sự kiện.</li></ul></div></div>
-            <div class="detail-note"><b>Ghi chú:</b> Khi đưa dữ liệu thật, nên bổ sung trạng thái: đang mở, đã kết thúc hoặc đang tổng hợp kết quả.</div>
-          </article>
-        </div>
+      <div class="mr-kpis">
+        <div class="mr-kpi"><i class="ti ti-calendar-event"></i><b><?php echo (int)$summary->total_rounds; ?></b><span>Số lượng đợt kết nối</span></div>
+        <div class="mr-kpi"><i class="ti ti-building"></i><b><?php echo (int)$summary->total_companies; ?></b><span>Doanh nghiệp tham gia</span></div>
+        <div class="mr-kpi"><i class="ti ti-file-cv"></i><b><?php echo (int)$summary->total_profiles; ?></b><span>Hồ sơ ứng tuyển gửi qua sàn</span></div>
+        <div class="mr-kpi"><i class="ti ti-user-check"></i><b><?php echo (int)$summary->total_interviews; ?></b><span>Lượt ứng viên được hẹn phỏng vấn</span></div>
       </div>
+
+      <div class="rounds-list">
+        <?php if (!empty($market_results)): ?>
+          <?php foreach ($market_results as $item): ?>
+            <a class="round-card" href="<?php echo htmlspecialchars(general::getInstance()->permalink((int)$item->id, 'market_result'), ENT_QUOTES, 'UTF-8'); ?>">
+              <div class="round-avatar">
+                <img src="<?php echo htmlspecialchars(marketResultImageUrl($item->result_image ?? ''), ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($item->result_title ?? 'Kết quả sàn', ENT_QUOTES, 'UTF-8'); ?>">
+              </div>
+              <div class="round-body">
+                <div class="round-name"><?php echo htmlspecialchars($item->result_title ?? 'Kết quả sàn', ENT_QUOTES, 'UTF-8'); ?></div>
+                <div class="round-desc"><?php echo htmlspecialchars(marketResultExcerpt($item->result_summary ?? '', 160), ENT_QUOTES, 'UTF-8'); ?></div>
+                <div class="round-date"><i class="ti ti-calendar"></i> <?php echo !empty($item->result_date) ? date('d/m/Y', strtotime($item->result_date)) : 'Đang cập nhật'; ?></div>
+              </div>
+              <div class="round-arrow"><i class="ti ti-chevron-right"></i></div>
+            </a>
+          <?php endforeach; ?>
+        <?php else: ?>
+          <div class="mr-empty">Chưa có dữ liệu kết quả sàn việc làm để hiển thị.</div>
+        <?php endif; ?>
+      </div>
+
+      <?php if ($totalPages > 1): ?>
+        <div class="mr-pagination">
+          <?php foreach (marketResultPaginationItems($page, $totalPages) as $paginationItem): ?>
+            <?php if ($paginationItem === 'ellipsis'): ?>
+              <span class="mr-page-dots">...</span>
+            <?php elseif ((int)$paginationItem === $page): ?>
+              <span class="mr-page-current"><?php echo (int)$paginationItem; ?></span>
+            <?php else: ?>
+              <a class="mr-page-link" href="<?php echo htmlspecialchars(marketResultPageUrl((int)$paginationItem), ENT_QUOTES, 'UTF-8'); ?>"><?php echo (int)$paginationItem; ?></a>
+            <?php endif; ?>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
     </div>
   </section>
-
-  
 
   <section class="mr-cta">
     <div class="mr-container mr-cta-inner">
       <div><h2>Muốn nâng kết quả tuyển dụng ở đợt tiếp theo?</h2><p>Doanh nghiệp có thể đăng ký tham gia sàn hoặc ngày hội việc làm để tiếp cận nguồn ứng viên phù hợp hơn.</p></div>
-      <div class="mr-actions"><a class="mr-btn primary" href="lien-he.php"><i class="ti ti-message-2"></i> Liên hệ hợp tác</a><a class="mr-btn ghost" href="gioi-thieu-san-viec-lam.php"><i class="ti ti-building-community"></i> Giới thiệu sàn</a></div>
+      <div class="mr-actions"><a class="mr-btn primary" href="<?php echo XC_URL; ?>/lien-he.html"><i class="ti ti-message-2"></i> Liên hệ hợp tác</a><a class="mr-btn ghost" href="<?php echo XC_URL; ?>/gioi-thieu-san-viec-lam.html"><i class="ti ti-building-community"></i> Giới thiệu sàn</a></div>
     </div>
   </section>
 </main>

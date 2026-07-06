@@ -1,6 +1,7 @@
 ﻿
 
 <?php require "header.php"; ?>
+<?php $studentImportTemplateUrl = XC_URL.'/admin/students?download_template=1'; ?>
 <script>
 $(document).ready(function () {
 ///-----------Users action-----------
@@ -216,10 +217,14 @@ $(document).ready(function () {
                   location.reload();
                });
             } else {
+               var errorHtml = data.errors && data.errors.length
+                  ? '<br><pre style="text-align:left; max-height:220px; overflow:auto; white-space:pre-wrap;">' + data.errors.join('\n') + '</pre>'
+                  : '';
                Swal.fire({
                   icon: 'error',
                   title: 'Lỗi',
-                  text: data.message || 'Không thể import dữ liệu.'
+                  html: (data.message || 'Không thể import dữ liệu.') + errorHtml,
+                  width: 640
                });
             }
          },
@@ -541,19 +546,20 @@ $(document).ready(function () {
         <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content">
             <div class="modal-header">
-              <h5 class="modal-title" id="importStudentModalLabel">Import sinh viên từ Excel/CSV</h5>
+              <h5 class="modal-title" id="importStudentModalLabel">Import sinh viên từ Excel</h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="studentImportForm" enctype="multipart/form-data">
               <div class="modal-body">
                 <div class="mb-3">
-                  <label for="student_file" class="form-label">Chọn file Excel hoặc CSV</label>
-                  <input type="file" class="form-control" id="student_file" name="student_file" accept=".xlsx,.csv" required>
+                  <label for="student_file" class="form-label">Chọn file import</label>
+                  <input type="file" class="form-control" id="student_file" name="student_file" accept=".xls,.xml,.xlsx,.csv" required>
                 </div>
                 <div class="mb-3">
                   <p class="mb-1">Tải file mẫu:</p>
-                  <a href="<?php echo XC_URL; ?>/uploads/student-import-template.xlsx" class="btn btn-sm btn-outline-primary" download>Tải file mẫu Excel kèm danh mục</a>
-                  <p class="small text-muted mt-2">File mẫu hỗ trợ định dạng .csv và .xlsx. Cột bắt buộc: <strong>student_code</strong>, <strong>student_name</strong>.</p>
+                  <a href="<?php echo $studentImportTemplateUrl; ?>" class="btn btn-sm btn-outline-primary">Tải file mẫu Excel kèm danh mục</a>
+                  <p class="small text-muted mt-2">Khuyến nghị dùng file mẫu Excel `.xls` để có sẵn sheet dữ liệu, sheet hướng dẫn, sheet giới tính và sheet ngành học.</p>
+                  <p class="small text-muted mt-2">Khi import nếu sai kiểu dữ liệu, thiếu cột, trùng mã sinh viên hoặc sai danh mục, hệ thống sẽ trả lỗi chi tiết theo từng dòng để bạn điều chỉnh.</p>
                 </div>
                
               </div>

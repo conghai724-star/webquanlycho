@@ -40,7 +40,7 @@ $e = function ($value) {
 $buildUrl = function ($targetPage) {
    return XC_URL.'/admin/employers/posts?page='.(int) $targetPage;
 };
-$importTemplateUrl = XC_URL.'/uploads/employer-posts-import-template.csv';
+$importTemplateUrl = XC_URL.'/admin/employers/posts?download_template=1';
 ?>
 
 <style>
@@ -161,7 +161,7 @@ $importTemplateUrl = XC_URL.'/uploads/employer-posts-import-template.csv';
                <div class="d-flex align-items-center justify-content-between flex-wrap post-toolbar">
                   <div>
                      <h4 class="card-title mb-1">Danh sách bài đăng tuyển dụng</h4>
-                     <p class="mb-0 text-muted">Quản lý bài đăng, import nhanh từ CSV và duyệt xuất bản ngay trên trang admin.</p>
+                     <p class="mb-0 text-muted">Quản lý bài đăng, import nhanh từ file mẫu Excel có sheet danh mục và duyệt xuất bản ngay trên trang admin.</p>
                   </div>
                   <div class="d-flex gap-2 flex-wrap">
                      <button type="button" class="btn btn-success d-inline-flex align-items-center gap-2" id="btn-open-import-modal">
@@ -197,7 +197,7 @@ $importTemplateUrl = XC_URL.'/uploads/employer-posts-import-template.csv';
                            <i class="fa-solid fa-circle-check"></i>
                            <span>Duyệt đã chọn</span>
                         </button>
-                        <a href="<?php echo $e($importTemplateUrl); ?>" class="btn btn-light d-inline-flex align-items-center gap-2" download>
+                        <a href="<?php echo $e($importTemplateUrl); ?>" class="btn btn-light d-inline-flex align-items-center gap-2">
                            <i class="fa-regular fa-file-lines"></i>
                            <span>Tải file mẫu import</span>
                         </a>
@@ -460,24 +460,25 @@ $importTemplateUrl = XC_URL.'/uploads/employer-posts-import-template.csv';
             <input type="hidden" name="employer_post_action" value="import">
             <div class="modal-header">
                <div>
-                  <h5 class="modal-title">Import bài đăng (CSV)</h5>
-                  <small class="text-muted">Tải file CSV để thêm nhanh nhiều bài đăng cùng lúc.</small>
+                  <h5 class="modal-title">Import bài đăng</h5>
+                  <small class="text-muted">Dùng file mẫu Excel XML hoặc CSV để thêm nhanh nhiều bài đăng cùng lúc.</small>
                </div>
                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
             <div class="modal-body">
                <div class="post-import-note mb-3">
                   <div class="fw-semibold mb-1">File mẫu import</div>
-                  <p class="mb-2 text-muted">Tải file CSV mẫu để điền đúng cấu trúc cột trước khi import hàng loạt.</p>
-                  <a href="<?php echo $e($importTemplateUrl); ?>" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2" download>
+                  <p class="mb-2 text-muted">Tải file mẫu động để lấy sheet dữ liệu chính và các sheet danh mục tự động từ database.</p>
+                  <a href="<?php echo $e($importTemplateUrl); ?>" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2">
                      <i class="fa-regular fa-file-lines"></i>
                      <span>Tải file mẫu</span>
                   </a>
                </div>
                <div class="form-group">
-                  <label class="form-label">Chọn file CSV</label>
-                  <input type="file" class="form-control" name="import_file" accept=".csv" required>
-                  <small class="text-muted d-block mt-2">Header hỗ trợ: employer_id, title, job_category_id, province_id, quantity, job_description, experience_years, degree_required, salary_id, benefits_description, work_type, address_detail, deadline, status</small>
+                  <label class="form-label">Chọn file import</label>
+                  <input type="file" class="form-control" name="import_file" accept=".xls,.xml,.csv" required>
+                  <small class="text-muted d-block mt-2">Mẫu tải xuống hiện là file Excel `.xls`.</small>
+                  <small class="text-muted d-block mt-2">Khuyến nghị dùng file mẫu Excel XML vừa tải. Hệ thống sẽ báo lỗi nếu các trường ID, số lượng, kinh nghiệm, hạn nộp hoặc trạng thái sai kiểu dữ liệu.</small>
                </div>
             </div>
             <div class="modal-footer">

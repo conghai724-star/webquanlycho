@@ -227,6 +227,18 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link <?php echo (isset($active_menu) && $active_menu == 'marketresults') ? 'active' : ''; ?>"  href="<?php echo XC_URL;?>/admin/marketresults">
+                         <i class="fa-solid fa-chart-line"></i>
+                            <span class="item-name">Kết quả sàn</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo (isset($active_menu) && $active_menu == 'customerfeedbacks') ? 'active' : ''; ?>"  href="<?php echo XC_URL;?>/admin/customerfeedbacks">
+                         <i class="fa-solid fa-envelope-open-text"></i>
+                            <span class="item-name">Pháº£n há»“i KH</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="collapse" href="#sidebar-user" role="button" aria-expanded="false" aria-controls="sidebar-user">
                             <i class="icon">
                                 <svg class="icon-20" width="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

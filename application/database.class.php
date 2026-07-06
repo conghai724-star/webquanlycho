@@ -21,7 +21,10 @@ class Database{
     //Mở kết nối CSDL 
     function connect($address, $account, $pwd, $name) {
         $this->connection = mysqli_connect($address, $account, $pwd,$name);
-        $this->connection->set_charset("utf8");
+        if ($this->connection){
+            $this->connection->set_charset("utf8mb4");
+            mysqli_query($this->connection, "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
+        }
         if (!$this->connection){
             die("Database connection failed: " . mysqli_error()); 
         } 

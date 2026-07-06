@@ -1,24 +1,204 @@
 <?php require "header.php"; ?>
+<?php
+$candidate = isset($candidate_detail) && is_object($candidate_detail) ? $candidate_detail : (object) array();
+$experiences = isset($candidate_detail_experiences) && is_array($candidate_detail_experiences) ? $candidate_detail_experiences : array();
+$certificates = isset($candidate_detail_certificates) && is_array($candidate_detail_certificates) ? $candidate_detail_certificates : array();
+$relatedCandidates = isset($related_candidates) && is_array($related_candidates) ? $related_candidates : array();
+
+function candidateDetailH($value){
+  return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+}
+
+function candidateDetailText($value, $fallback = 'Đang cập nhật'){
+  $value = trim((string)$value);
+  return $value !== '' ? $value : $fallback;
+}
+
+function candidateDetailDate($value, $fallback = 'Đang cập nhật'){
+  $time = $value ? strtotime((string)$value) : false;
+  return $time ? date('d/m/Y', $time) : $fallback;
+}
+
+function candidateDetailMonthYear($value, $fallback = 'Đang cập nhật'){
+  $time = $value ? strtotime((string)$value) : false;
+  return $time ? date('m/Y', $time) : $fallback;
+}
+
+function candidateDetailGenderLabel($value){
+  $value = strtolower(trim((string)$value));
+  $map = array(
+    '1' => 'Nam',
+    '2' => 'Nữ',
+    '3' => 'Khác',
+    'male' => 'Nam',
+    'female' => 'Nữ',
+    'other' => 'Khác',
+    'nam' => 'Nam',
+    'nu' => 'Nữ',
+    'nữ' => 'Nữ',
+    'khac' => 'Khác',
+    'khác' => 'Khác',
+  );
+  return isset($map[$value]) ? $map[$value] : 'Đang cập nhật';
+}
+
+function candidateDetailDegreeLabel($value){
+  $value = strtolower(trim((string)$value));
+  $map = array(
+    'trung_cap' => 'Trung cấp',
+    'cao_dang' => 'Cao đẳng',
+    'dai_hoc' => 'Đại học',
+    'sau_dai_hoc' => 'Sau đại học',
+    'thac_si' => 'Thạc sĩ',
+    'tien_si' => 'Tiến sĩ',
+    'trung cấp' => 'Trung cấp',
+    'cao đẳng' => 'Cao đẳng',
+    'đại học' => 'Đại học',
+    'sau đại học' => 'Sau đại học',
+    'thạc sĩ' => 'Thạc sĩ',
+    'tiến sĩ' => 'Tiến sĩ',
+  );
+  return isset($map[$value]) ? $map[$value] : candidateDetailText($value);
+}
+
+function candidateDetailWorkTypeLabel($value){
+  $value = strtolower(trim((string)$value));
+  $map = array(
+    'any' => 'Thỏa thuận',
+    'full_time' => 'Full-time',
+    'full-time' => 'Full-time',
+    'part_time' => 'Part-time',
+    'part-time' => 'Part-time',
+    'remote' => 'Remote',
+    'hybrid' => 'Hybrid',
+    'internship' => 'Thực tập',
+    'freelance' => 'Freelance',
+  );
+  return isset($map[$value]) ? $map[$value] : candidateDetailText($value);
+}
+
+function candidateDetailAvatarUrl($value){
+  $value = trim((string)$value);
+  if($value === ''){ return ''; }
+  if(preg_match('#^(https?:)?//#i', $value) || strpos($value, 'data:') === 0){ return $value; }
+  return XC_URL.'/'.ltrim($value, '/');
+}
+
+function candidateDetailInitials($name){
+  $name = trim((string)$name);
+  if($name === ''){ return 'UV'; }
+  $parts = preg_split('/\s+/', $name);
+  $letters = '';
+  foreach((array)$parts as $part){
+    if($part !== ''){ $letters .= mb_substr($part, 0, 1, 'UTF-8'); }
+    if(mb_strlen($letters, 'UTF-8') >= 2){ break; }
+  }
+  return mb_strtoupper($letters ?: mb_substr($name, 0, 2, 'UTF-8'), 'UTF-8');
+}
+
+function candidateDetailAccentColor($seed){
+  $palette = array('#0d4e96', '#1565c0', '#2e7d32', '#c62828', '#6a1b9a', '#00695c', '#e65100', '#1a237e', '#00838f', '#37474f');
+  return $palette[((int)$seed) % count($palette)];
+}
+
+function candidateDetailSkills($value){
+  $value = trim((string)$value);
+  if($value === ''){ return array(); }
+  $decoded = json_decode($value, true);
+  if(is_array($decoded)){
+    $skills = array();
+    foreach($decoded as $item){
+      $item = trim((string)$item);
+      if($item !== ''){ $skills[] = $item; }
+    }
+    return array_values(array_unique($skills));
+  }
+  $parts = preg_split('/[\r\n,;|]+/u', $value);
+  $skills = array();
+  foreach((array)$parts as $item){
+    $item = trim((string)$item);
+    if($item !== ''){ $skills[] = $item; }
+  }
+  return array_values(array_unique($skills));
+}
+
+function candidateDetailFileUrl($value){
+  $value = trim((string)$value);
+  if($value === ''){ return ''; }
+  if(preg_match('#^(https?:)?//#i', $value) || strpos($value, 'data:') === 0){ return $value; }
+  return XC_URL.'/'.ltrim($value, '/');
+}
+
+function candidateDetailFileName($value){
+  $value = trim((string)$value);
+  if($value === ''){ return 'CV đang cập nhật'; }
+  $path = parse_url($value, PHP_URL_PATH);
+  $path = $path !== null ? $path : $value;
+  $name = basename($path);
+  return $name !== '' ? $name : 'CV đang cập nhật';
+}
+
+function candidateDetailExperiencePeriod($start, $end){
+  $startText = candidateDetailMonthYear($start);
+  $endText = $end ? candidateDetailMonthYear($end) : 'Hiện tại';
+  return $startText.' - '.$endText;
+}
+
+function candidateDetailUrl($candidate){
+  return general::getInstance()->permalink((int)($candidate->id ?? 0), 'candidate_profile');
+}
+
+$candidateName = candidateDetailText($candidate->full_name ?? '', 'Ứng viên');
+$candidateAvatar = candidateDetailAvatarUrl($candidate->avatar_url ?? '');
+$candidatePhone = candidateDetailText($candidate->phone ?? ($candidate->user_phone ?? ''));
+$candidateEmail = candidateDetailText($candidate->user_email ?? '');
+$candidateAddress = candidateDetailText($candidate->address_detail ?? ($candidate->province_name ?? ''));
+$candidateProvince = candidateDetailText($candidate->province_name ?? '');
+$desiredProvince = candidateDetailText($candidate->desired_province_name ?? '');
+$desiredSalary = candidateDetailText($candidate->salary_name ?? '');
+$desiredPosition = candidateDetailText($candidate->desired_position ?? ($candidate->job_category_name ?? ''), 'Ứng viên đang tìm việc');
+$candidateMajor = candidateDetailText($candidate->job_category_name ?? '');
+$candidateDegree = candidateDetailDegreeLabel($candidate->degree ?? '');
+$candidateWorkType = candidateDetailWorkTypeLabel($candidate->desired_work_type ?? '');
+$candidateBirthDate = candidateDetailDate($candidate->date_of_birth ?? '');
+$candidateGender = candidateDetailGenderLabel($candidate->gender ?? '');
+$candidateSchool = candidateDetailText($candidate->school_name ?? '');
+$candidateGraduationYear = candidateDetailText($candidate->graduation_year ?? '');
+$candidateSkills = candidateDetailSkills($candidate->soft_skills ?? '');
+$candidateCareerGoal = nl2br(candidateDetailH(candidateDetailText($candidate->career_goal ?? '', 'Ứng viên chưa cập nhật mục tiêu nghề nghiệp.')));
+$cvUrl = candidateDetailFileUrl($candidate->cv_url ?? '');
+$cvFileName = candidateDetailFileName($candidate->cv_url ?? '');
+$cvUploadedAt = candidateDetailDate($candidate->cv_uploaded_at ?? '', 'Đang cập nhật');
+$breadcrumbUrl = XC_URL.'/quan-ly-ung-vien.html';
+?>
 
 <main class="candidate-page">
   <div class="cd-container">
     <div class="cd-breadcrumb">
-      <a href="/">Trang chủ</a><span>/</span><a href="#">Ứng viên</a><span>/</span><span>Chi tiết hồ sơ</span>
+      <a href="<?php echo candidateDetailH(XC_URL); ?>">Trang chủ</a><span>/</span><a href="<?php echo candidateDetailH($breadcrumbUrl); ?>">Ứng viên</a><span>/</span><span>Chi tiết hồ sơ</span>
     </div>
 
     <section class="cd-hero">
       <div class="cd-hero-inner">
-        <div class="cd-avatar">NL</div>
+        <?php if($candidateAvatar !== ''){ ?>
+          <div class="cd-avatar"><img src="<?php echo candidateDetailH($candidateAvatar); ?>" alt="<?php echo candidateDetailH($candidateName); ?>" style="width:100%;height:100%;object-fit:cover;border-radius:inherit"></div>
+        <?php }else{ ?>
+          <div class="cd-avatar" style="background:<?php echo candidateDetailH(candidateDetailAccentColor($candidate->id ?? 0)); ?>"><?php echo candidateDetailH(candidateDetailInitials($candidateName)); ?></div>
+        <?php } ?>
         <div>
-          <h1>Nguyễn Thị Lan</h1>
-          <div class="cd-position"><i class="ti ti-briefcase"></i> Ứng viên vị trí Lập trình viên PHP/MySQL</div>
+          <h1><?php echo candidateDetailH($candidateName); ?></h1>
+          <div class="cd-position"><i class="ti ti-briefcase"></i> Ứng viên vị trí <?php echo candidateDetailH($desiredPosition); ?></div>
           <div class="cd-tags">
-            <span class="cd-tag">Nữ</span><span class="cd-tag">Sinh ngày: 12/03/2003</span><span class="cd-tag">Kon Tum</span><span class="cd-tag">Mong muốn: 10 - 15 triệu</span>
+            <span class="cd-tag"><?php echo candidateDetailH($candidateGender); ?></span><span class="cd-tag">Sinh ngày: <?php echo candidateDetailH($candidateBirthDate); ?></span><span class="cd-tag"><?php echo candidateDetailH($candidateProvince); ?></span><span class="cd-tag">Mong muốn: <?php echo candidateDetailH($desiredSalary); ?></span>
           </div>
           <div class="cd-actions">
-            <button class="cd-btn cd-btn-primary"><i class="ti ti-send"></i> Mời ứng tuyển</button>
-            <button class="cd-btn cd-btn-outline"><i class="ti ti-file-cv"></i> Xem CV</button>
-            <button class="cd-btn cd-btn-outline"><i class="ti ti-heart"></i> Lưu hồ sơ</button>
+            <button class="cd-btn cd-btn-primary" type="button"><i class="ti ti-send"></i> Mời ứng tuyển</button>
+            <?php if($cvUrl !== ''){ ?>
+              <a class="cd-btn cd-btn-outline" href="<?php echo candidateDetailH($cvUrl); ?>" target="_blank" rel="noopener"><i class="ti ti-file-cv"></i> Xem CV</a>
+            <?php }else{ ?>
+              <button class="cd-btn cd-btn-outline" type="button" disabled><i class="ti ti-file-cv"></i> Chưa có CV</button>
+            <?php } ?>
+            <button class="cd-btn cd-btn-outline" type="button"><i class="ti ti-heart"></i> Lưu hồ sơ</button>
           </div>
         </div>
       </div>
@@ -29,64 +209,85 @@
         <section class="cd-card">
           <h2 class="cd-title"><i class="ti ti-user"></i> Thông tin cá nhân cơ bản</h2>
           <div class="cd-grid">
-            <div class="cd-info"><div class="cd-label">Họ và tên</div><div class="cd-value">Nguyễn Thị Lan</div></div>
-            <div class="cd-info"><div class="cd-label">Ngày sinh</div><div class="cd-value">12/03/2003</div></div>
-            <div class="cd-info"><div class="cd-label">Giới tính</div><div class="cd-value">Nữ</div></div>
-            <div class="cd-info"><div class="cd-label">Địa chỉ hiện tại</div><div class="cd-value">TP. Kon Tum, tỉnh Kon Tum</div></div>
-            <div class="cd-info"><div class="cd-label">Số điện thoại</div><div class="cd-value">0987 654 321</div></div>
-            <div class="cd-info"><div class="cd-label">Email</div><div class="cd-value">nguyenthilan@email.com</div></div>
+            <div class="cd-info"><div class="cd-label">Họ và tên</div><div class="cd-value"><?php echo candidateDetailH($candidateName); ?></div></div>
+            <div class="cd-info"><div class="cd-label">Ngày sinh</div><div class="cd-value"><?php echo candidateDetailH($candidateBirthDate); ?></div></div>
+            <div class="cd-info"><div class="cd-label">Giới tính</div><div class="cd-value"><?php echo candidateDetailH($candidateGender); ?></div></div>
+            <div class="cd-info"><div class="cd-label">Địa chỉ hiện tại</div><div class="cd-value"><?php echo candidateDetailH($candidateAddress); ?></div></div>
+            <div class="cd-info"><div class="cd-label">Số điện thoại</div><div class="cd-value"><?php echo candidateDetailH($candidatePhone); ?></div></div>
+            <div class="cd-info"><div class="cd-label">Email</div><div class="cd-value"><?php echo candidateDetailH($candidateEmail); ?></div></div>
           </div>
         </section>
 
         <section class="cd-card">
           <h2 class="cd-title"><i class="ti ti-school"></i> Học vấn</h2>
           <div class="cd-grid">
-            <div class="cd-info"><div class="cd-label">Bằng cấp</div><div class="cd-value">Cao đẳng</div></div>
-            <div class="cd-info"><div class="cd-label">Chuyên ngành</div><div class="cd-value">Công nghệ thông tin</div></div>
-            <div class="cd-info"><div class="cd-label">Trường</div><div class="cd-value">Trường Cao đẳng Kon Tum</div></div>
-            <div class="cd-info"><div class="cd-label">Năm tốt nghiệp</div><div class="cd-value">2025</div></div>
+            <div class="cd-info"><div class="cd-label">Bằng cấp</div><div class="cd-value"><?php echo candidateDetailH($candidateDegree); ?></div></div>
+            <div class="cd-info"><div class="cd-label">Chuyên ngành</div><div class="cd-value"><?php echo candidateDetailH($candidateMajor); ?></div></div>
+            <div class="cd-info"><div class="cd-label">Trường</div><div class="cd-value"><?php echo candidateDetailH($candidateSchool); ?></div></div>
+            <div class="cd-info"><div class="cd-label">Năm tốt nghiệp</div><div class="cd-value"><?php echo candidateDetailH($candidateGraduationYear); ?></div></div>
           </div>
         </section>
 
         <section class="cd-card">
           <h2 class="cd-title"><i class="ti ti-briefcase"></i> Kinh nghiệm làm việc</h2>
           <div class="cd-timeline">
-            <div class="cd-time-item">
-              <h4>Công ty Kon Tum Digital - Thực tập sinh Web Developer</h4>
-              <span>06/2024 - 12/2024</span>
-              <p>Tham gia xây dựng module quản lý bài đăng, xử lý giao diện responsive, viết API cơ bản bằng PHP và MySQL.</p>
-            </div>
-            <div class="cd-time-item">
-              <h4>Dự án cá nhân - Website quản lý tuyển dụng</h4>
-              <span>01/2025 - 04/2025</span>
-              <p>Thiết kế database, phân quyền người dùng, xây dựng chức năng đăng tin, ứng tuyển và quản lý CV online.</p>
-            </div>
+            <?php if(!empty($experiences)){ ?>
+              <?php foreach($experiences as $experience){ ?>
+                <div class="cd-time-item">
+                  <h4><?php echo candidateDetailH(candidateDetailText(($experience->company_name ?? '').' - '.($experience->position ?? ''), 'Đang cập nhật')); ?></h4>
+                  <span><?php echo candidateDetailH(candidateDetailExperiencePeriod($experience->start_date ?? '', $experience->end_date ?? '')); ?></span>
+                  <p><?php echo candidateDetailH(candidateDetailText($experience->description ?? '', 'Ứng viên chưa cập nhật mô tả công việc.')); ?></p>
+                </div>
+              <?php } ?>
+            <?php }else{ ?>
+              <div class="cd-time-item">
+                <h4>Chưa có kinh nghiệm được cập nhật</h4>
+                <span>Đang cập nhật</span>
+                <p>Ứng viên chưa bổ sung thông tin kinh nghiệm làm việc.</p>
+              </div>
+            <?php } ?>
           </div>
         </section>
 
         <section class="cd-card">
           <h2 class="cd-title"><i class="ti ti-star"></i> Kỹ năng mềm & chuyên môn</h2>
           <div class="cd-skill-list">
-            <span class="cd-skill">PHP</span><span class="cd-skill">MySQL</span><span class="cd-skill">HTML/CSS</span><span class="cd-skill">JavaScript</span><span class="cd-skill">jQuery</span><span class="cd-skill">Tiếng Anh cơ bản</span><span class="cd-skill">Làm việc nhóm</span><span class="cd-skill">Giao tiếp</span><span class="cd-skill">Quản lý thời gian</span>
+            <?php if(!empty($candidateSkills)){ ?>
+              <?php foreach($candidateSkills as $skill){ ?>
+                <span class="cd-skill"><?php echo candidateDetailH($skill); ?></span>
+              <?php } ?>
+            <?php }else{ ?>
+              <span class="cd-skill">Đang cập nhật</span>
+            <?php } ?>
           </div>
         </section>
 
         <section class="cd-card">
           <h2 class="cd-title"><i class="ti ti-certificate"></i> Chứng chỉ</h2>
           <div class="cd-content">
-            <ul>
-              <li>Chứng chỉ Tin học ứng dụng nâng cao.</li>
-              <li>Chứng chỉ HTML, CSS, JavaScript cơ bản.</li>
-              <li>Chứng chỉ tiếng Anh trình độ A2.</li>
-            </ul>
+            <?php if(!empty($certificates)){ ?>
+              <ul>
+                <?php foreach($certificates as $certificate){ ?>
+                  <li>
+                    <?php
+                    $certParts = array(candidateDetailText($certificate->cert_name ?? '', 'Chứng chỉ đang cập nhật'));
+                    if(trim((string)($certificate->issuer ?? '')) !== ''){ $certParts[] = 'Đơn vị cấp: '.trim((string)$certificate->issuer); }
+                    if(!empty($certificate->issued_date)){ $certParts[] = 'Ngày cấp: '.candidateDetailDate($certificate->issued_date); }
+                    echo candidateDetailH(implode(' - ', $certParts));
+                    ?>
+                  </li>
+                <?php } ?>
+              </ul>
+            <?php }else{ ?>
+              <p>Ứng viên chưa cập nhật chứng chỉ.</p>
+            <?php } ?>
           </div>
         </section>
 
         <section class="cd-card">
           <h2 class="cd-title"><i class="ti ti-target-arrow"></i> Mục tiêu nghề nghiệp</h2>
           <div class="cd-highlight">
-            Ngắn hạn: Tìm kiếm vị trí lập trình viên PHP/MySQL để phát triển kỹ năng thực tế và tham gia các dự án phần mềm.<br>
-            Dài hạn: Trở thành Full-stack Developer, có khả năng phân tích nghiệp vụ, thiết kế hệ thống và dẫn dắt nhóm kỹ thuật.
+            <?php echo $candidateCareerGoal; ?>
           </div>
         </section>
       </div>
@@ -95,10 +296,10 @@
         <section class="cd-card">
           <h2 class="cd-title"><i class="ti ti-filter-check"></i> Tiêu chí mong muốn</h2>
           <div class="cd-grid" style="grid-template-columns:1fr">
-            <div class="cd-info"><div class="cd-label">Vị trí muốn ứng tuyển</div><div class="cd-value">Lập trình viên PHP/MySQL</div></div>
-            <div class="cd-info"><div class="cd-label">Mức lương mong đợi</div><div class="cd-value">10 - 15 triệu/tháng</div></div>
-            <div class="cd-info"><div class="cd-label">Địa điểm mong muốn</div><div class="cd-value">Kon Tum, Gia Lai hoặc Remote</div></div>
-            <div class="cd-info"><div class="cd-label">Hình thức làm việc</div><div class="cd-value">Full-time</div></div>
+            <div class="cd-info"><div class="cd-label">Vị trí muốn ứng tuyển</div><div class="cd-value"><?php echo candidateDetailH($desiredPosition); ?></div></div>
+            <div class="cd-info"><div class="cd-label">Mức lương mong đợi</div><div class="cd-value"><?php echo candidateDetailH($desiredSalary); ?></div></div>
+            <div class="cd-info"><div class="cd-label">Địa điểm mong muốn</div><div class="cd-value"><?php echo candidateDetailH($desiredProvince); ?></div></div>
+            <div class="cd-info"><div class="cd-label">Hình thức làm việc</div><div class="cd-value"><?php echo candidateDetailH($candidateWorkType); ?></div></div>
           </div>
         </section>
 
@@ -108,73 +309,61 @@
           <div class="cd-file">
             <i class="ti ti-file-type-pdf"></i>
             <div>
-              <strong>NguyenThiLan_CV.pdf</strong>
-              <p>Đã tải lên · PDF · 1.8MB</p>
+              <strong><?php echo candidateDetailH($cvFileName); ?></strong>
+              <p><?php echo $cvUrl !== '' ? 'Đã tải lên · '.$cvUploadedAt : 'Ứng viên chưa tải CV đính kèm'; ?></p>
 
-              <div class="cd-file-actions">
-                <a href="uploads/cv/NguyenThiLan_CV.pdf" class="cd-download-btn" download>
-                  <i class="ti ti-download"></i> Tải CV về
-                </a>
+              <?php if($cvUrl !== ''){ ?>
+                <div class="cd-file-actions">
+                  <a href="<?php echo candidateDetailH($cvUrl); ?>" class="cd-download-btn" download>
+                    <i class="ti ti-download"></i> Tải CV về
+                  </a>
 
-                <a href="uploads/cv/NguyenThiLan_CV.pdf" class="cd-preview-btn" target="_blank">
-                  <i class="ti ti-eye"></i> Xem trước
-                </a>
-              </div>
+                  <a href="<?php echo candidateDetailH($cvUrl); ?>" class="cd-preview-btn" target="_blank" rel="noopener">
+                    <i class="ti ti-eye"></i> Xem trước
+                  </a>
+                </div>
+              <?php } ?>
             </div>
           </div>
         </section>
 
         <section class="cd-card">
-          <button class="cd-btn cd-btn-blue" style="width:100%;justify-content:center"><i class="ti ti-send"></i> Mời ứng viên ứng tuyển</button>
+          <button class="cd-btn cd-btn-blue" type="button" style="width:100%;justify-content:center"><i class="ti ti-send"></i> Mời ứng viên ứng tuyển</button>
         </section>
 
         <section class="cd-card">
           <h2 class="cd-title"><i class="ti ti-users-star"></i> Ứng viên tiêu biểu</h2>
 
           <div class="cd-featured-candidates">
-            <a href="#" class="cd-candidate-mini">
-              <div class="cd-candidate-avatar"><img src='https://www.shutterstock.com/image-vector/avatar-profile-interface-display-default-260nw-2686603403.jpg' /></div>
-              <div class="cd-candidate-info">
-                <h4>Trần Văn Hùng</h4>
-                <p>Lập trình viên Frontend</p>
-                <div class="cd-candidate-meta">
-                  <span>ReactJS</span><span>Kon Tum</span>
-                </div>
+            <?php if(!empty($relatedCandidates)){ ?>
+              <?php foreach(array_slice($relatedCandidates, 0, 4) as $relatedCandidate){ ?>
+                <?php
+                $relatedName = candidateDetailText($relatedCandidate->full_name ?? '', 'Ứng viên');
+                $relatedAvatar = candidateDetailAvatarUrl($relatedCandidate->avatar_url ?? '');
+                $relatedPosition = candidateDetailText($relatedCandidate->desired_position ?? ($relatedCandidate->job_category_name ?? ''), 'Ứng viên đang tìm việc');
+                $relatedMetaOne = trim((string)($relatedCandidate->job_category_name ?? '')) !== '' ? trim((string)$relatedCandidate->job_category_name) : candidateDetailWorkTypeLabel($relatedCandidate->desired_work_type ?? '');
+                $relatedMetaTwo = trim((string)($relatedCandidate->province_name ?? '')) !== '' ? trim((string)$relatedCandidate->province_name) : candidateDetailWorkTypeLabel($relatedCandidate->desired_work_type ?? '');
+                ?>
+                <a href="<?php echo candidateDetailH(candidateDetailUrl($relatedCandidate)); ?>" class="cd-candidate-mini">
+                  <?php if($relatedAvatar !== ''){ ?>
+                    <div class="cd-candidate-avatar"><img src="<?php echo candidateDetailH($relatedAvatar); ?>" alt="<?php echo candidateDetailH($relatedName); ?>" style="width:100%;height:100%;object-fit:cover;border-radius:inherit" /></div>
+                  <?php }else{ ?>
+                    <div class="cd-candidate-avatar" style="background:<?php echo candidateDetailH(candidateDetailAccentColor($relatedCandidate->id ?? 0)); ?>"><?php echo candidateDetailH(candidateDetailInitials($relatedName)); ?></div>
+                  <?php } ?>
+                  <div class="cd-candidate-info">
+                    <h4><?php echo candidateDetailH($relatedName); ?></h4>
+                    <p><?php echo candidateDetailH($relatedPosition); ?></p>
+                    <div class="cd-candidate-meta">
+                      <span><?php echo candidateDetailH($relatedMetaOne); ?></span><span><?php echo candidateDetailH($relatedMetaTwo); ?></span>
+                    </div>
+                  </div>
+                </a>
+              <?php } ?>
+            <?php }else{ ?>
+              <div class="cd-content">
+                <p>Chưa có ứng viên liên quan để hiển thị.</p>
               </div>
-            </a>
-
-            <a href="#" class="cd-candidate-mini">
-              <div class="cd-candidate-avatar" style="background:#2e7d32">LM</div>
-              <div class="cd-candidate-info">
-                <h4>Lê Thị Mai</h4>
-                <p>Nhân viên Marketing</p>
-                <div class="cd-candidate-meta">
-                  <span>SEO</span><span>Gia Lai</span>
-                </div>
-              </div>
-            </a>
-
-            <a href="#" class="cd-candidate-mini">
-              <div class="cd-candidate-avatar" style="background:#844404">PB</div>
-              <div class="cd-candidate-info">
-                <h4>Phạm Quốc Bảo</h4>
-                <p>Kế toán tổng hợp</p>
-                <div class="cd-candidate-meta">
-                  <span>Kế toán</span><span>Full-time</span>
-                </div>
-              </div>
-            </a>
-
-            <a href="#" class="cd-candidate-mini">
-              <div class="cd-candidate-avatar" style="background:#6a1b9a">HT</div>
-              <div class="cd-candidate-info">
-                <h4>Hoàng Thị Thu</h4>
-                <p>Chuyên viên nhân sự</p>
-                <div class="cd-candidate-meta">
-                  <span>HR</span><span>2 năm KN</span>
-                </div>
-              </div>
-            </a>
+            <?php } ?>
           </div>
         </section>
       </aside>

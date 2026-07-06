@@ -152,7 +152,7 @@ $siteUserProfileUrl = $siteUserGroup == '2'
     </div>
 
     <a href="<?php echo XC_URL; ?>/huong-dan.html">Hướng dẫn</a>
-    <a href="<?php echo XC_URL; ?> /lien-he.html">Liên hệ</a>
+    <a href="<?php echo XC_URL; ?>/lien-he.html">Liên hệ</a>
   </nav>
 
   <div class="header-actions">
