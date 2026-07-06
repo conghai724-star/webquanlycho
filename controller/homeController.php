@@ -423,6 +423,234 @@ Class homeController Extends baseController
         $this->view->data['company'] = $company;
         $this->view->show("dang-ky");
     }
+    private function currentForgotPasswordUser()
+    {
+        global $db;
+        $user = null;
+        if(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] !== ''){
+            $db->query("SELECT id, full_name, user_email, user_phone FROM hicrm_users WHERE id = '".intval($_SESSION['user']['id'])."' LIMIT 1");
+            if($db->num_row() > 0){
+                $user = $db->fetch_object(true);
+            }
+        }
+        return $user;
+    }
+    private function findUserForPasswordReset($email, $phone = '')
+    {
+        global $db;
+        $email = trim((string)$email);
+        $phone = trim((string)$phone);
+        if($email === '' && $phone === ''){
+            return null;
+        }
+
+        $conditions = array();
+        if($email !== ''){
+            $conditions[] = "user_email = '".$db->escapestring($email)."'";
+        }
+        if($phone !== ''){
+            $conditions[] = "user_phone = '".$db->escapestring($phone)."'";
+        }
+        if(empty($conditions)){
+            return null;
+        }
+
+        $db->query("SELECT id, full_name, user_email, user_phone, user_status
+            FROM hicrm_users
+            WHERE (".implode(' OR ', $conditions).")
+            ORDER BY id DESC
+            LIMIT 5");
+        $users = $db->fetch_object();
+        if(empty($users)){
+            return null;
+        }
+
+        foreach((array)$users as $user){
+            $emailMatched = $email === '' || strcasecmp(trim((string)$user->user_email), $email) === 0;
+            $phoneMatched = $phone === '' || trim((string)$user->user_phone) === $phone;
+            if($emailMatched && $phoneMatched && (int)$user->user_status === 1){
+                return $user;
+            }
+        }
+
+        foreach((array)$users as $user){
+            if($email !== '' && strcasecmp(trim((string)$user->user_email), $email) === 0 && (int)$user->user_status === 1){
+                return $user;
+            }
+        }
+
+        return null;
+    }
+    private function buildResetToken()
+    {
+        try {
+            return bin2hex(random_bytes(32));
+        } catch (Exception $e) {
+            return sha1(uniqid((string)mt_rand(), true).microtime(true));
+        }
+    }
+    private function forgotPasswordDisplayName($user, $fallbackEmail = '')
+    {
+        $name = $user && isset($user->full_name) ? trim((string)$user->full_name) : '';
+        if($name !== ''){ return $name; }
+        $fallbackEmail = trim((string)$fallbackEmail);
+        if($fallbackEmail !== '' && strpos($fallbackEmail, '@') !== false){
+            return strstr($fallbackEmail, '@', true);
+        }
+        return 'Người dùng';
+    }
+    public function forgot_password($para = array())
+    {
+        global $db;
+        $prefillUser = $this->currentForgotPasswordUser();
+        $form = array(
+            'full_name' => $prefillUser ? trim((string)$prefillUser->full_name) : '',
+            'email' => $prefillUser ? trim((string)$prefillUser->user_email) : '',
+            'phone' => $prefillUser ? trim((string)$prefillUser->user_phone) : ''
+        );
+        $message = '';
+        $messageType = '';
+
+        if($_SERVER['REQUEST_METHOD'] === 'POST'){
+            $form['email'] = trim(isset($_POST['email']) ? $_POST['email'] : '');
+            $form['phone'] = trim(isset($_POST['phone']) ? $_POST['phone'] : '');
+
+            if($form['email'] === '' || !filter_var($form['email'], FILTER_VALIDATE_EMAIL)){
+                $message = 'Vui lòng nhập đúng địa chỉ email để nhận liên kết đổi mật khẩu.';
+                $messageType = 'error';
+            } else {
+                $matchedUser = $this->findUserForPasswordReset($form['email'], $form['phone']);
+                if($matchedUser){
+                    $form['full_name'] = trim((string)$matchedUser->full_name);
+                    $token = $this->buildResetToken();
+                    $expiresAt = date('Y-m-d H:i:s', time() + 300);
+                    $db->query("UPDATE hicrm_users SET
+                        user_reset_token = '".$db->escapestring($token)."',
+                        user_reset_token_expires = '".$db->escapestring($expiresAt)."',
+                        user_updated_at = NOW()
+                        WHERE id = '".intval($matchedUser->id)."'
+                        LIMIT 1");
+
+                    $resetLink = XC_URL.'/doi-mat-khau.php?token='.rawurlencode($token);
+                    $emailSent = baseMailler::getInstance()->sendPasswordResetEmail(
+                        $this->forgotPasswordDisplayName($matchedUser, $form['email']),
+                        $form['email'],
+                        $resetLink,
+                        'Yêu cầu đổi mật khẩu hệ thống Cổng thông tin việc làm'
+                    );
+
+                    if($emailSent){
+                        $message = 'Hệ thống đã gửi đường link đổi mật khẩu về email của bạn. Vui lòng kiểm tra email, liên kết chỉ có hiệu lực trong vòng 5 phút.';
+                        $messageType = 'success';
+                    } else {
+                        $message = 'Không thể gửi email lúc này. Vui lòng kiểm tra cấu hình SMTP và thử lại.';
+                        $messageType = 'error';
+                    }
+                } else {
+                    $message = 'Nếu thông tin bạn nhập khớp với tài khoản trong hệ thống, đường link đổi mật khẩu sẽ được gửi về email trong vòng ít phút.';
+                    $messageType = 'success';
+                }
+            }
+        }
+
+        $this->view->data['forgot_password_form'] = $form;
+        $this->view->data['forgot_password_message'] = $message;
+        $this->view->data['forgot_password_message_type'] = $messageType;
+        $this->view->show("quen-mat-khau");
+    }
+    public function reset_password($para = array())
+    {
+        global $db;
+        $token = trim(isset($_GET['token']) ? $_GET['token'] : '');
+        if($token === '' && is_array($para) && isset($para[1])){
+            $token = trim((string)$para[1]);
+        }
+
+        $state = array(
+            'token' => $token,
+            'full_name' => '',
+            'email' => '',
+            'is_valid' => false,
+            'is_expired' => false,
+            'message' => '',
+            'message_type' => '',
+        );
+
+        $user = null;
+        if($token !== ''){
+            $db->query("SELECT id, full_name, user_email, user_reset_token, user_reset_token_expires
+                FROM hicrm_users
+                WHERE user_reset_token = '".$db->escapestring($token)."'
+                LIMIT 1");
+            if($db->num_row() > 0){
+                $user = $db->fetch_object(true);
+                $state['full_name'] = trim((string)$user->full_name);
+                $state['email'] = trim((string)$user->user_email);
+                $expiresTime = strtotime((string)$user->user_reset_token_expires);
+                if($expiresTime !== false && $expiresTime >= time()){
+                    $state['is_valid'] = true;
+                } else {
+                    $state['is_expired'] = true;
+                    $state['message'] = 'Liên kết đổi mật khẩu đã hết hạn. Vui lòng thực hiện quên mật khẩu lại để nhận đường link mới.';
+                    $state['message_type'] = 'error';
+                }
+            } else {
+                $state['message'] = 'Liên kết đổi mật khẩu không hợp lệ hoặc đã được sử dụng.';
+                $state['message_type'] = 'error';
+            }
+        } else {
+            $state['message'] = 'Thiếu mã xác thực để đổi mật khẩu.';
+            $state['message_type'] = 'error';
+        }
+
+        if($_SERVER['REQUEST_METHOD'] === 'POST'){
+            $token = trim(isset($_POST['token']) ? $_POST['token'] : $token);
+            $newPassword = isset($_POST['new_password']) ? trim($_POST['new_password']) : '';
+            $confirmPassword = isset($_POST['confirm_password']) ? trim($_POST['confirm_password']) : '';
+
+            if($token !== '' && !$user){
+                $db->query("SELECT id, full_name, user_email, user_reset_token, user_reset_token_expires
+                    FROM hicrm_users
+                    WHERE user_reset_token = '".$db->escapestring($token)."'
+                    LIMIT 1");
+                if($db->num_row() > 0){
+                    $user = $db->fetch_object(true);
+                    $state['full_name'] = trim((string)$user->full_name);
+                    $state['email'] = trim((string)$user->user_email);
+                }
+            }
+
+            $expiresTime = ($user && isset($user->user_reset_token_expires)) ? strtotime((string)$user->user_reset_token_expires) : false;
+            if(!$user || $expiresTime === false || $expiresTime < time()){
+                $state['is_valid'] = false;
+                $state['is_expired'] = true;
+                $state['message'] = 'Liên kết đổi mật khẩu đã hết hạn hoặc không hợp lệ.';
+                $state['message_type'] = 'error';
+            } elseif($newPassword === '' || strlen($newPassword) < 6){
+                $state['message'] = 'Mật khẩu mới phải có ít nhất 6 ký tự.';
+                $state['message_type'] = 'error';
+                $state['is_valid'] = true;
+            } elseif($newPassword !== $confirmPassword){
+                $state['message'] = 'Xác nhận mật khẩu mới chưa khớp.';
+                $state['message_type'] = 'error';
+                $state['is_valid'] = true;
+            } else {
+                $db->query("UPDATE hicrm_users SET
+                    user_password = '".md5($db->escapestring($newPassword))."',
+                    user_reset_token = NULL,
+                    user_reset_token_expires = NULL,
+                    user_updated_at = NOW()
+                    WHERE id = '".intval($user->id)."'
+                    LIMIT 1");
+                $state['is_valid'] = false;
+                $state['message'] = 'Đổi mật khẩu thành công. Bạn có thể đăng nhập lại bằng mật khẩu mới.';
+                $state['message_type'] = 'success';
+            }
+        }
+
+        $this->view->data['reset_password_state'] = $state;
+        $this->view->show("doi-mat-khau");
+    }
     public function logout(){
 		session_unset();
 		header('Location:' .XC_URL);

@@ -629,9 +629,27 @@ function homeNewsUrl($news){
 </script>
 <script>
   (function(){
+    var provinceOptions = <?php
+      $provinceOptions = array(array('id' => '', 'name' => 'Toàn quốc'));
+      foreach($job_provinces as $province){
+        $provinceOptions[] = array(
+          'id' => (int)$province->id,
+          'name' => (string)$province->province_name
+        );
+      }
+      echo json_encode($provinceOptions, JSON_UNESCAPED_UNICODE);
+    ?>;
+    var originalBtn = document.getElementById('searchLocationBtn');
+    var dropdown = document.getElementById('locationDropdown');
+    var searchWrap = document.getElementById('heroSearchWrap');
+    var heroSlider = document.getElementById('heroSlider');
+    var originalSearchInput = document.getElementById('locationSearchInput');
+    var listEl = document.getElementById('locationList');
+    var emptyEl = document.getElementById('locationEmpty');
+    var labelEl = document.getElementById('searchLocationLabel');
     var btn = document.querySelector('.hero-slider .search-btn');
     var input = document.querySelector('.hero-slider .search-input');
-    var label = document.getElementById('searchLocationLabel');
+    var label = labelEl;
     var provinceMap = <?php
       $provinceMap = array();
       foreach($job_provinces as $province){
@@ -639,6 +657,113 @@ function homeNewsUrl($news){
       }
       echo json_encode($provinceMap, JSON_UNESCAPED_UNICODE);
     ?>;
+    if(originalBtn && dropdown && originalSearchInput && listEl && emptyEl && labelEl){
+      var cleanBtn = originalBtn.cloneNode(true);
+      originalBtn.parentNode.replaceChild(cleanBtn, originalBtn);
+      var searchInput = originalSearchInput.cloneNode(true);
+      originalSearchInput.parentNode.replaceChild(searchInput, originalSearchInput);
+      labelEl = document.getElementById('searchLocationLabel');
+      label = labelEl;
+
+      var selectedProvince = labelEl.textContent.trim() || 'Toàn quốc';
+
+      function normalizeProvinceKeyword(value){
+        var text = String(value || '').toLowerCase();
+        if(typeof text.normalize === 'function'){
+          text = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        }
+        return text.replace(/đ/g, 'd');
+      }
+
+      function renderProvinceList(filterValue){
+        var keyword = normalizeProvinceKeyword(filterValue).trim();
+        var filtered = provinceOptions.filter(function(item){
+          return !keyword || normalizeProvinceKeyword(item.name).indexOf(keyword) !== -1;
+        });
+
+        listEl.innerHTML = '';
+        emptyEl.hidden = filtered.length > 0;
+
+        filtered.forEach(function(item){
+          var li = document.createElement('li');
+          var optionBtn = document.createElement('button');
+          optionBtn.type = 'button';
+          optionBtn.setAttribute('data-province-id', item.id || '');
+          optionBtn.innerHTML = '<i class="ti ti-map-pin"></i> ' + item.name;
+          if(item.name === selectedProvince){
+            optionBtn.classList.add('active');
+          }
+          optionBtn.addEventListener('click', function(event){
+            event.preventDefault();
+            event.stopPropagation();
+            selectedProvince = item.name;
+            labelEl.textContent = item.name;
+            closeProvinceDropdown();
+          });
+          li.appendChild(optionBtn);
+          listEl.appendChild(li);
+        });
+      }
+
+      function openProvinceDropdown(){
+        dropdown.classList.add('open');
+        cleanBtn.classList.add('open');
+        cleanBtn.setAttribute('aria-expanded', 'true');
+        dropdown.setAttribute('aria-hidden', 'false');
+        if(searchWrap){ searchWrap.classList.add('location-open'); }
+        if(heroSlider){ heroSlider.classList.add('location-dropdown-open'); }
+        searchInput.value = '';
+        renderProvinceList('');
+        window.setTimeout(function(){ searchInput.focus(); }, 0);
+      }
+
+      function closeProvinceDropdown(){
+        dropdown.classList.remove('open');
+        cleanBtn.classList.remove('open');
+        cleanBtn.setAttribute('aria-expanded', 'false');
+        dropdown.setAttribute('aria-hidden', 'true');
+        if(searchWrap){ searchWrap.classList.remove('location-open'); }
+        if(heroSlider){ heroSlider.classList.remove('location-dropdown-open'); }
+      }
+
+      cleanBtn.addEventListener('click', function(event){
+        event.preventDefault();
+        event.stopPropagation();
+        if(dropdown.classList.contains('open')){ closeProvinceDropdown(); }
+        else { openProvinceDropdown(); }
+      });
+
+      cleanBtn.addEventListener('keydown', function(event){
+        if(event.key === 'Enter' || event.key === ' '){
+          event.preventDefault();
+          if(dropdown.classList.contains('open')){ closeProvinceDropdown(); }
+          else { openProvinceDropdown(); }
+        }
+      });
+
+      searchInput.addEventListener('click', function(event){
+        event.stopPropagation();
+      });
+      searchInput.addEventListener('input', function(){
+        renderProvinceList(searchInput.value);
+      });
+      dropdown.addEventListener('click', function(event){
+        event.stopPropagation();
+      });
+      document.addEventListener('click', function(event){
+        if(!dropdown.contains(event.target) && !cleanBtn.contains(event.target) && dropdown.classList.contains('open')){
+          closeProvinceDropdown();
+        }
+      });
+      document.addEventListener('keydown', function(event){
+        if(event.key === 'Escape' && dropdown.classList.contains('open')){
+          closeProvinceDropdown();
+        }
+      });
+
+      renderProvinceList('');
+    }
+
     function goSearch(){
       var params = new URLSearchParams();
       var keyword = input ? input.value.trim() : '';
@@ -2071,6 +2196,562 @@ $svPages = array_chunk($featuredStudents, 12);
     </div>
   </div>
 </section>
+
+<?php
+// YouTube helpers for video parsing
+if (!function_exists('getYoutubeVideoId')) {
+    function getYoutubeVideoId($url) {
+        if (preg_match('%(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|[^/]+/\?v=)|youtu\.be/)([^"&?/ ]{11})%i', $url, $match)) {
+            return $match[1];
+        }
+        return '';
+    }
+}
+
+if (!function_exists('getYoutubeEmbedUrl')) {
+    function getYoutubeEmbedUrl($url) {
+        $videoId = getYoutubeVideoId($url);
+        return $videoId ? 'https://www.youtube.com/embed/' . $videoId : $url;
+    }
+}
+
+if (!function_exists('getYoutubeThumbnailUrl')) {
+    function getYoutubeThumbnailUrl($url) {
+        $videoId = getYoutubeVideoId($url);
+        return $videoId ? 'https://img.youtube.com/vi/' . $videoId . '/hqdefault.jpg' : '';
+    }
+}
+
+$videos_list = isset($home_videos) && is_array($home_videos) ? $home_videos : array();
+if (!empty($videos_list)):
+    $featured_video = $videos_list[0];
+    $featured_thumb = getYoutubeThumbnailUrl($featured_video->video_url);
+    $featured_embed = getYoutubeEmbedUrl($featured_video->video_url);
+?>
+<style>
+  /* Video Section Styles */
+  .video-section-dark {
+    background: linear-gradient(135deg, #1c3047 0%, #223a53 52%, #294564 100%);
+    color: #f8fafc;
+    padding: 60px 0;
+  }
+  .video-section-dark .section-title {
+    color: #f8fbff !important;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .video-section-subtitle {
+    color: #d2ddeb;
+    font-size: 15px;
+    font-weight: 400;
+  }
+  .video-layout-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 30px;
+    margin-top: 30px;
+  }
+  .video-featured-column {
+    grid-column: span 8;
+  }
+  .video-list-column {
+    grid-column: span 4;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Featured Video Card */
+  .video-featured-card-wrapper {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1), box-shadow 0.4s ease, border-color 0.4s ease;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 16px 36px rgba(8, 23, 43, 0.22);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    backdrop-filter: blur(10px);
+  }
+  .video-featured-card-wrapper:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 24px 44px rgba(11, 50, 96, 0.24);
+    border-color: rgba(147, 197, 253, 0.4);
+    background: rgba(255, 255, 255, 0.14);
+  }
+  .video-featured-img-container {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16/9;
+    overflow: hidden;
+    background: #000;
+  }
+  .video-featured-img-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s ease;
+  }
+  .video-featured-card-wrapper:hover .video-featured-img-container img {
+    transform: scale(1.03);
+  }
+  .video-featured-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to bottom, rgba(14, 28, 45, 0.02) 45%, rgba(14, 28, 45, 0.82) 100%);
+    z-index: 1;
+  }
+  .video-featured-badge {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    background: #f97316;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    z-index: 2;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 10px rgba(249, 115, 22, 0.35);
+  }
+  .video-play-btn-pulse {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 70px;
+    height: 70px;
+    background: rgba(37, 99, 235, 0.9);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    z-index: 2;
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.6);
+    animation: pulsePlay 2s infinite;
+    transition: all 0.3s ease;
+  }
+  .video-play-btn-pulse i {
+    margin-left: 4px;
+  }
+  @keyframes pulsePlay {
+    0% {
+      transform: translate(-50%, -50%) scale(0.95);
+      box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
+    }
+    70% {
+      transform: translate(-50%, -50%) scale(1);
+      box-shadow: 0 0 0 20px rgba(37, 99, 235, 0);
+    }
+    100% {
+      transform: translate(-50%, -50%) scale(0.95);
+      box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+    }
+  }
+  .video-featured-card-wrapper:hover .video-play-btn-pulse {
+    background: #2563eb;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+  .video-featured-info {
+    padding: 24px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .video-featured-title {
+    color: #ffffff;
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    line-height: 1.4;
+    transition: color 0.3s;
+  }
+  .video-featured-card-wrapper:hover .video-featured-title {
+    color: #bfdbfe;
+  }
+  .video-featured-desc {
+    color: #d7e2ee;
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 16px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .video-meta {
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+    color: #bfd0e0;
+  }
+  .video-meta span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* Video Vertical Slider (List) */
+  .video-slider-viewport {
+    height: 480px;
+    overflow: hidden;
+    position: relative;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.08);
+    padding: 10px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(10px);
+  }
+  .video-slider-viewport::before,
+  .video-slider-viewport::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 40px;
+    z-index: 3;
+    pointer-events: none;
+  }
+  .video-slider-viewport::before {
+    top: 0;
+    background: linear-gradient(to bottom, #1f344c 0%, rgba(31, 52, 76, 0) 100%);
+  }
+  .video-slider-viewport::after {
+    bottom: 0;
+    background: linear-gradient(to top, #1f344c 0%, rgba(31, 52, 76, 0) 100%);
+  }
+  
+  .video-slider-track {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    animation: scrollUpList 25s linear infinite;
+  }
+  .video-slider-viewport:hover .video-slider-track {
+    animation-play-state: paused;
+  }
+  
+  @keyframes scrollUpList {
+    0% {
+      transform: translateY(0);
+    }
+    100% {
+      transform: translateY(-50%);
+    }
+  }
+  
+  .video-slider-item {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .video-slider-item:hover {
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateX(4px);
+    border-color: rgba(147, 197, 253, 0.32);
+    box-shadow: 0 10px 18px rgba(12, 31, 56, 0.18);
+  }
+  .video-item-thumb {
+    position: relative;
+    width: 100px;
+    height: 60px;
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #000;
+  }
+  .video-item-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .video-item-play-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 24px;
+    height: 24px;
+    background: rgba(37, 99, 235, 0.9);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 10px;
+    opacity: 0.8;
+    transition: all 0.3s ease;
+  }
+  .video-slider-item:hover .video-item-play-icon {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.15);
+    background: #2563eb;
+  }
+  .video-item-details {
+    flex-grow: 1;
+    min-width: 0;
+  }
+  .video-item-title {
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .video-slider-item:hover .video-item-title {
+    color: #60a5fa;
+  }
+  .video-item-desc {
+    color: #64748b;
+    font-size: 11px;
+    margin-bottom: 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.4;
+  }
+  .video-item-date {
+    color: #475569;
+    font-size: 10px;
+    display: block;
+  }
+  
+  /* Modal Player Styles */
+  .video-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 99999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    transition: opacity 0.3s ease;
+    opacity: 0;
+  }
+  .video-modal.show {
+    display: flex;
+    opacity: 1;
+  }
+  .video-modal-content {
+    background: #1e293b;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 900px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transform: scale(0.9);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .video-modal.show .video-modal-content {
+    transform: scale(1);
+  }
+  .video-modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(15, 23, 42, 0.6);
+    color: #94a3b8;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    z-index: 10;
+  }
+  .video-modal-close:hover {
+    background: #ef4444;
+    color: #fff;
+    transform: rotate(90deg);
+  }
+  .video-modal-body {
+    padding: 0;
+  }
+  .video-iframe-container {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: #000;
+  }
+  .video-iframe-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .video-modal-info {
+    padding: 20px 24px 24px;
+  }
+  .video-modal-title {
+    color: #f8fafc;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.4;
+    margin: 0;
+  }
+  
+  /* Responsive Queries */
+  @media (max-width: 992px) {
+    .video-featured-column,
+    .video-list-column {
+      grid-column: span 12;
+    }
+    .video-slider-viewport {
+      height: 380px;
+    }
+  }
+</style>
+
+<section class="section video-section-dark">
+  <div class="section-inner">
+    <div class="section-header" style="border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 16px; margin-bottom: 24px; display: block;">
+      <div class="section-title">Chuyên mục Video</div>
+      <div class="video-section-subtitle">Tổng hợp video hướng dẫn, chia sẻ kinh nghiệm tìm việc & tuyển dụng thực tế</div>
+    </div>
+    
+    <div class="video-layout-grid">
+      <!-- Cột 8: Video mới nhất -->
+      <div class="video-featured-column">
+        <div class="video-featured-card-wrapper" onclick="openVideoModal('<?php echo homeJobH($featured_embed); ?>', '<?php echo homeJobH($featured_video->video_name); ?>')">
+          <div class="video-featured-img-container">
+            <img src="<?php echo homeJobH($featured_thumb); ?>" alt="<?php echo homeJobH($featured_video->video_name); ?>" loading="lazy">
+            <div class="video-featured-overlay"></div>
+            <div class="video-play-btn-pulse">
+              <i class="ti ti-player-play-filled"></i>
+            </div>
+            <div class="video-featured-badge">Mới nhất</div>
+          </div>
+          <div class="video-featured-info">
+            <h3 class="video-featured-title"><?php echo homeJobH($featured_video->video_name); ?></h3>
+            <p class="video-featured-desc"><?php echo homeJobH($featured_video->video_description); ?></p>
+            <div class="video-meta">
+              <span><i class="ti ti-calendar"></i> <?php echo date('d/m/Y', strtotime($featured_video->video_created_at)); ?></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Cột 4: Danh sách video cuộn dọc slider -->
+      <div class="video-list-column">
+        <div class="video-slider-viewport">
+          <div class="video-slider-track">
+            <?php 
+            // Loop twice to ensure infinite scrolling
+            for ($loop = 0; $loop < 2; $loop++): 
+                foreach ($videos_list as $vid): 
+                    $vid_thumb = getYoutubeThumbnailUrl($vid->video_url);
+                    $vid_embed = getYoutubeEmbedUrl($vid->video_url);
+            ?>
+              <div class="video-slider-item" onclick="openVideoModal('<?php echo homeJobH($vid_embed); ?>', '<?php echo homeJobH($vid->video_name); ?>')">
+                <div class="video-item-thumb">
+                  <img src="<?php echo homeJobH($vid_thumb); ?>" alt="<?php echo homeJobH($vid->video_name); ?>" loading="lazy">
+                  <div class="video-item-play-icon"><i class="ti ti-player-play"></i></div>
+                </div>
+                <div class="video-item-details">
+                  <h4 class="video-item-title"><?php echo homeJobH($vid->video_name); ?></h4>
+                  <p class="video-item-desc"><?php echo homeJobH($vid->video_description); ?></p>
+                  <span class="video-item-date"><?php echo date('d/m/Y', strtotime($vid->video_created_at)); ?></span>
+                </div>
+              </div>
+            <?php 
+                endforeach;
+            endfor; 
+            ?>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Modal Player -->
+<div id="videoModal" class="video-modal" onclick="closeVideoModal(event)">
+  <div class="video-modal-content">
+    <button class="video-modal-close" onclick="closeVideoModal(event)">&times;</button>
+    <div class="video-modal-body">
+      <div class="video-iframe-container">
+        <iframe id="videoPlayerIframe" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+      </div>
+      <div class="video-modal-info">
+        <h3 id="videoModalTitle" class="video-modal-title"></h3>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function openVideoModal(embedUrl, title) {
+  const modal = document.getElementById('videoModal');
+  const iframe = document.getElementById('videoPlayerIframe');
+  const modalTitle = document.getElementById('videoModalTitle');
+  
+  // Set autoplay parameter
+  const autoplayUrl = embedUrl + (embedUrl.includes('?') ? '&' : '?') + 'autoplay=1';
+  iframe.src = autoplayUrl;
+  modalTitle.textContent = title;
+  
+  modal.classList.add('show');
+  document.body.style.overflow = 'hidden'; // prevent background scrolling
+}
+
+function closeVideoModal(event) {
+  // If event is click on background or close button
+  if (!event || event.target.id === 'videoModal' || event.target.classList.contains('video-modal-close') || event.target.nodeName === 'BUTTON') {
+    const modal = document.getElementById('videoModal');
+    const iframe = document.getElementById('videoPlayerIframe');
+    
+    iframe.src = ''; // Stop video play
+    modal.classList.remove('show');
+    document.body.style.overflow = ''; // restore scrolling
+  }
+}
+
+// Add Escape key handler to close modal
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    const modal = document.getElementById('videoModal');
+    if (modal && modal.classList.contains('show')) {
+      closeVideoModal();
+    }
+  }
+});
+</script>
+<?php endif; ?>
+
 <!-- CTA EMPLOYER BANNER -->
 <div class="cta-banner">
   <div class="cta-inner">
@@ -2092,7 +2773,7 @@ $svPages = array_chunk($featuredStudents, 12);
         <div class="cta-stat-label">Tin tuyển dụng</div>
       </div> -->
     </div>
-    <button class="btn-cta">Đăng tin tuyển dụng ngay →</button>
+    <!-- <button class="btn-cta">Đăng tin tuyển dụng ngay →</button> -->
   </div>
 </div>
 

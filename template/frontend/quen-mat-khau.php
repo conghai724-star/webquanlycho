@@ -1,120 +1,61 @@
 <?php
-header('Content-Type: text/html; charset=UTF-8');
-header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-header('Pragma: no-cache');
-
-// Google reCAPTCHA v2 test keys for localhost/dev only. Replace these in production.
-$recaptchaSiteKey = '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
-$recaptchaSecretKey = '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe';
-$formMessage = '';
-$formMessageType = '';
-$submittedEmail = '';
-
-function verifyRecaptchaToken($secretKey, $token) {
-    if ($token === '') {
-        return false;
-    }
-
-    $payload = http_build_query([
-        'secret' => $secretKey,
-        'response' => $token,
-        'remoteip' => $_SERVER['REMOTE_ADDR'] ?? '',
-    ]);
-
-    if (function_exists('curl_init')) {
-        $ch = curl_init('https://www.google.com/recaptcha/api/siteverify');
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $payload,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 10,
-        ]);
-        $response = curl_exec($ch);
-        curl_close($ch);
-    } else {
-        $context = stream_context_create([
-            'http' => [
-                'method' => 'POST',
-                'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
-                'content' => $payload,
-                'timeout' => 10,
-            ],
-        ]);
-        $response = @file_get_contents('https://www.google.com/recaptcha/api/siteverify', false, $context);
-    }
-
-    if (!$response) {
-        return false;
-    }
-
-    $result = json_decode($response, true);
-    return !empty($result['success']);
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $submittedEmail = trim($_POST['email'] ?? '');
-    $recaptchaToken = $_POST['g-recaptcha-response'] ?? '';
-
-    if (!filter_var($submittedEmail, FILTER_VALIDATE_EMAIL)) {
-        $formMessage = 'Vui lòng nhập email hợp lệ.';
-        $formMessageType = 'error';
-    } elseif (!verifyRecaptchaToken($recaptchaSecretKey, $recaptchaToken)) {
-        $formMessage = 'Vui lòng xác thực reCAPTCHA trước khi gửi.';
-        $formMessageType = 'error';
-    } else {
-        $formMessage = 'Yêu cầu đã được ghi nhận. Nếu email hợp lệ, hệ thống sẽ gửi hướng dẫn đặt lại mật khẩu.';
-        $formMessageType = 'success';
-    }
-}
-
+$forgot_password_form = isset($forgot_password_form) && is_array($forgot_password_form) ? $forgot_password_form : array();
+$forgot_password_message = isset($forgot_password_message) ? (string)$forgot_password_message : '';
+$forgot_password_message_type = isset($forgot_password_message_type) ? (string)$forgot_password_message_type : '';
+$forgot_full_name = trim((string)($forgot_password_form['full_name'] ?? ''));
+$forgot_email = trim((string)($forgot_password_form['email'] ?? ''));
+$forgot_phone = trim((string)($forgot_password_form['phone'] ?? ''));
 require "header.php";
 ?>
 
-<main class="forgot-page">
-  <section class="forgot-hero" aria-labelledby="forgotTitle">
-    <div class="forgot-shell">
-      <div class="forgot-copy">
-        <div class="forgot-badge"><i class="ti ti-shield-lock"></i> Khôi phục tài khoản</div>
-        <h1 id="forgotTitle">Quên mật khẩu?</h1>
-        <p>Nhập email đã đăng ký tài khoản. Hệ thống sẽ gửi hướng dẫn đặt lại mật khẩu nếu email tồn tại trong dữ liệu.</p>
-        <div class="forgot-steps" aria-label="Quy trình khôi phục mật khẩu">
-          <div class="forgot-step"><span>1</span> Nhập email</div>
-          <div class="forgot-step"><span>2</span> Xác thực reCAPTCHA</div>
-          <div class="forgot-step"><span>3</span> Nhận liên kết đặt lại</div>
+<main class="forgot-password-page">
+  <section class="forgot-password-hero">
+    <div class="forgot-password-shell">
+      <div class="forgot-password-copy">
+        <div class="forgot-password-badge"><i class="ti ti-lock-heart"></i> Khôi phục tài khoản</div>
+        <h1>Quên mật khẩu</h1>
+        <p>Điền đúng email và số điện thoại để hệ thống kiểm tra tài khoản, sau đó gửi đường link đổi mật khẩu về email của bạn.</p>
+        <div class="forgot-password-note">
+          <strong>Ghi chú.</strong> Hệ thống sẽ gửi đường link đổi mật khẩu về Email của bạn, vui lòng nhập đúng email và kiểm tra email sau khi thực hiện quên mật khẩu.
         </div>
       </div>
 
-      <div class="forgot-card">
-        <div class="forgot-card-head">
-          <div class="forgot-icon"><i class="ti ti-mail-forward"></i></div>
+      <div class="forgot-password-card">
+        <div class="forgot-password-head">
+          <div class="forgot-password-icon"><i class="ti ti-mail-forward"></i></div>
           <div>
-            <h2>Lấy lại mật khẩu</h2>
-            <p>Vui lòng kiểm tra kỹ email trước khi gửi yêu cầu.</p>
+            <h2>Thông tin nhận link đổi mật khẩu</h2>
+            <p>Đường link đổi mật khẩu chỉ có hiệu lực trong vòng 5 phút.</p>
           </div>
         </div>
 
-        <form class="forgot-form" id="forgotPasswordForm" action="" method="post" novalidate>
-          <div class="forgot-field">
+        <form action="" method="post" class="forgot-password-form" id="forgotPasswordForm" novalidate>
+          <div class="forgot-password-field" id="forgotEmailField">
             <label for="forgotEmail">Email</label>
-            <div class="forgot-input-wrap">
+            <div class="forgot-password-input">
               <i class="ti ti-mail"></i>
-              <input type="email" id="forgotEmail" name="email" placeholder="Nhập email của bạn" autocomplete="email" value="<?php echo htmlspecialchars($submittedEmail, ENT_QUOTES, 'UTF-8'); ?>" required>
+              <input type="email" id="forgotEmail" name="email" value="<?php echo htmlspecialchars($forgot_email, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Nhập đúng email để nhận liên kết" autocomplete="email" required>
             </div>
-            <small class="forgot-error" id="forgotEmailError">Vui lòng nhập email hợp lệ.</small>
+            <small class="forgot-password-error">Vui lòng nhập đúng địa chỉ email.</small>
           </div>
 
-          <div class="recaptcha-wrap">
-            <div class="g-recaptcha" data-sitekey="<?php echo htmlspecialchars($recaptchaSiteKey, ENT_QUOTES, 'UTF-8'); ?>" data-callback="onForgotRecaptchaSuccess" data-expired-callback="onForgotRecaptchaExpired" data-error-callback="onForgotRecaptchaExpired"></div>
-          </div>
-
-          <button type="submit" class="forgot-submit" id="forgotSubmit" disabled>
-            <i class="ti ti-send"></i> Gửi
+          <button type="submit" class="forgot-password-submit" id="forgotPasswordSubmit">
+            <span class="forgot-password-submit-spinner" aria-hidden="true"></span>
+            <i class="ti ti-send forgot-password-submit-icon"></i>
+            <span class="forgot-password-submit-text">Quên mật khẩu</span>
           </button>
 
-          <div class="forgot-message<?php echo $formMessage ? ' show ' . htmlspecialchars($formMessageType, ENT_QUOTES, 'UTF-8') : ''; ?>" id="forgotMessage" role="status" aria-live="polite"><?php echo htmlspecialchars($formMessage, ENT_QUOTES, 'UTF-8'); ?></div>
+          <div class="forgot-password-hint">
+            Hệ thống sẽ gửi đường link đổi mật khẩu về email của bạn. Vui lòng nhập đúng email và kiểm tra hộp thư đến hoặc thư rác sau khi gửi yêu cầu.
+          </div>
 
-          <div class="forgot-back">
-            Đã nhớ mật khẩu? <button type="button" class="forgot-login-link js-login-open">Đăng nhập</button>
+          <div class="forgot-password-message<?php echo $forgot_password_message !== '' ? ' show '.$forgot_password_message_type : ''; ?>" role="status" aria-live="polite">
+            <?php echo htmlspecialchars($forgot_password_message, ENT_QUOTES, 'UTF-8'); ?>
+          </div>
+
+          <div class="forgot-password-actions">
+            <a href="<?php echo XC_URL; ?>" class="forgot-password-home">Về trang chủ</a>
+            <button type="button" class="forgot-password-login js-login-open">Đăng nhập</button>
           </div>
         </form>
       </div>
@@ -123,108 +64,76 @@ require "header.php";
 </main>
 
 <style>
-.forgot-page {
-  background: #f4f7fb;
-  min-height: 620px;
+.forgot-password-page {
+  background: #eef3f8;
 }
-
-.forgot-hero {
-  padding: 64px 16px 72px;
+.forgot-password-hero {
+  padding: 56px 16px 72px;
   background:
-    linear-gradient(135deg, rgba(13, 78, 150, .92), rgba(225, 42, 42, .86)),
-    url('https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=1600&h=900&fit=crop') center/cover no-repeat;
+    linear-gradient(135deg, rgba(7, 49, 96, .94), rgba(215, 25, 32, .86)),
+    url('https://images.unsplash.com/photo-1521791136064-7986c2920216?w=1600&h=1000&fit=crop') center/cover no-repeat;
 }
-
-.forgot-shell {
-  width: min(1120px, 100%);
+.forgot-password-shell {
+  width: min(1140px, 100%);
   margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 430px;
-  gap: 40px;
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr) 470px;
+  gap: 34px;
+  align-items: start;
 }
-
-.forgot-copy {
+.forgot-password-copy {
   color: #fff;
+  padding-top: 30px;
 }
-
-.forgot-badge {
+.forgot-password-badge {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 8px 14px;
   border-radius: 999px;
   background: rgba(255,255,255,.16);
-  border: 1px solid rgba(255,255,255,.24);
-  font-weight: 700;
+  border: 1px solid rgba(255,255,255,.22);
   font-size: 13px;
-}
-
-.forgot-copy h1 {
-  margin: 18px 0 12px;
-  font-size: clamp(34px, 5vw, 58px);
-  line-height: 1.05;
-  letter-spacing: 0;
-}
-
-.forgot-copy p {
-  max-width: 620px;
-  margin: 0;
-  font-size: 17px;
-  line-height: 1.7;
-  color: rgba(255,255,255,.9);
-}
-
-.forgot-steps {
-  display: grid;
-  gap: 12px;
-  margin-top: 28px;
-  max-width: 520px;
-}
-
-.forgot-step {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 48px;
-  padding: 10px 14px;
-  border-radius: 8px;
-  background: rgba(255,255,255,.14);
-  border: 1px solid rgba(255,255,255,.18);
-  font-weight: 600;
-}
-
-.forgot-step span {
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: #fff;
-  color: #0d4e96;
   font-weight: 800;
-  flex: 0 0 auto;
 }
-
-.forgot-card {
+.forgot-password-copy h1 {
+  margin: 18px 0 14px;
+  font-size: clamp(36px, 5vw, 58px);
+  line-height: 1.02;
+}
+.forgot-password-copy p {
+  margin: 0;
+  max-width: 640px;
+  color: rgba(255,255,255,.92);
+  font-size: 17px;
+  line-height: 1.75;
+}
+.forgot-password-note {
+  margin-top: 22px;
+  max-width: 660px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(255,255,255,.2);
+  color: #fff;
+  line-height: 1.7;
+}
+.forgot-password-card {
   background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 22px 60px rgba(16, 24, 40, .22);
+  border-radius: 18px;
   padding: 28px;
+  box-shadow: 0 22px 60px rgba(15, 23, 42, .22);
 }
-
-.forgot-card-head {
+.forgot-password-head {
   display: flex;
   gap: 14px;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 22px;
 }
-
-.forgot-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 8px;
+.forgot-password-icon {
+  width: 58px;
+  height: 58px;
+  border-radius: 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -233,91 +142,70 @@ require "header.php";
   font-size: 28px;
   flex: 0 0 auto;
 }
-
-.forgot-card h2 {
-  margin: 0 0 5px;
+.forgot-password-head h2 {
+  margin: 0 0 6px;
   color: #14213d;
   font-size: 24px;
-  letter-spacing: 0;
 }
-
-.forgot-card p {
+.forgot-password-head p {
   margin: 0;
   color: #667085;
-  line-height: 1.5;
 }
-
-.forgot-form {
+.forgot-password-form {
   display: grid;
   gap: 16px;
 }
-
-.forgot-field label {
+.forgot-password-field label {
   display: block;
   margin-bottom: 8px;
-  color: #24324a;
+  color: #22324b;
   font-weight: 700;
 }
-
-.forgot-input-wrap {
+.forgot-password-input {
   display: flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid #d6dce8;
-  border-radius: 8px;
-  background: #fff;
+  min-height: 54px;
   padding: 0 14px;
-  min-height: 52px;
-  transition: border-color .2s, box-shadow .2s;
+  border: 1px solid #d7e2ef;
+  border-radius: 12px;
+  background: #fff;
+  transition: border-color .2s ease, box-shadow .2s ease;
 }
-
-.forgot-input-wrap:focus-within {
+.forgot-password-input:focus-within {
   border-color: #0d4e96;
   box-shadow: 0 0 0 4px rgba(13, 78, 150, .12);
 }
-
-.forgot-input-wrap i {
+.forgot-password-input i {
   color: #0d4e96;
   font-size: 20px;
 }
-
-.forgot-input-wrap input {
+.forgot-password-input input {
   width: 100%;
+  min-height: 52px;
   border: 0;
   outline: 0;
-  min-height: 50px;
-  font: inherit;
-  color: #14213d;
   background: transparent;
+  color: #101828;
+  font: inherit;
 }
-
-.forgot-error {
+.forgot-password-error {
   display: none;
   margin-top: 7px;
   color: #d92d20;
-  font-weight: 600;
+  font-weight: 700;
 }
-
-.forgot-field.is-invalid .forgot-input-wrap {
+.forgot-password-field.is-invalid .forgot-password-input {
   border-color: #d92d20;
 }
-
-.forgot-field.is-invalid .forgot-error {
+.forgot-password-field.is-invalid .forgot-password-error {
   display: block;
 }
-
-.recaptcha-wrap {
-  min-height: 78px;
-  display: flex;
-  align-items: center;
-  overflow-x: auto;
-}
-
-.forgot-submit {
-  min-height: 52px;
+.forgot-password-submit {
+  min-height: 54px;
   border: 0;
-  border-radius: 8px;
-  background: #d71920;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #d71920, #b91218);
   color: #fff;
   font: inherit;
   font-weight: 800;
@@ -326,125 +214,131 @@ require "header.php";
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: transform .2s, background .2s, opacity .2s;
+  position: relative;
 }
-
-.forgot-submit:not(:disabled):hover {
-  background: #b9141a;
-  transform: translateY(-1px);
+.forgot-password-submit:hover {
+  filter: brightness(.98);
 }
-
-.forgot-submit:disabled {
-  opacity: .48;
-  cursor: not-allowed;
+.forgot-password-submit:disabled {
+  opacity: .82;
+  cursor: wait;
 }
-
-.forgot-message {
+.forgot-password-submit-spinner {
   display: none;
-  padding: 12px 14px;
-  border-radius: 8px;
-  font-weight: 700;
-  line-height: 1.5;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255,255,255,.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: forgotPasswordSpin .75s linear infinite;
 }
-
-.forgot-message.show {
+.forgot-password-submit.is-loading .forgot-password-submit-spinner {
+  display: inline-block;
+}
+.forgot-password-submit.is-loading .forgot-password-submit-icon {
+  display: none;
+}
+@keyframes forgotPasswordSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.forgot-password-hint {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #f8fbff;
+  border: 1px solid #d7e7fb;
+  color: #36516e;
+  line-height: 1.7;
+}
+.forgot-password-message {
+  display: none;
+  padding: 14px 16px;
+  border-radius: 12px;
+  line-height: 1.7;
+  font-weight: 700;
+}
+.forgot-password-message.show {
   display: block;
 }
-
-.forgot-message.success {
+.forgot-password-message.success {
   background: #ecfdf3;
   color: #067647;
 }
-
-.forgot-message.error {
+.forgot-password-message.error {
   background: #fef3f2;
   color: #b42318;
 }
-
-.forgot-back {
-  text-align: center;
-  color: #667085;
+.forgot-password-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
 }
-
-.forgot-login-link {
-  border: 0;
-  padding: 0;
-  background: transparent;
+.forgot-password-home,
+.forgot-password-login {
   color: #0d4e96;
-  font: inherit;
   font-weight: 800;
-  cursor: pointer;
+  text-decoration: none;
 }
-
-@media (max-width: 900px) {
-  .forgot-shell {
+.forgot-password-login {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+@media (max-width: 920px) {
+  .forgot-password-shell {
     grid-template-columns: 1fr;
   }
-
-  .forgot-card {
-    max-width: 560px;
+  .forgot-password-copy {
+    padding-top: 0;
   }
 }
-
 @media (max-width: 560px) {
-  .forgot-hero {
-    padding: 36px 12px 48px;
+  .forgot-password-hero {
+    padding: 34px 12px 48px;
   }
-
-  .forgot-card {
+  .forgot-password-card {
     padding: 20px;
+    border-radius: 16px;
   }
-
-  .forgot-card-head {
+  .forgot-password-actions {
+    flex-direction: column;
     align-items: flex-start;
   }
 }
 </style>
 
 <script>
-window.forgotRecaptchaVerified = false;
-
-function onForgotRecaptchaSuccess() {
-  window.forgotRecaptchaVerified = true;
-  if (window.refreshForgotSubmitState) window.refreshForgotSubmitState();
-}
-
-function onForgotRecaptchaExpired() {
-  window.forgotRecaptchaVerified = false;
-  if (window.refreshForgotSubmitState) window.refreshForgotSubmitState();
-}
-
 (function(){
   var form = document.getElementById('forgotPasswordForm');
   var email = document.getElementById('forgotEmail');
-  var submit = document.getElementById('forgotSubmit');
-  var message = document.getElementById('forgotMessage');
-  if (!form || !email || !submit) return;
+  var emailField = document.getElementById('forgotEmailField');
+  var submitButton = document.getElementById('forgotPasswordSubmit');
+  if(!form || !email || !emailField || !submitButton) return;
 
-  function isValidEmail(value) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+  function validEmail(value){
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
   }
 
-  window.refreshForgotSubmitState = function() {
-    var emailOk = isValidEmail(email.value);
-    submit.disabled = !(emailOk && window.forgotRecaptchaVerified);
-    email.closest('.forgot-field').classList.toggle('is-invalid', email.value.length > 0 && !emailOk);
-    if (message) message.classList.remove('show', 'success', 'error');
-  };
+  function refreshState(){
+    var hasValue = email.value.trim() !== '';
+    emailField.classList.toggle('is-invalid', hasValue && !validEmail(email.value));
+  }
 
-  email.addEventListener('input', window.refreshForgotSubmitState);
-  email.addEventListener('blur', window.refreshForgotSubmitState);
-
-  form.addEventListener('submit', function(event) {
-    if (submit.disabled) {
+  email.addEventListener('input', refreshState);
+  email.addEventListener('blur', refreshState);
+  form.addEventListener('submit', function(event){
+    refreshState();
+    if(!validEmail(email.value)){
       event.preventDefault();
-      window.refreshForgotSubmitState();
+      email.focus();
+      return;
     }
+    submitButton.disabled = true;
+    submitButton.classList.add('is-loading');
   });
-
-  window.refreshForgotSubmitState();
 })();
 </script>
-<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 
 <?php require "footer.php"; ?>

@@ -115,7 +115,7 @@ Class baseMailler {
             return true;
         }
 	}
-    public  function sendVerifyEmail($name, $to, $token,$subject)
+	public  function sendVerifyEmail($name, $to, $token,$subject)
 	{
 		if (!defined('MAIL_PASS') || MAIL_PASS === '') {
 			return false;
@@ -140,6 +140,74 @@ Class baseMailler {
 		$mail->IsHTML(true);
 		$mail->Subject = $subject; 
 		$mail->Body = $this->getEmailTemplate($name, $to, $token);
+        if(!$mail->Send())
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+	}
+    public function sendPasswordResetEmail($name, $to, $resetLink, $subject)
+	{
+		if (!defined('MAIL_PASS') || MAIL_PASS === '') {
+			return false;
+		}
+
+		require_once __SITE_PATH . '/application/phpmailer.class.php';
+		require_once __SITE_PATH . '/application/smtp.class.php';
+
+		$mail = new PHPMailer();
+		$mail->IsSMTP();
+		$mail->Host = MAIL_HOST;
+		$mail->Port = MAIL_PORT;
+		$mail->SMTPAuth = MAIL_AUTH;
+		$mail->SMTPSecure = MAIL_SECURE;
+		$mail->Username = MAIL_ACC;
+		$mail->Password = MAIL_PASS;
+		$mail->CharSet = 'UTF-8';
+		$mail->From = MAIL_ACC;
+		$mail->FromName = 'Trường Cao đẳng Kon Tum';
+		$mail->AddAddress($to, $name);
+		$mail->AddReplyTo(MAIL_ACC, 'Trường Cao đẳng Kon Tum');
+		$mail->IsHTML(true);
+		$mail->Subject = $subject;
+		$mail->Body = $this->getPasswordResetEmailTemplate($name, $to, $resetLink);
+        if(!$mail->Send())
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+	}
+    public function sendAdminTwoFactorCode($name, $to, $code, $subject)
+	{
+		if (!defined('MAIL_PASS') || MAIL_PASS === '') {
+			return false;
+		}
+
+		require_once __SITE_PATH . '/application/phpmailer.class.php';
+		require_once __SITE_PATH . '/application/smtp.class.php';
+
+		$mail = new PHPMailer();
+		$mail->IsSMTP();
+		$mail->Host = MAIL_HOST;
+		$mail->Port = MAIL_PORT;
+		$mail->SMTPAuth = MAIL_AUTH;
+		$mail->SMTPSecure = MAIL_SECURE;
+		$mail->Username = MAIL_ACC;
+		$mail->Password = MAIL_PASS;
+		$mail->CharSet = 'UTF-8';
+		$mail->From = MAIL_ACC;
+		$mail->FromName = 'Cổng thông tin việc làm';
+		$mail->AddAddress($to, $name);
+		$mail->AddReplyTo(MAIL_ACC, 'Cổng thông tin việc làm');
+		$mail->IsHTML(true);
+		$mail->Subject = $subject;
+		$mail->Body = $this->getAdminTwoFactorEmailTemplate($name, $code);
         if(!$mail->Send())
         {
             return false;
@@ -183,6 +251,82 @@ Class baseMailler {
 
                 <p style="font-size:14px;color:#777;">
                   Email này được gửi tự động, vui lòng không trả lời.
+                </p>
+            </div>
+
+            <div style="background:#f1f3f6;padding:18px;text-align:center;font-size:13px;color:#777;">
+                © '.date('Y').' Cổng thông tin việc làm. All rights reserved.
+            </div>
+        </div>
+    </div>';
+	}
+    private function getPasswordResetEmailTemplate($name, $email, $resetLink)
+	{
+		return '<div style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,sans-serif;">
+        <div style="max-width:620px;margin:30px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.08);">
+            <div style="background:linear-gradient(135deg,#0d4e96,#1976d2);padding:28px;text-align:center;color:#fff;">
+                <h2 style="margin:0;font-size:24px;">Cổng thông tin việc làm</h2>
+                <p style="margin:8px 0 0;font-size:14px;">Yêu cầu đổi mật khẩu</p>
+            </div>
+
+            <div style="padding:32px;color:#333;">
+                <h3 style="margin-top:0;color:#0d4e96;">Xin chào '.$name.',</h3>
+
+                <p style="font-size:15px;line-height:1.7;margin:0 0 16px;">
+                    Hệ thống đã nhận được yêu cầu quên mật khẩu cho tài khoản sử dụng email <strong>'.$email.'</strong>.
+                </p>
+
+                <p style="font-size:15px;line-height:1.7;margin:0 0 20px;">
+                    Vui lòng nhấn vào nút bên dưới để đặt lại mật khẩu mới. Liên kết này chỉ có hiệu lực trong vòng <strong>5 phút</strong>.
+                </p>
+
+                <div style="text-align:center;margin:30px 0;">
+                    <a href="'.$resetLink.'" style="background:#d71920;color:#fff;text-decoration:none;padding:14px 28px;border-radius:30px;font-weight:bold;display:inline-block;">
+                        Đổi mật khẩu ngay
+                    </a>
+                </div>
+
+                <p style="font-size:14px;line-height:1.7;color:#667085;margin:0 0 10px;">
+                    Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email. Mật khẩu hiện tại của bạn sẽ không bị thay đổi.
+                </p>
+
+                <p style="font-size:14px;line-height:1.7;color:#667085;margin:0;">
+                    Hoặc sao chép liên kết sau vào trình duyệt:<br>
+                    <a href="'.$resetLink.'" style="color:#0d4e96;word-break:break-all;">'.$resetLink.'</a>
+                </p>
+            </div>
+
+            <div style="background:#f1f3f6;padding:18px;text-align:center;font-size:13px;color:#777;">
+                © '.date('Y').' Cổng thông tin việc làm. All rights reserved.
+            </div>
+        </div>
+    </div>';
+	}
+    private function getAdminTwoFactorEmailTemplate($name, $code)
+	{
+		return '<div style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,sans-serif;">
+        <div style="max-width:620px;margin:30px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.08);">
+            <div style="background:linear-gradient(135deg,#0d4e96,#1976d2);padding:28px;text-align:center;color:#fff;">
+                <h2 style="margin:0;font-size:24px;">Cổng thông tin việc làm</h2>
+                <p style="margin:8px 0 0;font-size:14px;">Mã xác thực đăng nhập quản trị</p>
+            </div>
+
+            <div style="padding:32px;color:#333;">
+                <h3 style="margin-top:0;color:#0d4e96;">Xin chào '.$name.',</h3>
+                <p style="font-size:15px;line-height:1.7;margin:0 0 16px;">
+                    Hệ thống vừa ghi nhận yêu cầu đăng nhập vào trang quản trị. Vui lòng nhập mã xác thực dưới đây để hoàn tất đăng nhập.
+                </p>
+
+                <div style="margin:24px 0;padding:22px;border-radius:14px;background:#edf5ff;border:1px solid #d7e6ff;text-align:center;">
+                    <div style="font-size:13px;color:#4b5b70;margin-bottom:10px;">Mã xác thực 2 lớp</div>
+                    <div style="font-size:34px;letter-spacing:8px;line-height:1;font-weight:800;color:#0d4e96;">'.$code.'</div>
+                </div>
+
+                <p style="font-size:14px;line-height:1.7;color:#b42318;margin:0 0 10px;">
+                    Mã này chỉ có hiệu lực trong vòng <strong>2 phút</strong>.
+                </p>
+                <p style="font-size:14px;line-height:1.7;color:#667085;margin:0;">
+                    Nếu bạn không thực hiện đăng nhập, vui lòng bỏ qua email này.
                 </p>
             </div>
 

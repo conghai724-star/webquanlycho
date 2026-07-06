@@ -146,6 +146,34 @@ private function getController() {
 				$this->args = $args;
 			}
 		}
+		elseif($parts[0] == "quen-mat-khau" || $parts[0] == "quen-mat-khau.php")
+		{
+			$this->controller = "home";
+			$this->action = "forgot_password";
+			if(isset($parts[1]))
+			{
+				$count_args = count($parts);
+				$k = 1;
+				$args = array();
+				for($i = 1; $i < $count_args; $i++)
+					$args[$k++] = $parts[$i];
+				$this->args = $args;
+			}
+		}
+		elseif($parts[0] == "doi-mat-khau" || $parts[0] == "doi-mat-khau.php")
+		{
+			$this->controller = "home";
+			$this->action = "reset_password";
+			if(isset($parts[1]))
+			{
+				$count_args = count($parts);
+				$k = 1;
+				$args = array();
+				for($i = 1; $i < $count_args; $i++)
+					$args[$k++] = $parts[$i];
+				$this->args = $args;
+			}
+		}
 		elseif($parts[0] == "verify_email")
 		{
 			// echo $parts[0];

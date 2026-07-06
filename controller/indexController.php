@@ -143,6 +143,12 @@ Class indexController Extends baseController
 			LIMIT 6");
 		$this->view->data['home_featured_news'] = $db->fetch_object();
 
+		$db->query("SELECT *
+			FROM hicrm_videos
+			WHERE video_status = 1
+			ORDER BY video_created_at DESC, id DESC");
+		$this->view->data['home_videos'] = $db->fetch_object();
+
 		$this->view->show("index");
 		
 	}

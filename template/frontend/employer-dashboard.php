@@ -865,6 +865,18 @@ foreach($students as $student){
   #jobModal .modal {
     max-height: min(90vh, 860px);
   }
+  #jobModal #jobPostForm {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+  #jobModal {
+    overflow-y: auto;
+    align-items: flex-start;
+    overscroll-behavior: contain;
+  }
   #jobModal .modal-header {
     position: sticky;
     top: 0;
@@ -872,15 +884,26 @@ foreach($students as $student){
     background: #fff;
   }
   #jobModal .modal-body {
-    padding-bottom: 26px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: 28px;
   }
   #jobModal .modal-footer {
-    position: sticky;
-    bottom: 0;
-    z-index: 3;
+    flex-shrink: 0;
     background: #fff;
     box-shadow: 0 -10px 24px rgba(15, 23, 42, .06);
     justify-content: space-between;
+  }
+  @media (max-width: 768px) {
+    #jobModal {
+      padding-top: 10px;
+      padding-bottom: 10px;
+    }
+    #jobModal .modal-body {
+      padding-bottom: 20px;
+    }
   }
   .job-category-native,
   .job-province-native {

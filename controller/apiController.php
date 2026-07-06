@@ -32,6 +32,86 @@ Class apiController extends baseController
 			KEY idx_permission_id (permission_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 	}
+	private function adminTwoFactorConfigEnabled()
+	{
+		global $db;
+		$db->query("SELECT config_value FROM hicrm_configs WHERE config_key IN ('P2A', 'PA2') ORDER BY FIELD(config_key, 'P2A', 'PA2') LIMIT 1");
+		if(!$db->num_row()){
+			return false;
+		}
+		$config = $db->fetch_object(true);
+		return intval(isset($config->config_value) ? $config->config_value : 0) === 1;
+	}
+	private function adminSetLoggedInSession($user)
+	{
+		$_SESSION['user']['id'] = $user->id;
+		$_SESSION['user']['email'] = $user->user_email;
+		$_SESSION['user']['full_name'] = $user->full_name;
+		$_SESSION['user']['group'] = $user->user_group;
+		$_SESSION['LoggedIn'] = 1;
+	}
+	private function adminClearTwoFactorSession()
+	{
+		if(isset($_SESSION['admin_login_2fa'])){
+			unset($_SESSION['admin_login_2fa']);
+		}
+	}
+	private function adminStartTwoFactorSession($user)
+	{
+		$email = trim((string)$user->user_email);
+		if($email === ''){
+			return array('status' => false, 'message' => 'Tài khoản quản trị chưa có email để nhận mã xác thực.');
+		}
+
+		try {
+			$code = str_pad((string)random_int(0, 99999), 5, '0', STR_PAD_LEFT);
+		} catch (Exception $e) {
+			$code = str_pad((string)mt_rand(0, 99999), 5, '0', STR_PAD_LEFT);
+		}
+
+		$this->adminClearTwoFactorSession();
+		$_SESSION['admin_login_2fa'] = array(
+			'user_id' => (int)$user->id,
+			'user_group' => (int)$user->user_group,
+			'user_email' => $email,
+			'full_name' => trim((string)$user->full_name),
+			'code_hash' => md5($code),
+			'expires_at' => time() + 120
+		);
+
+		$sent = $this->mail->sendAdminTwoFactorCode(
+			trim((string)$user->full_name) !== '' ? trim((string)$user->full_name) : $email,
+			$email,
+			$code,
+			'Mã xác thực đăng nhập quản trị'
+		);
+
+		if(!$sent){
+			$this->adminClearTwoFactorSession();
+			return array('status' => false, 'message' => 'Không thể gửi email xác thực. Vui lòng kiểm tra cấu hình email hệ thống.');
+		}
+
+		return array('status' => true);
+	}
+	private function adminFetchActiveUserById($userId)
+	{
+		global $db;
+		$db->query("SELECT u.*
+			FROM hicrm_users u
+			INNER JOIN hicrm_user_groups g ON u.user_group = g.id AND g.group_status NOT IN(99)
+			WHERE u.id = '".intval($userId)."'
+				AND u.user_status = 1
+			LIMIT 1");
+		return $db->num_row() ? $db->fetch_object(true) : null;
+	}
+	private function adminGetTwoFactorRemainingSeconds()
+	{
+		$pending = isset($_SESSION['admin_login_2fa']) && is_array($_SESSION['admin_login_2fa']) ? $_SESSION['admin_login_2fa'] : array();
+		if(empty($pending) || !isset($pending['expires_at'])){
+			return 0;
+		}
+		return max(0, intval($pending['expires_at']) - time());
+	}
 
     public function index()
     {
@@ -3341,8 +3421,14 @@ Class apiController extends baseController
 	{
 		global $db;
 		$result = array();
-		$email = $db->escapestring($_POST["email"]);
-		$password = $db->escapestring($_POST["password"]);
+		$email = $db->escapestring(isset($_POST["email"]) ? trim($_POST["email"]) : '');
+		$password = $db->escapestring(isset($_POST["password"]) ? trim($_POST["password"]) : '');
+		if($email === '' || $password === ''){
+			$result["status"] = 500;
+			$result['message'] = 'Vui lòng nhập email và mật khẩu';
+			echo json_encode($result);
+			return;
+		}
 		$password = md5($password);
 		$db->query("SELECT u.*
 			FROM hicrm_users u
@@ -3355,11 +3441,25 @@ Class apiController extends baseController
         if($db->num_row())
         {
             $row = $db->fetch_object(true);
-            $_SESSION['user']['id'] = $row->id; 
-            $_SESSION['user']['email'] = $row->user_email;
-			$_SESSION['user']['full_name'] = $row->full_name;
-			$_SESSION['user']['group'] = $row->user_group;
-            $_SESSION['LoggedIn'] = 1;
+			$this->adminClearTwoFactorSession();
+			unset($_SESSION['user']);
+			unset($_SESSION['LoggedIn']);
+			if(intval($row->user_group) === 1 && $this->adminTwoFactorConfigEnabled()){
+				$otpResult = $this->adminStartTwoFactorSession($row);
+				if(!$otpResult['status']){
+					$result["status"] = 500;
+					$result['message'] = $otpResult['message'];
+				}else{
+					$result["status"] = 202;
+					$result["require_2fa"] = true;
+					$result["message"] = "Mã xác thực đã được gửi về email của bạn. Mã có hiệu lực trong 2 phút.";
+					$result["expires_in"] = $this->adminGetTwoFactorRemainingSeconds();
+				}
+				echo json_encode($result);
+				return;
+			}
+
+			$this->adminSetLoggedInSession($row);
 			$result["status"] = 200;
 			$result["name"] = $_SESSION['user']['full_name'];
 			$result["message"] = "Đăng nhập thành công";
@@ -3370,6 +3470,95 @@ Class apiController extends baseController
 			$result["status"] = "500";
 			$result['message'] = 'Thông tin tài khoản hoặc mật khẩu không chính xác';
 		}
+		echo json_encode($result);
+	}
+	public function admin_verify_2fa()
+	{
+		$result = array();
+		$pending = isset($_SESSION['admin_login_2fa']) && is_array($_SESSION['admin_login_2fa']) ? $_SESSION['admin_login_2fa'] : array();
+		$code = trim(isset($_POST['code']) ? $_POST['code'] : '');
+
+		if(empty($pending)){
+			$result['status'] = 500;
+			$result['code_expired'] = true;
+			$result['expires_in'] = 0;
+			$result['message'] = 'Phiên xác thực đã hết hạn. Vui lòng đăng nhập lại.';
+			echo json_encode($result);
+			return;
+		}
+
+		if($code === '' || !preg_match('/^\d{5}$/', $code)){
+			$result['status'] = 500;
+			$result['message'] = 'Vui lòng nhập đúng mã xác thực gồm 5 chữ số.';
+			echo json_encode($result);
+			return;
+		}
+
+		if(!isset($pending['expires_at']) || time() > intval($pending['expires_at'])){
+			$this->adminClearTwoFactorSession();
+			$result['status'] = 500;
+			$result['code_expired'] = true;
+			$result['expires_in'] = 0;
+			$result['message'] = 'Mã xác thực đã hết hạn. Vui lòng đăng nhập lại để nhận mã mới.';
+			echo json_encode($result);
+			return;
+		}
+
+		if(!isset($pending['code_hash']) || md5($code) !== $pending['code_hash']){
+			$result['status'] = 500;
+			$result['message'] = 'Mã xác thực không chính xác.';
+			echo json_encode($result);
+			return;
+		}
+
+		$user = $this->adminFetchActiveUserById(isset($pending['user_id']) ? $pending['user_id'] : 0);
+		if(!$user || intval($user->user_group) !== 1){
+			$this->adminClearTwoFactorSession();
+			$result['status'] = 500;
+			$result['message'] = 'Không tìm thấy tài khoản xác thực hợp lệ.';
+			echo json_encode($result);
+			return;
+		}
+
+		$this->adminSetLoggedInSession($user);
+		$this->adminClearTwoFactorSession();
+
+		$result['status'] = 200;
+		$result['message'] = 'Xác thực thành công';
+		$result['return_url'] = XC_URL.'/admin';
+		echo json_encode($result);
+	}
+	public function admin_resend_2fa()
+	{
+		$result = array();
+		$pending = isset($_SESSION['admin_login_2fa']) && is_array($_SESSION['admin_login_2fa']) ? $_SESSION['admin_login_2fa'] : array();
+		if(empty($pending) || !isset($pending['user_id'])){
+			$result['status'] = 500;
+			$result['message'] = 'Phiên xác thực đã hết hạn. Vui lòng đăng nhập lại.';
+			echo json_encode($result);
+			return;
+		}
+
+		$user = $this->adminFetchActiveUserById($pending['user_id']);
+		if(!$user || intval($user->user_group) !== 1){
+			$this->adminClearTwoFactorSession();
+			$result['status'] = 500;
+			$result['message'] = 'Không tìm thấy tài khoản xác thực hợp lệ.';
+			echo json_encode($result);
+			return;
+		}
+
+		$otpResult = $this->adminStartTwoFactorSession($user);
+		if(!$otpResult['status']){
+			$result['status'] = 500;
+			$result['message'] = $otpResult['message'];
+			echo json_encode($result);
+			return;
+		}
+
+		$result['status'] = 200;
+		$result['message'] = 'Mã xác thực mới đã được gửi về email của bạn.';
+		$result['expires_in'] = $this->adminGetTwoFactorRemainingSeconds();
 		echo json_encode($result);
 	}
 	
