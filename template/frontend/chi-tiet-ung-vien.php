@@ -192,7 +192,7 @@ $breadcrumbUrl = XC_URL.'/quan-ly-ung-vien.html';
             <span class="cd-tag"><?php echo candidateDetailH($candidateGender); ?></span><span class="cd-tag">Sinh ngày: <?php echo candidateDetailH($candidateBirthDate); ?></span><span class="cd-tag"><?php echo candidateDetailH($candidateProvince); ?></span><span class="cd-tag">Mong muốn: <?php echo candidateDetailH($desiredSalary); ?></span>
           </div>
           <div class="cd-actions">
-            <button class="cd-btn cd-btn-primary" type="button"><i class="ti ti-send"></i> Mời ứng tuyển</button>
+            <!-- <button class="cd-btn cd-btn-primary" type="button"><i class="ti ti-send"></i> Mời ứng tuyển</button> -->
             <?php if($cvUrl !== ''){ ?>
               <a class="cd-btn cd-btn-outline" href="<?php echo candidateDetailH($cvUrl); ?>" target="_blank" rel="noopener"><i class="ti ti-file-cv"></i> Xem CV</a>
             <?php }else{ ?>
@@ -369,7 +369,7 @@ $breadcrumbUrl = XC_URL.'/quan-ly-ung-vien.html';
       </aside>
     </div>
 
-    <section class="news-slider">
+    <!-- <section class="news-slider">
       <div class="news-head">
         <h2 class="cd-title" style="margin-bottom:0"><i class="ti ti-news"></i> Tin tức nổi bật</h2>
         <div class="news-controls">
@@ -388,7 +388,7 @@ $breadcrumbUrl = XC_URL.'/quan-ly-ung-vien.html';
         </div>
       </div>
       <div class="news-dots" id="newsDots"></div>
-    </section>
+    </section> -->
   </div>
 </main>
 

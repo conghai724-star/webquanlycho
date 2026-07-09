@@ -169,9 +169,6 @@ Doanh nghiệp đã ký biên bản ghi nhớ hợp tác với Trường Cao đ�
 
 <div class="jd-share">
 <a href="#"><i class="ti ti-brand-facebook"></i></a>
-<a href="#"><i class="ti ti-brand-zalo"></i></a>
-<a href="#"><i class="ti ti-brand-linkedin"></i></a>
-<a href="#"><i class="ti ti-brand-twitter"></i></a>
 </div>
 </section>
 

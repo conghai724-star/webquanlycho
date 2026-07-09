@@ -1054,38 +1054,66 @@ Class apiController extends baseController
 		$method = isset($_POST['method']) ? $_POST['method'] : '';
 		$result = array();
 		$id = isset($_POST['eid']) ? intval($_POST['eid']) : 0;
+
+		if($event_name === '' || $event_content === ''){
+			$result["status"] = 422;
+			$result["message"] = "Vui lòng nhập tiêu đề và nội dung.";
+			echo json_encode($result);
+			return;
+		}
+
+		$upload_event_image = function() use (&$result, $expensions) {
+			if(!isset($_FILES['event_image']) || !is_array($_FILES['event_image'])){
+				return '';
+			}
+
+			$file_error = isset($_FILES['event_image']['error']) ? (int)$_FILES['event_image']['error'] : 4;
+			if($file_error === 4){
+				return '';
+			}
+
+			if($file_error !== 0){
+				$result["status"] = 500;
+				$result["message"] = "Tải ảnh đại diện không thành công.";
+				return false;
+			}
+
+			$file_name = isset($_FILES['event_image']['name']) ? trim((string)$_FILES['event_image']['name']) : '';
+			$file_size = isset($_FILES['event_image']['size']) ? (int)$_FILES['event_image']['size'] : 0;
+			$file_tmp = isset($_FILES['event_image']['tmp_name']) ? $_FILES['event_image']['tmp_name'] : '';
+			$file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+
+			if($file_name === '' || $file_tmp === ''){
+				return '';
+			}
+			if(in_array($file_ext, $expensions) === false){
+				$result["status"] = 422;
+				$result["message"] = "Ảnh đại diện chỉ hỗ trợ định dạng JPG hoặc PNG.";
+				return false;
+			}
+			if($file_size > 5242880){
+				$result["status"] = 422;
+				$result["message"] = "Ảnh đại diện phải nhỏ hơn 5MB.";
+				return false;
+			}
+
+			$final_filename = preg_replace('`[^a-z0-9-_.]`i','',$file_name);
+			$final_filename = md5(time().$file_name)."-".$final_filename;
+			if(!move_uploaded_file($file_tmp, "./uploads/events/".$final_filename)){
+				$result["status"] = 500;
+				$result["message"] = "Không thể lưu ảnh đại diện lên máy chủ.";
+				return false;
+			}
+
+			return $final_filename;
+		};
 		
 		if(isset($method) && $method == "add")
 		{
-			$FinalFilenameFront = "";
-			$FinalFilenameFront2 = "";
-			//echo $_FILES['hinhanh']['name']."ssss";
-			if ($_FILES['event_image']['error'] == 4) {
-				// Không có file upload → gán hình mặc định
-				$FinalFilenameFront = '';
-			}else{
-				$errors= array();
-				$file_name = $_FILES['event_image']['name'];
-				$file_size =$_FILES['event_image']['size'];
-				$file_tmp =$_FILES['event_image']['tmp_name'];
-				$file_type=$_FILES['event_image']['type'];
-				$file_ext=strtolower(end(explode('.',$_FILES['event_image']['name'])));
-				$OriginalFilename = $FinalFilename = preg_replace('`[^a-z0-9-_.]`i','',$_FILES['event_image']['name']); 
-				$FinalFilenameFront = md5(time())."-".$FinalFilename;
-				if(in_array($file_ext,$expensions)=== false){
-					$errors[]="Extension not allowed, please choose a .png, .jpg file.";
-				}
-				if($file_size > 5242880){
-					$errors[]='File size must be max 2Mb';
-				}
-				if(empty($errors)==true){
-					move_uploaded_file($file_tmp,"./uploads/events/".$FinalFilenameFront);
-					
-				}else
-				{
-					$result["status"] = 500;
-				}
-				
+			$FinalFilenameFront = $upload_event_image();
+			if($FinalFilenameFront === false){
+				echo json_encode($result);
+				return;
 			}
 			$db->query("INSERT INTO hicrm_events(user_id,event_name,event_description,event_content,event_image,event_type,event_hot,event_user_created,event_status,event_created_date)
 			VALUES('".$user_id."','".$event_name."','".$event_description."','".$event_content."','".$FinalFilenameFront."','".$event_type."','".$event_hot."','".$event_user_created."','".$event_status."','".$event_created_date."')");
@@ -1103,37 +1131,12 @@ Class apiController extends baseController
 			$db->fetch_object(true);
 			if($db->num_row())
 			{
-				// echo "aa";
-				$FinalFilenameFront = "";
-				//echo $_FILES['hinhanh']['name']."ssss";
-				if(isset($_FILES['event_image']))
-				{
-					$errors= array();
-					$file_name = $_FILES['event_image']['name'];
-					$file_size =$_FILES['event_image']['size'];
-					$file_tmp =$_FILES['event_image']['tmp_name'];
-					$file_type=$_FILES['event_image']['type'];
-					$file_ext=strtolower(end(explode('.',$_FILES['event_image']['name'])));
-					$OriginalFilename = $FinalFilename = preg_replace('`[^a-z0-9-_.]`i','',$_FILES['event_image']['name']); 
-					$FinalFilenameFront = md5(time())."-".$FinalFilename;
-					if(in_array($file_ext,$expensions)=== false){
-						$errors[]="Extension not allowed, please choose a .png, .jpg file.";
-					}
-					if($file_size > 5242880){
-						$errors[]='File size must be max 2Mb';
-					}
-					if(empty($errors)==true){
-						move_uploaded_file($file_tmp,"./uploads/events/".$FinalFilenameFront);
-						
-					}else
-					{
-						$result["status"] = 500;
-					}
-					
+				$FinalFilenameFront = $upload_event_image();
+				if($FinalFilenameFront === false){
+					echo json_encode($result);
+					return;
 				}
-				
 				$updateimage = ($FinalFilenameFront != "")? ", event_image = '".$FinalFilenameFront."'" : "";
-				// echo "UPDATE hicrm_events SET event_name = '".$_POST['event_name']."',event_description = '".$_POST['event_description']."', event_content = '".$event_content."'".$updateimage." WHERE id = '".$id."'";
 				$db->query("UPDATE hicrm_events SET user_id = '".$user_id."', event_name = '".$event_name."', event_description = '".$event_description."', event_content = '".$event_content."', event_type = '".$event_type."', event_hot = '".$event_hot."', event_user_created = '".$event_user_created."', event_status = '".$event_status."', event_created_date = '".$event_created_date."'".$updateimage." WHERE id = '".$id."'");
 				$result["status"] = 200;
 				$result['message'] = 'Sửa thành công';
@@ -5664,6 +5667,7 @@ public function addstudent()
 			$displayRow = $rowIndex + 1;
 			$studentCode = trim($record['student_code']);
 			$studentName = trim($record['student_name']);
+			$rowLabel = $this->formatStudentImportRowLabel($displayRow, $studentCode, $studentName);
 			$rowErrors = array();
 
 			if ($studentCode === '') {
@@ -5756,14 +5760,14 @@ public function addstudent()
 
 			if (!empty($rowErrors)) {
 				$skipped++;
-				$errors[] = 'Dòng '.$displayRow.': '.implode('; ', $rowErrors).'.';
+				$errors[] = $rowLabel.': '.implode('; ', $rowErrors).'.';
 				continue;
 			}
 
 			$db->query("SELECT id FROM hicrm_student_profile WHERE student_code = '".$db->escapestring($studentCode)."' LIMIT 1");
 			if ($db->num_row()) {
 				$skipped++;
-				$errors[] = 'Dòng '.$displayRow.': mã sinh viên '.$studentCode.' đã tồn tại trong hệ thống.';
+				$errors[] = $rowLabel.': mã sinh viên đã tồn tại trong hệ thống.';
 				continue;
 			}
 
@@ -5789,6 +5793,25 @@ public function addstudent()
 		));
 	}
 
+	public function insertStudents()
+	{
+		return $this->insertStudens();
+	}
+
+	private function formatStudentImportRowLabel($displayRow, $studentCode, $studentName)
+	{
+		$parts = array();
+		$studentCode = trim((string)$studentCode);
+		$studentName = trim((string)$studentName);
+		if ($studentCode !== '') {
+			$parts[] = 'MSSV '.$studentCode;
+		}
+		if ($studentName !== '') {
+			$parts[] = 'Tên '.$studentName;
+		}
+		return 'Dòng '.$displayRow.(empty($parts) ? '' : ' ('.implode(' - ', $parts).')');
+	}
+
 	private function parseStudentImportFile($filePath, $extension)
 	{
 		$rows = array();
@@ -5798,7 +5821,11 @@ public function addstudent()
 		} elseif ($extension === 'xlsx') {
 			$rows = $this->parseXlsxFile($filePath);
 		} elseif ($extension === 'xls' || $extension === 'xml') {
-			$rows = $this->parseSpreadsheetXmlFile($filePath);
+			if ($extension === 'xls' && $this->isBinaryExcelFile($filePath)) {
+				$error = 'File .xls hiện tại là định dạng Excel nhị phân cũ, hệ thống chưa đọc trực tiếp được. Vui lòng mở file và lưu lại thành .xlsx, hoặc dùng file mẫu import từ hệ thống.';
+			} else {
+				$rows = $this->parseSpreadsheetXmlFile($filePath);
+			}
 		} else {
 			$error = 'Chỉ chấp nhận file .xls, .xml, .xlsx hoặc .csv.';
 		}
@@ -5836,7 +5863,18 @@ public function addstudent()
 		if (($handle = fopen($filePath, 'r')) === false) {
 			return $rows;
 		}
+		$firstLine = fgets($handle);
+		if ($firstLine === false) {
+			fclose($handle);
+			return $rows;
+		}
+		$firstLine = preg_replace('/^\xEF\xBB\xBF/', '', $firstLine);
+		$delimiter = $this->detectCsvDelimiter($firstLine, $delimiter);
+		rewind($handle);
 		while (($data = fgetcsv($handle, 0, $delimiter)) !== false) {
+			if (isset($data[0])) {
+				$data[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string)$data[0]);
+			}
 			$rows[] = $data;
 		}
 		fclose($handle);
@@ -5906,57 +5944,119 @@ public function addstudent()
 			return $rows;
 		}
 
+		$mainNs = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+		$relNs = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 		$sharedStrings = array();
 		if (($index = $zip->locateName('xl/sharedStrings.xml')) !== false) {
 			$sharedXml = $zip->getFromIndex($index);
 			if ($sharedXml !== false) {
-				$shared = simplexml_load_string($sharedXml);
-				if ($shared && isset($shared->si)) {
-					foreach ($shared->si as $si) {
-						$value = '';
-						if (isset($si->t)) {
-							$value = (string)$si->t;
-						} elseif (isset($si->r)) {
-							foreach ($si->r as $r) {
-								$value .= (string)$r->t;
+				$shared = @simplexml_load_string($sharedXml);
+				if ($shared) {
+					$sharedChildren = $shared->children($mainNs);
+					if (isset($sharedChildren->si)) {
+						foreach ($sharedChildren->si as $si) {
+							$siChildren = $si->children($mainNs);
+							$value = '';
+							if (isset($siChildren->t)) {
+								$value = (string)$siChildren->t;
+							} elseif (isset($siChildren->r)) {
+								foreach ($siChildren->r as $r) {
+									$rChildren = $r->children($mainNs);
+									$value .= isset($rChildren->t) ? (string)$rChildren->t : '';
+								}
 							}
+							$sharedStrings[] = $value;
 						}
-						$sharedStrings[] = $value;
 					}
 				}
 			}
 		}
 
-		$sheetIndex = $zip->locateName('xl/worksheets/sheet1.xml');
-		if ($sheetIndex === false) {
-			$zip->close();
-			return $rows;
+		$sheetPath = '';
+		$workbookXml = $zip->getFromName('xl/workbook.xml');
+		$workbookRelsXml = $zip->getFromName('xl/_rels/workbook.xml.rels');
+		if ($workbookXml !== false && $workbookRelsXml !== false) {
+			$workbook = @simplexml_load_string($workbookXml);
+			$rels = @simplexml_load_string($workbookRelsXml);
+			if ($workbook && $rels) {
+				$relMap = array();
+				$relChildren = $rels->children('http://schemas.openxmlformats.org/package/2006/relationships');
+				if (isset($relChildren->Relationship)) {
+					foreach ($relChildren->Relationship as $relationship) {
+						$attributes = $relationship->attributes();
+						$relId = isset($attributes['Id']) ? (string)$attributes['Id'] : '';
+						$target = isset($attributes['Target']) ? (string)$attributes['Target'] : '';
+						if ($relId !== '' && $target !== '') {
+							$relMap[$relId] = $target;
+						}
+					}
+				}
+
+				$preferredRelId = '';
+				$firstRelId = '';
+				$workbookChildren = $workbook->children($mainNs);
+				if (isset($workbookChildren->sheets)) {
+					foreach ($workbookChildren->sheets->sheet as $sheet) {
+						$relAttributes = $sheet->attributes($relNs, true);
+						$relId = isset($relAttributes['id']) ? (string)$relAttributes['id'] : '';
+						$sheetAttributes = $sheet->attributes();
+						$sheetName = isset($sheetAttributes['name']) ? trim((string)$sheetAttributes['name']) : '';
+						if ($firstRelId === '' && $relId !== '') {
+							$firstRelId = $relId;
+						}
+						if ($preferredRelId === '' && in_array(strtolower($sheetName), array('dulieuimport', 'sheet1'), true)) {
+							$preferredRelId = $relId;
+						}
+					}
+				}
+
+				$targetRelId = $preferredRelId !== '' ? $preferredRelId : $firstRelId;
+				if ($targetRelId !== '' && isset($relMap[$targetRelId])) {
+					$sheetPath = 'xl/'.ltrim($relMap[$targetRelId], '/');
+				}
+			}
 		}
 
-		$sheetXml = $zip->getFromIndex($sheetIndex);
+		if ($sheetPath === '') {
+			$sheetPath = 'xl/worksheets/sheet1.xml';
+		}
+
+		$sheetXml = $zip->getFromName($sheetPath);
 		$zip->close();
 		if ($sheetXml === false) {
 			return $rows;
 		}
 
-		$xml = simplexml_load_string($sheetXml);
-		if (!$xml || !isset($xml->sheetData) || !isset($xml->sheetData->row)) {
+		$xml = @simplexml_load_string($sheetXml);
+		if (!$xml) {
+			return $rows;
+		}
+		$sheetChildren = $xml->children($mainNs);
+		if (!isset($sheetChildren->sheetData) || !isset($sheetChildren->sheetData->row)) {
 			return $rows;
 		}
 
-		foreach ($xml->sheetData->row as $row) {
+		foreach ($sheetChildren->sheetData->row as $row) {
 			$current = array();
 			foreach ($row->c as $cell) {
-				$column = preg_replace('/[0-9]+/', '', (string)$cell['r']);
+				$cellAttributes = $cell->attributes();
+				$column = preg_replace('/[0-9]+/', '', (string)$cellAttributes['r']);
 				$index = $this->xlsxColumnIndex($column);
 				$value = '';
-				if (isset($cell->v)) {
-					$value = (string)$cell->v;
-					if (isset($cell['t']) && (string)$cell['t'] === 's') {
+				$cellType = isset($cellAttributes['t']) ? (string)$cellAttributes['t'] : '';
+				$cellChildren = $cell->children($mainNs);
+				if (isset($cellChildren->v)) {
+					$value = (string)$cellChildren->v;
+					if ($cellType === 's') {
 						$value = isset($sharedStrings[(int)$value]) ? $sharedStrings[(int)$value] : $value;
 					}
+				} elseif ($cellType === 'inlineStr' && isset($cellChildren->is)) {
+					$inlineChildren = $cellChildren->is->children($mainNs);
+					if (isset($inlineChildren->t)) {
+						$value = (string)$inlineChildren->t;
+					}
 				}
-				$current[$index] = $value;
+				$current[$index] = trim((string)$value);
 			}
 
 			if (!empty($current)) {
@@ -5981,6 +6081,35 @@ public function addstudent()
 			$index = $index * 26 + (ord($column[$i]) - ord('A') + 1);
 		}
 		return $index - 1;
+	}
+
+	private function detectCsvDelimiter($line, $default = ',')
+	{
+		$candidates = array(',', ';', "\t", '|');
+		$best = $default;
+		$bestCount = -1;
+		foreach ($candidates as $candidate) {
+			$count = substr_count($line, $candidate);
+			if ($count > $bestCount) {
+				$best = $candidate;
+				$bestCount = $count;
+			}
+		}
+		return $best;
+	}
+
+	private function isBinaryExcelFile($filePath)
+	{
+		if (!is_readable($filePath)) {
+			return false;
+		}
+		$handle = fopen($filePath, 'rb');
+		if ($handle === false) {
+			return false;
+		}
+		$signature = fread($handle, 8);
+		fclose($handle);
+		return $signature === "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1";
 	}
 
 	private function generateStudentPassword($length = 10)

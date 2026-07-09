@@ -226,13 +226,13 @@ $(document).ready(function () {
                               </td>
                               <td>
                                  <div class="d-flex align-items-center gap-2 flex-wrap">
-                                    <a class="btn btn-sm btn-primary" href="<?php echo XC_URL; ?>/admin/users/role/<?php echo $user->uid; ?>">
+                                    <!-- <a class="btn btn-sm btn-primary" href="<?php echo XC_URL; ?>/admin/users/role/<?php echo $user->uid; ?>">
                                        Phân quyền
-                                    </a>
+                                    </a> -->
 
-                                    <a class="btn btn-sm btn-info text-white" href="<?php echo XC_URL; ?>/admin/users/edit/<?php echo $user->uid; ?>">
+                                    <!-- <a class="btn btn-sm btn-info text-white" href="<?php echo XC_URL; ?>/admin/users/edit/<?php echo $user->uid; ?>">
                                        Sửa
-                                    </a>
+                                    </a> -->
 
                                     <a class="btn btn-sm btn-secondary reset-password-btn"
                                        href="#"

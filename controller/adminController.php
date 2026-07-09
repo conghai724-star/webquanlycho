@@ -136,6 +136,8 @@ Class adminController extends baseController
 		
 		$user = $db->fetch_object(true);
 		if($user->user_group == 1){
+			$this->view->data['dashboard_stats'] = $this->getAdminDashboardStats();
+			$this->view->data['active_menu'] = 'dashboard';
 			$this->view->admintmp('index');
 		}else{
 			$this->view->data['page_title'] = "Bạn không có quyền truy cập trang này";
@@ -420,6 +422,90 @@ Class adminController extends baseController
 	public function logout(){
 		session_unset();
 		header('Location:' .XC_URL. '/admin/login');
+	}
+
+	private function getAdminDashboardStats()
+	{
+		global $db;
+
+		$stats = array(
+			'job_posts' => 0,
+			'candidates' => 0,
+			'employers' => 0,
+			'linked_employers' => 0,
+			'unlinked_employers' => 0,
+			'published_news' => 0,
+			'pending_job_posts' => 0,
+			'pending_candidates' => 0,
+			'students' => 0
+		);
+
+		if($this->adminTableExists('hicrm_job_posts')){
+			$where = $this->adminColumnExists('hicrm_job_posts', 'status')
+				? " WHERE IFNULL(status, 'pending') <> '99'"
+				: "";
+			$db->query("SELECT COUNT(id) AS total FROM hicrm_job_posts".$where);
+			$row = $db->fetch_object(true);
+			$stats['job_posts'] = $row ? (int)$row->total : 0;
+
+			if($this->adminColumnExists('hicrm_job_posts', 'status')){
+				$db->query("SELECT COUNT(id) AS total FROM hicrm_job_posts WHERE IFNULL(status, 'pending') = 'pending'");
+				$row = $db->fetch_object(true);
+				$stats['pending_job_posts'] = $row ? (int)$row->total : 0;
+			}
+		}
+
+		if($this->adminTableExists('hicrm_candidates')){
+			$where = $this->adminColumnExists('hicrm_candidates', 'status')
+				? " WHERE IFNULL(status, 1) <> 99"
+				: "";
+			$db->query("SELECT COUNT(id) AS total FROM hicrm_candidates".$where);
+			$row = $db->fetch_object(true);
+			$stats['candidates'] = $row ? (int)$row->total : 0;
+
+			if($this->adminColumnExists('hicrm_candidates', 'status')){
+				$db->query("SELECT COUNT(id) AS total FROM hicrm_candidates WHERE IFNULL(status, 1) = 1");
+				$row = $db->fetch_object(true);
+				$stats['pending_candidates'] = $row ? (int)$row->total : 0;
+			}
+		}
+
+		if($this->adminTableExists('hicrm_employers')){
+			$db->query("SELECT COUNT(id) AS total FROM hicrm_employers");
+			$row = $db->fetch_object(true);
+			$stats['employers'] = $row ? (int)$row->total : 0;
+
+			if($this->adminColumnExists('hicrm_employers', 'is_linked_school')){
+				$db->query("SELECT COUNT(id) AS total FROM hicrm_employers WHERE is_linked_school = 1");
+				$row = $db->fetch_object(true);
+				$stats['linked_employers'] = $row ? (int)$row->total : 0;
+
+				$db->query("SELECT COUNT(id) AS total FROM hicrm_employers WHERE IFNULL(is_linked_school, 0) = 0");
+				$row = $db->fetch_object(true);
+				$stats['unlinked_employers'] = $row ? (int)$row->total : 0;
+			}
+		}
+
+		if($this->adminTableExists('hicrm_events')){
+			if($this->adminColumnExists('hicrm_events', 'event_status')){
+				$db->query("SELECT COUNT(id) AS total FROM hicrm_events WHERE event_status = 1");
+			}else{
+				$db->query("SELECT COUNT(id) AS total FROM hicrm_events");
+			}
+			$row = $db->fetch_object(true);
+			$stats['published_news'] = $row ? (int)$row->total : 0;
+		}
+
+		if($this->adminTableExists('hicrm_students')){
+			$where = $this->adminColumnExists('hicrm_students', 'status')
+				? " WHERE IFNULL(status, 1) <> 99"
+				: "";
+			$db->query("SELECT COUNT(id) AS total FROM hicrm_students".$where);
+			$row = $db->fetch_object(true);
+			$stats['students'] = $row ? (int)$row->total : 0;
+		}
+
+		return $stats;
 	}
 
 	private function renderAdminNotice($title, $description, $active_menu = '')
@@ -1458,11 +1544,49 @@ Class adminController extends baseController
 			$this->view->admintmp("user-role");
 		}
 		else{
-			//get student list
-			$db->query("SELECT * FROM hicrm_student_profile ORDER BY id DESC"); 
+			$keyword = isset($_GET['keyword']) ? trim($_GET['keyword']) : '';
+			$major_filter = isset($_GET['major_id']) ? intval($_GET['major_id']) : 0;
+			$gender_filter = isset($_GET['gender']) ? trim((string)$_GET['gender']) : '';
+			$register_filter = isset($_GET['register_status']) ? trim((string)$_GET['register_status']) : '';
+			$class_filter = isset($_GET['student_class']) ? trim($_GET['student_class']) : '';
+			$where = array("1=1");
+
+			if($keyword !== ''){
+				$kw = $db->escapestring($keyword);
+				$where[] = "(sp.student_name LIKE '%".$kw."%' OR sp.student_code LIKE '%".$kw."%' OR sp.student_email LIKE '%".$kw."%' OR sp.student_phone LIKE '%".$kw."%')";
+			}
+			if($major_filter > 0){
+				$where[] = "sp.student_major_id = '".$major_filter."'";
+			}
+			if($gender_filter !== '' && in_array($gender_filter, array('0', '1', '2'), true)){
+				$where[] = "sp.student_gender = '".intval($gender_filter)."'";
+			}
+			if($register_filter !== '' && in_array($register_filter, array('0', '1'), true)){
+				$where[] = "sp.student_is_register = '".intval($register_filter)."'";
+			}
+			if($class_filter !== ''){
+				$where[] = "sp.student_class = '".$db->escapestring($class_filter)."'";
+			}
+
+			// get student list from profile table and map existing student accounts if present
+			$db->query("SELECT sp.*, u.id AS uid, u.user_status AS student_status, c.job_category_name
+				FROM hicrm_student_profile AS sp
+				LEFT JOIN hicrm_users AS u ON u.student_id = sp.id AND u.user_group = '3' AND (u.user_deleted_at IS NULL OR u.user_deleted_at = '')
+				LEFT JOIN hicrm_job_categories AS c ON c.id = sp.student_major_id
+				WHERE ".implode(' AND ', $where)."
+				ORDER BY sp.id DESC");
+			$students = $db->fetch_object();
 			$this->view->data['job_categories'] = $this->getAdminReferenceOptions('hicrm_job_categories', 'job_category_name');
+			$db->query("SELECT DISTINCT student_class FROM hicrm_student_profile WHERE student_class IS NOT NULL AND student_class <> '' ORDER BY student_class ASC");
+			$student_classes = $db->fetch_object();
 			$this->view->data['active_menu'] = "students";
-			$this->view->data['students'] = $db->fetch_object();
+			$this->view->data['students'] = is_array($students) ? $students : array();
+			$this->view->data['student_classes'] = is_array($student_classes) ? $student_classes : array();
+			$this->view->data['student_keyword'] = $keyword;
+			$this->view->data['student_major_filter'] = $major_filter;
+			$this->view->data['student_gender_filter'] = $gender_filter;
+			$this->view->data['student_register_filter'] = $register_filter;
+			$this->view->data['student_class_filter'] = $class_filter;
 			$this->view->admintmp("students");
 		}
 		
@@ -1620,7 +1744,7 @@ Class adminController extends baseController
 			$page = $total_pages;
 		}
 		$offset = ($page - 1) * $per_page;
-		$db->query("SELECT *, e.id as eid ".$base_sql." ORDER BY e.event_created_date DESC LIMIT ".$offset.",".$per_page);
+		$db->query("SELECT e.*, e.id as eid, u.full_name AS author_name, c.category_name ".$base_sql." ORDER BY e.event_created_date DESC LIMIT ".$offset.",".$per_page);
 		$events = $db->fetch_object();
 		$db->query("SELECT * FROM hicrm_categories WHERE category_status NOT IN (99) ORDER BY category_orderby ASC, id DESC");
 		$event_categories = $db->fetch_object();

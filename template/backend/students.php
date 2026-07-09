@@ -1,7 +1,17 @@
 ﻿
 
 <?php require "header.php"; ?>
-<?php $studentImportTemplateUrl = XC_URL.'/admin/students?download_template=1'; ?>
+<?php
+$studentImportTemplateUrl = XC_URL.'/admin/students?download_template=1';
+$students = isset($students) && is_array($students) ? $students : array();
+$job_categories = isset($job_categories) && is_array($job_categories) ? $job_categories : array();
+$student_classes = isset($student_classes) && is_array($student_classes) ? $student_classes : array();
+$student_keyword = isset($student_keyword) ? trim((string)$student_keyword) : '';
+$student_major_filter = isset($student_major_filter) ? (int)$student_major_filter : 0;
+$student_gender_filter = isset($student_gender_filter) ? (string)$student_gender_filter : '';
+$student_register_filter = isset($student_register_filter) ? (string)$student_register_filter : '';
+$student_class_filter = isset($student_class_filter) ? trim((string)$student_class_filter) : '';
+?>
 <script>
 $(document).ready(function () {
 ///-----------Users action-----------
@@ -303,6 +313,59 @@ $(document).ready(function () {
 
            </div>
             <div class="card-body px-0">
+               <div class="px-4 pb-2">
+                  <form method="get" action="<?php echo XC_URL; ?>/admin/students" class="row g-3 align-items-end">
+                     <div class="col-lg-3 col-md-6">
+                        <label class="form-label">Từ khóa</label>
+                        <input type="text" class="form-control" name="keyword" value="<?php echo htmlspecialchars($student_keyword, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Mã SV, họ tên, email, điện thoại">
+                     </div>
+                     <div class="col-lg-2 col-md-6">
+                        <label class="form-label">Ngành học</label>
+                        <select class="form-select" name="major_id">
+                           <option value="0">Tất cả ngành</option>
+                           <?php foreach($job_categories as $category): ?>
+                              <option value="<?php echo (int)$category->id; ?>" <?php echo $student_major_filter === (int)$category->id ? 'selected' : ''; ?>>
+                                 <?php echo htmlspecialchars($category->label, ENT_QUOTES, 'UTF-8'); ?>
+                              </option>
+                           <?php endforeach; ?>
+                        </select>
+                     </div>
+                     <div class="col-lg-2 col-md-6">
+                        <label class="form-label">Giới tính</label>
+                        <select class="form-select" name="gender">
+                           <option value="">Tất cả</option>
+                           <option value="1" <?php echo $student_gender_filter === '1' ? 'selected' : ''; ?>>Nam</option>
+                           <option value="2" <?php echo $student_gender_filter === '2' ? 'selected' : ''; ?>>Nữ</option>
+                           <option value="0" <?php echo $student_gender_filter === '0' ? 'selected' : ''; ?>>Khác</option>
+                        </select>
+                     </div>
+                     <div class="col-lg-2 col-md-6">
+                        <label class="form-label">Tài khoản</label>
+                        <select class="form-select" name="register_status">
+                           <option value="">Tất cả</option>
+                           <option value="1" <?php echo $student_register_filter === '1' ? 'selected' : ''; ?>>Đã cấp</option>
+                           <option value="0" <?php echo $student_register_filter === '0' ? 'selected' : ''; ?>>Chưa cấp</option>
+                        </select>
+                     </div>
+                     <div class="col-lg-2 col-md-6">
+                        <label class="form-label">Lớp</label>
+                        <select class="form-select" name="student_class">
+                           <option value="">Tất cả lớp</option>
+                           <?php foreach($student_classes as $class_item): ?>
+                              <option value="<?php echo htmlspecialchars($class_item->student_class, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $student_class_filter === (string)$class_item->student_class ? 'selected' : ''; ?>>
+                                 <?php echo htmlspecialchars($class_item->student_class, ENT_QUOTES, 'UTF-8'); ?>
+                              </option>
+                           <?php endforeach; ?>
+                        </select>
+                     </div>
+                     <div class="col-lg-1 col-md-6 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary w-100">Lọc</button>
+                     </div>
+                     <div class="col-12 pt-1">
+                        <a href="<?php echo XC_URL; ?>/admin/students" class="btn btn-light border">Làm mới</a>
+                     </div>
+                  </form>
+               </div>
                <div class="table-responsive">
                   <table id="student-list-table" class="table table-bordered table-hover" role="grid" data-bs-toggle="data-table">
                      <thead>
@@ -353,7 +416,7 @@ $(document).ready(function () {
                                     data-class="<?php echo htmlspecialchars($student->student_class, ENT_QUOTES, 'UTF-8'); ?>"
                                     data-birthday="<?php echo htmlspecialchars($student->student_birthday, ENT_QUOTES, 'UTF-8'); ?>"
                                     data-gender="<?php echo (int)$student->student_gender; ?>"
-                                    data-major="<?php echo (int)$student->student_major_id; ?>"
+                                    data-major="<?php echo htmlspecialchars((string)($student->job_category_name ?? $student->student_major_id), ENT_QUOTES, 'UTF-8'); ?>"
                                     data-gpa="<?php echo htmlspecialchars($student->student_gpa, ENT_QUOTES, 'UTF-8'); ?>"
                                     title="Xem chi tiết">
 
@@ -386,11 +449,11 @@ $(document).ready(function () {
                                        </svg>
                                     </span>
                                  </button>
-                                 <?php if(!empty($student->uid)): ?><a class="btn btn-sm btn-icon btn-info"  data-bs-toggle="tooltip" data-bs-placement="top" title="Phân quyền" href="<?php echo XC_URL;?>/admin/students/role/<?php echo $student->uid; ?>">
+                                 <!-- <?php if(!empty($student->uid)): ?><a class="btn btn-sm btn-icon btn-info"  data-bs-toggle="tooltip" data-bs-placement="top" title="Phân quyền" href="<?php echo XC_URL;?>/admin/students/role/<?php echo $student->uid; ?>">
                                     <span class="btn-inner">
                                        <i class="fa-solid fa-shield-halved" ></i>
                                     </span>
-                                 </a><?php endif; ?>
+                                 </a><?php endif; ?> -->
                                  <?php if(!empty($student->uid)): ?><a class="btn btn-sm btn-icon btn-danger btn-open-delete-student"
                                     data-bs-toggle="modal"
                                     data-bs-target="#deleteUserModal"

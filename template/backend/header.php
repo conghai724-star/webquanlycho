@@ -235,7 +235,7 @@
                     <li class="nav-item">
                         <a class="nav-link <?php echo (isset($active_menu) && $active_menu == 'customerfeedbacks') ? 'active' : ''; ?>"  href="<?php echo XC_URL;?>/admin/customerfeedbacks">
                          <i class="fa-solid fa-envelope-open-text"></i>
-                            <span class="item-name">Pháº£n há»“i KH</span>
+                            <span class="item-name">Phản hồi KH</span>
                         </a>
                     </li>
                     <li class="nav-item">

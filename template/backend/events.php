@@ -362,7 +362,7 @@ label.error{
 							<img src="<?php echo XC_URL . '/uploads/events/event_default.png'; ?>" width="100" height="100"/></td>
 							<?php }?>
                            <td><?php echo $event->event_created_date;?></td>	
-                           <td><?php echo $event->user_fullname;?></td>
+                           <td><?php echo htmlspecialchars((string)($event->author_name ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                            <td>
                               <div class="event-action-group">
 								    <a href="<?php echo XC_URL; ?>/admin/events/detail/<?php echo $event->eid;?>" class="event-icon-btn" title="Xem chi tiết" aria-label="Xem chi tiết">
