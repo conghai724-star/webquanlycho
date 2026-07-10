@@ -189,6 +189,20 @@ private function getController() {
 				$this->args = $args;
 			}
 		}
+		elseif($parts[0] == "tai-khoan-chua-xac-thuc.html")
+		{
+			$this->controller = "home";
+			$this->action = "unverified_account";
+			if(isset($parts[1]))
+			{
+				$count_args = count($parts);
+				$k = 1;
+				$args = array();
+				for($i = 1; $i < $count_args; $i++)
+					$args[$k++] = $parts[$i];
+				$this->args = $args;
+			}
+		}
 		elseif($parts[0] == "lien-he.html")
 		{
 			// echo $parts[0];

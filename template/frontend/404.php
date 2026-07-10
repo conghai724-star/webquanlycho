@@ -1,5 +1,6 @@
 <?php
 $is_success = isset($page_status) && $page_status == "success";
+$disable_auto_redirect = isset($page_action_label) && trim((string)$page_action_label) !== '';
 http_response_code($is_success ? 200 : 404);
 require "header.php";
 ?>
@@ -120,6 +121,11 @@ require "header.php";
 }
 .simple-404-actions{
   margin-top:24px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  flex-wrap:wrap;
 }
 .simple-404-home{
   display:inline-flex;
@@ -137,6 +143,43 @@ require "header.php";
 .simple-404-home:hover{
   background:#073763;
   transform:translateY(-2px);
+}
+.simple-404-secondary{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:12px 20px;
+  border-radius:12px;
+  background:#fff;
+  color:#0d4e96;
+  border:1px solid #cfe0f4;
+  font-size:14px;
+  font-weight:800;
+  transition:.2s;
+}
+.simple-404-secondary:hover{
+  transform:translateY(-2px);
+  border-color:#0d4e96;
+  box-shadow:0 12px 24px rgba(13,78,150,.12);
+}
+.simple-404-secondary[disabled]{
+  opacity:.65;
+  cursor:not-allowed;
+  transform:none;
+  box-shadow:none;
+}
+.simple-404-feedback{
+  margin-top:16px;
+  font-size:14px;
+  line-height:1.6;
+  color:#475569;
+}
+.simple-404-feedback.is-success{
+  color:#15803d;
+}
+.simple-404-feedback.is-error{
+  color:#b42318;
 }
 @media(max-width:640px){
   .simple-404{padding:58px 16px}
@@ -165,19 +208,29 @@ require "header.php";
     <div class="simple-404-code">404</div>
     <?php } ?>
     <p class="simple-404-text"><?php echo $page_description; ?></p>
+    <?php if(!$disable_auto_redirect){ ?>
     <div class="simple-404-countdown">
       <i class="ti ti-clock"></i>
       Tự động quay lại trang chủ sau <strong id="countdown404">10</strong> giây
     </div>
+    <?php } ?>
     <div class="simple-404-actions">
       <a class="simple-404-home" href="<?php echo XC_URL;?>">
         <i class="ti ti-home"></i>
         Về trang chủ
       </a>
+      <?php if(isset($page_action_label) && trim((string)$page_action_label) !== ''){ ?>
+      <button type="button" class="simple-404-secondary" id="pageActionButton" data-api="<?php echo isset($page_action_api) ? htmlspecialchars((string)$page_action_api, ENT_QUOTES, 'UTF-8') : ''; ?>">
+        <i class="ti ti-mail-forward"></i>
+        <?php echo htmlspecialchars((string)$page_action_label, ENT_QUOTES, 'UTF-8'); ?>
+      </button>
+      <?php } ?>
     </div>
+    <div class="simple-404-feedback" id="pageActionFeedback"></div>
   </div>
 </main>
 
+<?php if(!$disable_auto_redirect){ ?>
 <script>
 (function(){
   var seconds = 10;
@@ -195,5 +248,65 @@ require "header.php";
   }, 1000);
 })();
 </script>
+<?php } ?>
+
+<?php if(isset($page_action_label) && trim((string)$page_action_label) !== ''){ ?>
+<script>
+(function(){
+  var actionButton = document.getElementById('pageActionButton');
+  var feedback = document.getElementById('pageActionFeedback');
+  var payload = <?php echo json_encode(isset($page_action_payload) ? $page_action_payload : array('user_id' => 0, 'email' => ''), JSON_UNESCAPED_UNICODE); ?>;
+  if(!actionButton){ return; }
+
+  actionButton.addEventListener('click', function(){
+    var apiUrl = actionButton.getAttribute('data-api') || '';
+    if(!apiUrl){
+      if(feedback){
+        feedback.textContent = 'Không tìm thấy đường dẫn gửi email xác thực.';
+        feedback.className = 'simple-404-feedback is-error';
+      }
+      return;
+    }
+
+    actionButton.disabled = true;
+    if(feedback){
+      feedback.textContent = 'Hệ thống đang gửi lại liên kết xác thực...';
+      feedback.className = 'simple-404-feedback';
+    }
+
+    fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: new URLSearchParams({
+        user_id: payload && payload.user_id ? payload.user_id : '',
+        email: payload && payload.email ? payload.email : ''
+      }).toString()
+    })
+      .then(function(response){ return response.json(); })
+      .then(function(result){
+        if(!result || Number(result.status) !== 200){
+          throw new Error((result && result.message) || 'Không thể gửi lại email xác thực.');
+        }
+        if(feedback){
+          feedback.textContent = result.message;
+          feedback.className = 'simple-404-feedback is-success';
+        }
+      })
+      .catch(function(error){
+        if(feedback){
+          feedback.textContent = error.message;
+          feedback.className = 'simple-404-feedback is-error';
+        }
+      })
+      .finally(function(){
+        actionButton.disabled = false;
+      });
+  });
+})();
+</script>
+<?php } ?>
 
 <?php require "footer.php"; ?>

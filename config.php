@@ -42,7 +42,7 @@ if (!defined('XVN_CONFIG_LOADED')) {
 	define('AdminThemeMaster', 'backend'); //Replace xpanel by your admin theme's name
 
 	/*** define site path ***/
-	define('XC_URL','http://localhost/vieclam.vn');
+	define('XC_URL','https://brooks-reproduce-bluetooth-manufacture.trycloudflare.com/vieclam.vn');
 }
 
 $siteurl = XC_URL;

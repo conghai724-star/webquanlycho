@@ -579,7 +579,7 @@ img{display:block;max-width:100%}
 
 /* ===== HAMBURGER BUTTON ===== */
 .hamburger{display:none;flex-direction:column;justify-content:center;align-items:center;width:38px;height:38px;cursor:pointer;border:none;background:transparent;padding:4px;border-radius:8px;transition:background .15s;flex-shrink:0}
-.hamburger:hover{background:#fef2f2}
+.hamburger:hover{background:#fdf0e8}
 .hamburger span{display:block;width:22px;height:2px;background:#333;border-radius:2px;transition:all .25s ease}
 .hamburger span:not(:last-child){margin-bottom:5px}
 /* Active (X) state */
@@ -594,25 +594,25 @@ img{display:block;max-width:100%}
 .mobile-menu-header .mm-logo{font-size:20px;font-weight:800}
 .mobile-menu-header .mm-logo .red{color:#0d4e96}
 .mobile-menu-header .mm-logo .dark{color:#111}
-.mobile-menu-close{width:34px;height:34px;border:none;background:#f5f5f5;border-radius:8px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;color:#555;transition:background .15s}
-.mobile-menu-close:hover{background:#fef2f2;color:#0d4e96}
+.mobile-menu-close{width:34px;height:34px;border:none;background:#f5f5f5;border-radius:8px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;color:#555;transition:background .18s,color .18s}
+.mobile-menu-close:hover{background:#fdf0e8;color:#c95204}
 
 /* User section in drawer */
 .mm-user-section{padding:16px 18px 12px;border-bottom:1px solid #f5f5f5}
 .mm-user-label{font-size:12px;color:#999;margin-bottom:10px}
-.mm-btn-login{display:block;width:100%;border:1.5px solid #0d4e96;color:#0d4e96;background:#fff;padding:10px;border-radius:10px;font-size:16px;cursor:pointer;font-weight:600;text-align:center;margin-bottom:8px;transition:background .15s}
-.mm-btn-login:hover{background:#fef2f2}
-.mm-btn-ntd{display:block;width:100%;background:#0d4e96;color:#fff;padding:10px;border-radius:10px;font-size:16px;font-weight:600;border:none;cursor:pointer;text-align:center;transition:background .15s}
-.mm-btn-ntd:hover{background:#c81018}
+.mm-btn-login{display:block;width:100%;border:1.5px solid #0d4e96;color:#0d4e96;background:#fff;padding:10px;border-radius:10px;font-size:16px;cursor:pointer;font-weight:600;text-align:center;margin-bottom:8px;transition:background .18s}
+.mm-btn-login:hover{background:#fdf0e8}
+.mm-btn-ntd{display:block;width:100%;background:#0d4e96;color:#fff;padding:10px;border-radius:10px;font-size:16px;font-weight:600;border:none;cursor:pointer;text-align:center;transition:background .18s}
+.mm-btn-ntd:hover{background:#c95204}
 .mm-account-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}.mm-account-head>span{display:flex;width:42px;height:42px;align-items:center;justify-content:center;border-radius:50%;background:#0d4e96;color:#fff;font-size:16px;font-weight:800}.mm-account-head strong,.mm-account-head small{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mm-account-head strong{font-size:14px;color:#263247}.mm-account-head small{margin-top:2px;color:#8a96a8;font-size:11px}.mm-account-links{display:grid;gap:6px}.mm-account-links a,.mm-account-links button{display:flex;width:100%;align-items:center;gap:9px;padding:9px 0;border:0;background:transparent;color:#405069;font:600 14px var(--site-font);text-align:left;cursor:pointer}.mm-account-links i{font-size:17px;color:#0d4e96}.mm-account-links .mm-account-logout,.mm-account-links .mm-account-logout i{color:#c2413b}
 
 /* Nav links */
 .mm-nav{padding:8px 0}
 .mm-nav-section{padding:6px 18px 2px;font-size:11px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.6px}
-.mm-nav a{display:flex;align-items:center;gap:12px;padding:13px 18px;font-size:16px;color:#333;font-weight:500;transition:background .15s;border-left:3px solid transparent}
-.mm-nav a:hover{background:#fef2f2;color:#0d4e96;border-left-color:#0d4e96}
+.mm-nav a{display:flex;align-items:center;gap:12px;padding:13px 18px;font-size:16px;color:#333;font-weight:500;transition:background .2s,color .2s,border-color .2s;border-left:3px solid transparent}
+.mm-nav a:hover{background:#fdf0e8;color:#c95204;border-left-color:#c95204}
 .mm-nav a i{font-size:17px;color:#aaa;width:20px;flex-shrink:0}
-.mm-nav a:hover i{color:#0d4e96}
+.mm-nav a:hover i{color:#c95204}
 .mm-nav-divider{height:1px;background:#f5f5f5;margin:6px 18px}
 .mm-nav a .mm-arrow{margin-left:auto;font-size:13px;color:#ccc}
 
@@ -667,13 +667,13 @@ img{display:block;max-width:100%}
 }
 
 .dropdown-item:hover {
-    background: #fef2f2 !important;
-    color: #0d4e96 !important;
+    background: #fdf0e8 !important;
+    color: #c95204 !important;
 }
 
 .dropdown-item i {
     font-size: 18px;
-    color: #0d4e96;
+    color: #c95204;
 }
 
 /* ===== Tối ưu Mobile Menu Drawer ===== */
@@ -685,10 +685,10 @@ img{display:block;max-width:100%}
     width: 100%;
     height: 100%;
     z-index: 9999;
-    /* Thay vì display:none, ta dùng visibility và pointer-events */
-    visibility: hidden; 
+    /* Dùng visibility + pointer-events thay display:none để animate được */
+    visibility: hidden;
     pointer-events: none;
-    transition: visibility 0.3s;
+    transition: visibility 0.45s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Khi menu mở */
@@ -702,10 +702,11 @@ body.menu-open .mobile-menu {
     position: absolute;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.55);
     opacity: 0;
-    transition: opacity 0.4s ease;
-    backdrop-filter: blur(2px); /* Thêm hiệu ứng mờ nền phía sau */
+    transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
 }
 
 body.menu-open .mobile-menu-backdrop {
@@ -716,23 +717,25 @@ body.menu-open .mobile-menu-backdrop {
 .mobile-menu-drawer {
     position: absolute;
     top: 0;
-    right: 0; /* Menu trượt từ bên phải sang */
+    right: 0;
     width: 85%;
-    max-width: 350px;
+    max-width: 360px;
     height: 100%;
     background: #fff;
     z-index: 2;
     padding: 0;
     display: flex;
     flex-direction: column;
-    
-    /* Trạng thái mặc định: đẩy ra khỏi màn hình bên phải */
-    transform: translateX(100%);
-    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); /* Hiệu ứng trượt mượt */
+    will-change: transform;
+    box-shadow: -8px 0 40px rgba(0,0,0,0.18);
+    /* Đóng: đẩy ra khỏi màn hình phải */
+    transform: translateX(105%);
+    transition: transform 0.45s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 body.menu-open .mobile-menu-drawer {
     transform: translateX(0);
+    transition: transform 0.45s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 /* Hiệu ứng ẩn Header-inner */
@@ -773,7 +776,7 @@ body.menu-open .header-inner {
 }
 
 /* --- MOBILE SUBMENU (ACCORDION) --- */
-.mm-nav-item { border-bottom: 1px solid #f0f0f0; }
+.mm-nav-item { border-bottom: none; }
 .mm-menu-link {
     display: flex;
     justify-content: space-between;
@@ -783,10 +786,14 @@ body.menu-open .header-inner {
 }
 
 .mm-submenu {
+    display: grid;
+    grid-template-rows: 0fr;
     background: #f9f9f9;
-    max-height: 0; /* Mặc định đóng */
+    transition: grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mm-submenu-inner {
     overflow: hidden;
-    transition: max-height 0.3s ease-out;
 }
 
 .mm-submenu a {
@@ -794,15 +801,15 @@ body.menu-open .header-inner {
     padding: 12px 20px 12px 50px;
     font-size: 14px;
     color: #666;
-    border-bottom: 1px solid #eee;
 }
 
 /* Khi mở submenu mobile */
 .mm-nav-item.active .mm-submenu {
-    max-height: 500px; /* Độ cao tối đa khi mở */
+    grid-template-rows: 1fr; /* Mở submenu */
 }
 .mm-nav-item.active .mm-arrow {
     transform: rotate(180deg);
+    color: #c95204;
 }
 /* --- CHUNG: Icon căn chỉnh --- */
 .ti { vertical-align: middle; line-height: 1; }
@@ -867,15 +874,16 @@ body.menu-open .header-inner {
 
 .dropdown-item i {
     font-size: 18px;
-    color: #0d4e96; /* Màu chủ đạo */
-    background: #fff5f5;
+    color: #c95204;
+    background: #fdf0e8;
     padding: 6px;
     border-radius: 6px;
 }
 
 .dropdown-item:hover {
-    background: #f8f9fa !important;
-    color: #0d4e96 !important;
+    background: #fdf0e8 !important;
+    color: #c95204 !important;
+    transform: translateX(3px);
 }
 
 /* --- MOBILE ACCORDION (Đồng bộ lề) --- */
@@ -886,32 +894,36 @@ body.menu-open .header-inner {
     padding: 14px 20px !important;
     font-weight: 500;
     background: #fff;
-    /* border-bottom: 1px solid #f5f5f5; */
+    border-bottom: 1px solid #f5f5f5;
+    border:none;
 }
 
 .mm-menu-link span { display: flex; align-items: center; gap: 12px; }
 .mm-menu-link span i { font-size: 20px; color: #666; width: 24px; text-align: center; }
 
-.mm-arrow { transition: transform 0.3s ease; color: #ccc; }
+.mm-arrow { transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s; color: #ccc; }
 
 .mm-submenu {
-    max-height: 0;
-    overflow: hidden;
-    background: #fcfcfc;
-    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    display: grid;
+    grid-template-rows: 0fr;
+    background: #fdf8f5;
+    transition: grid-template-rows 0.38s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.mm-submenu a {
+.mm-submenu-inner {
+    overflow: hidden;
+}
+
+.mm-submenu-inner a {
     display: block;
-    padding: 12px 20px 12px 56px !important; /* Thụt lề thẳng hàng chữ với menu cha */
+    padding: 12px 20px 12px 56px !important;
     font-size: 14px;
     color: #555;
-    border-bottom: 1px solid #f1f1f1;
 }
 
 /* Khi mở menu con Mobile */
-.mm-nav-item.active .mm-arrow { transform: rotate(180deg); color: #0d4e96; }
-.mm-nav-item.active .mm-menu-link { color: #0d4e96; background: #fff5f5; }
+.mm-nav-item.active .mm-arrow { transform: rotate(180deg); color: #c95204; }
+.mm-nav-item.active .mm-menu-link { color: #c95204; background: #fdf0e8; }
 /*Dashboard Employerr - Nhà tuyển*/
 
 /* ===== HEADER REDESIGN 2026 ===== */

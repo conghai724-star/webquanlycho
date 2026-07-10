@@ -40,6 +40,31 @@ Class homeController Extends baseController
     public function guidelines(){
         $this->view->show("huong-dan");
     }
+    public function unverified_account()
+    {
+        $pending = isset($_SESSION['frontend_pending_verification']) && is_array($_SESSION['frontend_pending_verification'])
+            ? $_SESSION['frontend_pending_verification']
+            : array();
+        $scriptName = isset($_SERVER['SCRIPT_NAME']) ? str_replace('\\', '/', (string)$_SERVER['SCRIPT_NAME']) : '';
+        $basePath = rtrim(dirname($scriptName), '/');
+        if($basePath === '/' || $basePath === '.'){
+            $basePath = '';
+        }
+
+        $email = isset($pending['email']) ? trim((string)$pending['email']) : '';
+        $this->view->data['page_title'] = 'Tài khoản của bạn chưa xác thực';
+        $this->view->data['page_description'] = $email !== ''
+            ? 'Tài khoản của bạn chưa được xác thực. Vui lòng chọn "Xác thực ngay" để có thể đăng nhập. Hệ thống sẽ gửi lại liên kết xác thực về '.$email.'.'
+            : 'Tài khoản của bạn chưa được xác thực. Vui lòng chọn "Xác thực ngay" để có thể đăng nhập. Hệ thống sẽ gửi lại liên kết xác thực về email đã đăng ký.';
+        $this->view->data['verify_email'] = 0;
+        $this->view->data['page_action_label'] = 'Xác thực ngay';
+        $this->view->data['page_action_api'] = $basePath.'/api/resendVerificationEmail';
+        $this->view->data['page_action_payload'] = array(
+            'user_id' => isset($pending['user_id']) ? intval($pending['user_id']) : 0,
+            'email' => $email
+        );
+        $this->view->show("404");
+    }
     public function manage_applicants($para = array()){
         global $db;
         $keyword = trim(isset($_GET['keyword']) ? $_GET['keyword'] : '');
@@ -716,6 +741,23 @@ Class homeController Extends baseController
         $db->query("SHOW TABLES LIKE '".$table_name."'");
         return $db->num_row() > 0;
     }
+    private function candidateUserContext(){
+        global $db;
+        if(!(isset($_SESSION['user']['id']) && intval($_SESSION['user']['id']) > 0)){
+            return array('user' => null, 'candidate' => null);
+        }
+        $userId = intval($_SESSION['user']['id']);
+        $db->query("SELECT * FROM hicrm_users WHERE id = '".$userId."' AND user_status = 1 LIMIT 1");
+        $user = $db->num_row() > 0 ? $db->fetch_object(true) : null;
+        $candidate = null;
+        if($user){
+            $db->query("SELECT * FROM hicrm_candidates WHERE user_id = '".$userId."' LIMIT 1");
+            if($db->num_row() > 0){
+                $candidate = $db->fetch_object(true);
+            }
+        }
+        return array('user' => $user, 'candidate' => $candidate);
+    }
     private function candidateProfileCompleteness($candidate){
         if(!$candidate){ return 0; }
         $fields = array(
@@ -848,6 +890,37 @@ Class homeController Extends baseController
         }
         $jobDetail = $db->fetch_object(true);
         $this->view->data['job_detail'] = $jobDetail;
+
+        $candidateContext = $this->candidateUserContext();
+        $candidateUser = $candidateContext['user'];
+        $candidateProfile = $candidateContext['candidate'];
+        $canApply = false;
+        $isApplied = false;
+        $applyMessage = '';
+        $applyMessageType = '';
+        $deadlineExpired = false;
+        if(!empty($jobDetail->deadline)){
+            $deadlineExpired = strtotime((string)$jobDetail->deadline.' 23:59:59') < time();
+        }
+        if(!(isset($_SESSION['user']['id']) && intval($_SESSION['user']['id']) > 0)){
+            $applyMessage = 'Vui lòng đăng nhập tài khoản để ứng tuyển.';
+            $applyMessageType = 'error';
+        }elseif(!$candidateUser || !in_array(intval($candidateUser->user_group ?? 0), array(3, 4), true)){
+            $applyMessage = 'Chỉ tài khoản ứng viên mới có thể ứng tuyển việc làm.';
+            $applyMessageType = 'error';
+        }elseif(isset($candidateUser->user_is_verified) && intval($candidateUser->user_is_verified) !== 1){
+            $applyMessage = 'Tài khoản của bạn chưa được xác thực. Vui lòng xác thực tài khoản trước khi ứng tuyển.';
+            $applyMessageType = 'error';
+        }elseif(!$candidateProfile || intval($candidateProfile->status ?? 0) !== 3){
+            $applyMessage = 'Nếu bạn muốn ứng tuyển, Vui lòng cập nhật hồ sơ đầy đủ để được phê duyệt.';
+            $applyMessageType = 'error';
+        }elseif($deadlineExpired){
+            $applyMessage = 'Bài đăng đã hết hạn nộp hồ sơ.';
+            $applyMessageType = 'error';
+        }else{
+            $canApply = true;
+        }
+
         $relatedJobs = array();
         if((int)$jobDetail->job_category_id > 0){
             $db->query("SELECT p.id, p.title, p.deadline, p.work_type, p.job_post_type,
@@ -863,7 +936,36 @@ Class homeController Extends baseController
                 LIMIT 4");
             $relatedJobs = $db->fetch_object();
         }
-        $this->view->data['related_jobs'] = $relatedJobs;
+        if($candidateProfile && $this->employerDashboardTableExists('hicrm_job_applications')){
+            $db->query("SELECT id, status, applied_at FROM hicrm_job_applications WHERE candidate_id = '".intval($candidateProfile->id)."' AND job_post_id = '".$jobId."' LIMIT 1");
+            if($db->num_row() > 0){
+                $applicationRow = $db->fetch_object(true);
+                $isApplied = true;
+                $canApply = false;
+                $applyMessage = 'Bạn đã ứng tuyển công việc này vào ngày '.(!empty($applicationRow->applied_at) ? date('d/m/Y', strtotime($applicationRow->applied_at)) : date('d/m/Y')).'.';
+                $applyMessageType = 'success';
+            }
+        }
+
+        $db->query("SELECT p.id, p.title, p.deadline, p.work_type, p.job_post_type,
+                e.company_name, e.logo_url, pr.province_name, s.salary_name
+            FROM hicrm_job_posts p
+            LEFT JOIN hicrm_employers e ON e.id = p.employer_id
+            LEFT JOIN hicrm_provinces pr ON pr.id = p.province_id
+            LEFT JOIN hicrm_salary s ON s.id = p.salary_id
+            WHERE p.status = 'published' AND p.id <> '".$jobId."'
+            ORDER BY COALESCE(p.published_at, p.created_at) DESC, p.id DESC
+            LIMIT 8");
+        $featuredJobs = $db->fetch_object();
+
+        $this->view->data['related_jobs'] = is_array($relatedJobs) ? $relatedJobs : array();
+        $this->view->data['featured_jobs'] = is_array($featuredJobs) ? $featuredJobs : array();
+        $this->view->data['job_can_apply'] = $canApply;
+        $this->view->data['job_is_applied'] = $isApplied;
+        $this->view->data['job_apply_message'] = $applyMessage;
+        $this->view->data['job_apply_message_type'] = $applyMessageType;
+        $this->view->data['job_deadline_expired'] = $deadlineExpired;
+        $this->view->data['job_candidate_profile'] = $candidateProfile;
         $db->query("UPDATE hicrm_job_posts SET views_count = COALESCE(views_count, 0) + 1 WHERE id = '".$jobId."' LIMIT 1");
         $this->view->show("chi-tiet-viec-lam");
     }
@@ -920,6 +1022,8 @@ Class homeController Extends baseController
             $job_provinces = $db->fetch_object();
 
             $job_posts = array();
+            $job_application_counts = array();
+            $job_applicants_map = array();
             if($employer_id > 0){
                 $db->query("SELECT p.*, c.job_category_name FROM hicrm_job_posts p LEFT JOIN hicrm_job_categories c ON p.job_category_id = c.id WHERE p.employer_id = '".$employer_id."' ORDER BY p.created_at DESC, p.id DESC");
                 $job_posts = $db->fetch_object();
@@ -928,7 +1032,47 @@ Class homeController Extends baseController
             $db->query("SELECT s.*, c.job_category_name FROM hicrm_student_profile s LEFT JOIN hicrm_job_categories c ON s.student_major_id = c.id ORDER BY s.student_gpa DESC, s.id DESC LIMIT 60");
             $students = $db->fetch_object();
 
-            if($this->employerDashboardTableExists('hicrm_candidates')){
+            if($this->employerDashboardTableExists('hicrm_job_applications')){
+                $db->query("SELECT a.id AS application_id, a.status AS application_status, a.applied_at,
+                        p.id AS applied_job_post_id, p.title AS applied_job_title,
+                        ca.*, u.user_email, u.user_phone, jc.job_category_name
+                    FROM hicrm_job_applications a
+                    INNER JOIN hicrm_job_posts p ON p.id = a.job_post_id
+                    INNER JOIN hicrm_candidates ca ON ca.id = a.candidate_id
+                    LEFT JOIN hicrm_users u ON ca.user_id = u.id
+                    LEFT JOIN hicrm_job_categories jc ON ca.major = jc.id
+                    WHERE p.employer_id = '".$employer_id."'
+                    ORDER BY a.applied_at DESC, a.id DESC
+                    ");
+                $candidates = $db->fetch_object();
+                if(is_array($candidates)){
+                    foreach($candidates as $candidate){
+                        $job_post_id = isset($candidate->applied_job_post_id) ? intval($candidate->applied_job_post_id) : 0;
+                        if($job_post_id <= 0){
+                            continue;
+                        }
+                        if(!isset($job_application_counts[$job_post_id])){
+                            $job_application_counts[$job_post_id] = 0;
+                        }
+                        $job_application_counts[$job_post_id]++;
+                        if(!isset($job_applicants_map[$job_post_id])){
+                            $job_applicants_map[$job_post_id] = array();
+                        }
+                        $candidate_id = isset($candidate->id) ? intval($candidate->id) : 0;
+                        $job_applicants_map[$job_post_id][] = array(
+                            'candidate_id' => $candidate_id,
+                            'candidate_name' => isset($candidate->full_name) ? (string)$candidate->full_name : '',
+                            'candidate_email' => isset($candidate->user_email) ? (string)$candidate->user_email : '',
+                            'candidate_phone' => isset($candidate->user_phone) ? (string)$candidate->user_phone : '',
+                            'candidate_position' => isset($candidate->desired_position) ? (string)$candidate->desired_position : '',
+                            'candidate_degree' => isset($candidate->degree) ? (string)$candidate->degree : '',
+                            'applied_at' => isset($candidate->applied_at) ? (string)$candidate->applied_at : '',
+                            'application_status' => isset($candidate->application_status) ? (string)$candidate->application_status : 'submitted',
+                            'candidate_url' => $candidate_id > 0 ? general::getInstance()->permalink($candidate_id, 'candidate_profile') : '#'
+                        );
+                    }
+                }
+            }elseif($this->employerDashboardTableExists('hicrm_candidates')){
                 $db->query("SELECT ca.*, u.user_email, u.user_phone, jc.job_category_name FROM hicrm_candidates ca LEFT JOIN hicrm_users u ON ca.user_id = u.id LEFT JOIN hicrm_job_categories jc ON ca.major = jc.id ORDER BY ca.updated_at DESC, ca.id DESC LIMIT 60");
                 $candidates = $db->fetch_object();
             }else{
@@ -943,6 +1087,8 @@ Class homeController Extends baseController
             $this->view->data['job_categories'] = $job_categories;
             $this->view->data['job_provinces'] = $job_provinces;
             $this->view->data['job_posts'] = $job_posts;
+            $this->view->data['job_application_counts'] = $job_application_counts;
+            $this->view->data['job_applicants_map'] = $job_applicants_map;
             $this->view->data['job_stats'] = $this->employerDashboardStats($employer_id);
             $this->view->data['students'] = $students;
             $this->view->data['candidates'] = $candidates;

@@ -109,7 +109,18 @@ if ($session_id) {
   .footer-links-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+  .footer-link-column {
+    display: flex;
+    flex-direction: column;
     gap: 12px;
+  }
+  .footer-link-group-title {
+    color: #152238;
+    font-size: 15px;
+    font-weight: 700;
+    margin: 0 0 4px;
   }
   .footer-static-link {
     color: #607086;
@@ -241,14 +252,20 @@ if ($session_id) {
           Tìm việc nhanh chóng, ứng tuyển thuận tiện và theo dõi cơ hội nghề nghiệp trên cùng một nền tảng.
         </p>
         <div class="footer-links-grid">
-          <a href="<?php echo XC_URL; ?>/gioi-thieu.html" class="footer-static-link">Giới thiệu website</a>
-          <a href="<?php echo XC_URL; ?>/huong-dan.html" class="footer-static-link">Hướng dẫn sử dụng</a>
-          <a href="<?php echo XC_URL; ?>/dieu-khoan-su-dung.html" class="footer-static-link">Điều khoản sử dụng</a>
-          <a href="<?php echo XC_URL; ?>/lien-he.html" class="footer-static-link">Chính sách bảo mật</a>
-          <a href="<?php echo XC_URL; ?>/quy-trinh-san-viec-lam.html" class="footer-static-link">Quy trình sàn việc làm</a>
-          <a href="<?php echo XC_URL; ?>/san-viec-lam-online.html" class="footer-static-link">Sàn việc làm online</a>
-          <a href="<?php echo XC_URL; ?>/quan-ly-viec-lam.html" class="footer-static-link">Danh sách việc làm</a>
-          <a href="<?php echo XC_URL; ?>/quan-ly-ung-vien.html" class="footer-static-link">Hồ sơ ứng viên</a>
+          <div class="footer-link-column">
+            <h5 class="footer-link-group-title">Giới thiệu</h5>
+            <a href="<?php echo XC_URL; ?>/gioi-thieu.html" class="footer-static-link">Giới thiệu website</a>
+            <a href="<?php echo XC_URL; ?>/huong-dan.html" class="footer-static-link">Hướng dẫn sử dụng</a>
+            <a href="<?php echo XC_URL; ?>/dieu-khoan-su-dung.html" class="footer-static-link">Điều khoản sử dụng</a>
+            <a href="<?php echo XC_URL; ?>/lien-he.html" class="footer-static-link">Chính sách bảo mật</a>
+          </div>
+          <div class="footer-link-column">
+            <h5 class="footer-link-group-title">Liên kết</h5>
+            <a href="<?php echo XC_URL; ?>/quy-trinh-san-viec-lam.html" class="footer-static-link">Quy trình sàn việc làm</a>
+            <a href="<?php echo XC_URL; ?>/san-viec-lam-online.html" class="footer-static-link">Sàn việc làm online</a>
+            <a href="<?php echo XC_URL; ?>/quan-ly-viec-lam.html" class="footer-static-link">Danh sách việc làm</a>
+            <a href="<?php echo XC_URL; ?>/quan-ly-ung-vien.html" class="footer-static-link">Hồ sơ ứng viên</a>
+          </div>
         </div>
       </div>
 

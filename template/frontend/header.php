@@ -22,6 +22,12 @@ if($siteUserLoggedIn && $siteUserGroup === '4'){
 $siteUserProfileUrl = $siteUserGroup == '2'
   ? XC_URL.'/quan-ly-nha-tuyen-dung.html'
   : XC_URL.'/quan-ly-ho-so-ung-vien.html'.($siteCandidateId > 0 ? '/'.$siteCandidateId : '');
+$siteScriptName = isset($_SERVER['SCRIPT_NAME']) ? str_replace('\\', '/', (string)$_SERVER['SCRIPT_NAME']) : '';
+$siteBasePath = rtrim(dirname($siteScriptName), '/');
+if($siteBasePath === '/' || $siteBasePath === '.'){
+  $siteBasePath = '';
+}
+$siteApiBaseUrl = $siteBasePath.'/api';
 ?>
 <!DOCTYPE html>
 <html lang="vi">
@@ -58,10 +64,11 @@ $siteUserProfileUrl = $siteUserGroup == '2'
 					var password = $('#password').val();
 					$.ajax({
 						"type": "POST",
-						"url": "<?php echo XC_URL; ?>/api/login",
+						"url": "<?php echo $siteApiBaseUrl; ?>/login",
 						"data": {
 							'email': email,
-							'password': password
+							'password': password,
+              'login_context': 'frontend'
 						},
 						"dataType":'json',
 						success:function(data){
@@ -293,10 +300,7 @@ $siteUserProfileUrl = $siteUserGroup == '2'
           <button type="button" class="mm-btn-login js-login-open">Đăng nhập</button>
           <button class="mm-btn-ntd" style="background:#333"><a href="<?php echo XC_URL; ?>/dang-ky-tai-khoan.html" style="color: #fff; text-decoration: none;">Đăng ký</a></button>
         </div>
-        <div class="mobile-quick-actions">
-          <button class="mm-btn-login"><i class="ti ti-user-plus"></i> Đăng ký</button>
-          <button class="mm-btn-ntd"><i class="ti ti-speakerphone"></i> Đăng tin</button>
-        </div>
+        
       <?php endif; ?>
     </div>
 
@@ -306,48 +310,29 @@ $siteUserProfileUrl = $siteUserGroup == '2'
       <a href="<?php echo XC_URL; ?>/tin-tuc-su-kien.html"><i class="ti ti-news"></i>Tin tức</a>
 
       <div class="mm-nav-item">
-        <button type="button" class="mm-menu-link" onclick="toggleMobileSubmenu(this)"><span><i class="ti ti-briefcase"></i>Việc làm</span><i class="ti ti-chevron-down mm-arrow"></i></button>
+        <button type="button" class="mm-menu-link" onclick="toggleMobileSubmenu(this)"><span><i class="ti ti-briefcase"></i>Việc làm</span>&nbsp;<i class="ti ti-chevron-down mm-arrow"></i></button>
         <div class="mm-submenu">
-          <a href="<?php echo XC_URL; ?>/quan-ly-viec-lam.html"><i class="ti ti-building-search"></i>Việc tìm người</a>
-          <a href="<?php echo XC_URL; ?>/quan-ly-ung-vien.html"><i class="ti ti-user-search"></i>Người tìm việc</a>
+          <div class="mm-submenu-inner">
+            <a href="<?php echo XC_URL; ?>/quan-ly-viec-lam.html"><i class="ti ti-building"></i>&nbsp;Việc tìm người</a>
+            <a href="<?php echo XC_URL; ?>/quan-ly-ung-vien.html"><i class="ti ti-user-search"></i>&nbsp;Người tìm việc</a>
+          </div>
         </div>
       </div>
 
       <div class="mm-nav-item">
-        <button type="button" class="mm-menu-link" onclick="toggleMobileSubmenu(this)"><span><i class="ti ti-building-community"></i>Sàn việc làm</span><i class="ti ti-chevron-down mm-arrow"></i></button>
+        <button type="button" class="mm-menu-link" onclick="toggleMobileSubmenu(this)"><span><i class="ti ti-building-community"></i>Sàn việc làm</span>&nbsp;<i class="ti ti-chevron-down mm-arrow"></i></button>
         <div class="mm-submenu">
-          <a href="<?php echo XC_URL; ?>/gioi-thieu-san-viec-lam.html"><i class="ti ti-info-square-rounded"></i>Giới thiệu sàn</a>
-          <a href="<?php echo XC_URL; ?>/quy-trinh-san-viec-lam.html"><i class="ti ti-list-check"></i>Quy trình sàn</a>
-          <a href="<?php echo XC_URL; ?>/ket-qua-san-viec-lam.html"><i class="ti ti-chart-bar"></i>Kết quả sàn</a>
-          <a href="<?php echo XC_URL; ?>/san-viec-lam-online.html"><i class="ti ti-broadcast"></i>Sàn việc làm Online</a>
+          <div class="mm-submenu-inner">
+            <a href="<?php echo XC_URL; ?>/gioi-thieu-san-viec-lam.html"><i class="ti ti-info-square-rounded"></i>&nbsp;Giới thiệu sàn</a>
+            <a href="<?php echo XC_URL; ?>/quy-trinh-san-viec-lam.html"><i class="ti ti-list-check"></i>&nbsp;Quy trình sàn</a>
+            <a href="<?php echo XC_URL; ?>/ket-qua-san-viec-lam.html"><i class="ti ti-chart-bar"></i>&nbsp;Kết quả sàn</a>
+            <a href="<?php echo XC_URL; ?>/san-viec-lam-online.html"><i class="ti ti-broadcast"></i>&nbsp;Sàn việc làm Online</a>
+          </div>
         </div>
       </div>
 
       <a href="<?php echo XC_URL; ?>/huong-dan.html"><i class="ti ti-help-circle"></i>Hướng dẫn</a>
       <a href="<?php echo XC_URL; ?>/lien-he.html"><i class="ti ti-mail"></i>Liên hệ</a>
-    </nav>
-
-    <nav class="mm-nav mm-nav-legacy">
-      <div class="mm-nav-section">Khám phá</div>
-<div class="mm-nav-item">
-    <div class="mm-menu-link" onclick="toggleMobileSubmenu(this)">
-        <span><i class="ti ti-briefcase"></i> Việc làm</span>
-        <i class="ti ti-chevron-down mm-arrow"></i>
-    </div>
-    <div class="mm-submenu">
-        <a href="#"><i class="ti ti-star"></i> Việc làm tuyển nhanh</a>
-        <a href="#"><i class="ti ti-bolt"></i> Việc làm hấp dẫn</a>
-    </div>
-</div>
-      <a href="#"><i class="ti ti-bolt"></i>Việc làm gấp <i class="ti ti-chevron-right mm-arrow"></i></a>
-      <a href="#"><i class="ti ti-file-cv"></i>Tạo CV Online <i class="ti ti-chevron-right mm-arrow"></i></a>
-      
-      <div class="mm-nav-divider"></div>
-      
-      <div class="mm-nav-section">Khu vực</div>
-      <a href="#"><i class="ti ti-map-pin"></i>TP. Hồ Chí Minh</a>
-      <a href="#"><i class="ti ti-map-pin"></i>Hà Nội</a>
-      <a href="#"><i class="ti ti-map-pin"></i>Bình Dương</a>
     </nav>
 
     <div class="mm-bottom">
@@ -359,8 +344,6 @@ $siteUserProfileUrl = $siteUserGroup == '2'
       <div class="mm-bottom-label">Kết nối xã hội</div>
       <div class="mm-socials">
         <a href="#"><i class="ti ti-brand-facebook"></i></a>
-        <a href="#"><i class="ti ti-brand-tiktok"></i></a>
-        <a href="#"><i class="ti ti-brand-youtube"></i></a>
       </div>
     </div>
   </div>
@@ -473,7 +456,7 @@ function toggleMobileSubmenu(el){
   };
 
   function resendVerificationEmail(payload){
-    return fetch('<?php echo XC_URL; ?>/api/resendVerificationEmail', {
+    return fetch('<?php echo $siteApiBaseUrl; ?>/resendVerificationEmail', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest' },
       body: new URLSearchParams({
@@ -553,14 +536,18 @@ function toggleMobileSubmenu(el){
     window.hideFrontendLoginModal();
     if(submitButton) submitButton.disabled = true;
 
-    fetch('<?php echo XC_URL; ?>/api/login', {
+    fetch('<?php echo $siteApiBaseUrl; ?>/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest' },
-      body: new URLSearchParams({ email: email, password: password }).toString()
+      body: new URLSearchParams({ email: email, password: password, login_context: 'frontend' }).toString()
     })
       .then(function(response){ return response.json(); })
       .then(function(result){
         if(result && result.requires_verification){
+          if(result.return_url){
+            window.location.href = result.return_url;
+            return;
+          }
           return window.handleFrontendVerificationRequired(result).then(function(){
             var handledError = new Error('Tài khoản chưa được xác thực email.');
             handledError.verificationHandled = true;
@@ -804,14 +791,18 @@ function toggleMobileSubmenu(el){
         if(loginMessage){ loginMessage.textContent = ''; loginMessage.className = 'employer-login-message'; }
         if(loginSubmit){ loginSubmit.disabled = true; loginSubmit.classList.add('is-loading'); }
 
-        fetch('<?php echo XC_URL; ?>/api/login', {
+        fetch('<?php echo $siteApiBaseUrl; ?>/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest' },
-          body: new URLSearchParams({ email: account.trim(), password: password, login_type: 'employer' }).toString()
+          body: new URLSearchParams({ email: account.trim(), password: password, login_type: 'employer', login_context: 'frontend' }).toString()
         })
           .then(function(response){ return response.json(); })
           .then(function(result){
             if(result && result.requires_verification){
+              if(result.return_url){
+                window.location.href = result.return_url;
+                return;
+              }
               return window.handleFrontendVerificationRequired(result).then(function(){
                 var handledError = new Error('Tài khoản chưa được xác thực email.');
                 handledError.verificationHandled = true;

@@ -9,6 +9,11 @@ $status_map = array(
     3 => array('label' => 'Đã duyệt', 'class' => 'success'),
     99 => array('label' => 'Đã xóa', 'class' => 'secondary')
 );
+$status_map = isset($candidate_status_map) && is_array($candidate_status_map) && !empty($candidate_status_map)
+    ? array_replace($status_map, $candidate_status_map)
+    : array_replace($status_map, array(
+        98 => array('label' => 'Tu choi', 'class' => 'danger')
+    ));
 ?>
 <script>
 $(document).ready(function () {

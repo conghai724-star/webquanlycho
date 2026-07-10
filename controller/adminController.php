@@ -649,13 +649,99 @@ Class adminController extends baseController
 
 	private function adminStatusLabel($status)
 	{
-		$map = array(
-			1 => array('label' => 'Chờ duyệt', 'class' => 'warning'),
-			2 => array('label' => 'Từ chối', 'class' => 'danger'),
-			3 => array('label' => 'Đã duyệt', 'class' => 'success'),
+		$map = $this->getAdminStatusMap();
+		return isset($map[(int)$status]) ? $map[(int)$status] : array('label' => 'Không xác định', 'class' => 'secondary');
+	}
+
+	private function normalizeAdminStatusKey($value)
+	{
+		$value = trim((string)$value);
+		if($value === ''){
+			return '';
+		}
+		if(function_exists('iconv')){
+			$converted = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+			if($converted !== false){
+				$value = $converted;
+			}
+		}
+		$value = strtolower($value);
+		$value = preg_replace('/[^a-z0-9]+/', ' ', $value);
+		return trim(preg_replace('/\s+/', ' ', $value));
+	}
+
+	private function getAdminStatusMap($status_type = null)
+	{
+		global $db;
+		$default_map = array(
+			2 => array('label' => 'Chờ duyệt', 'class' => 'warning'),
+			3 => array('label' => 'Phê duyệt', 'class' => 'success'),
+			98 => array('label' => 'Từ chối', 'class' => 'danger'),
 			99 => array('label' => 'Đã xóa', 'class' => 'secondary')
 		);
-		return isset($map[(int)$status]) ? $map[(int)$status] : array('label' => 'Không xác định', 'class' => 'secondary');
+		if(!$this->adminTableExists('hicrm_status') || !$this->adminColumnExists('hicrm_status', 'status_label')){
+			return $default_map;
+		}
+
+		$where = '';
+		if($status_type !== null && $this->adminColumnExists('hicrm_status', 'status_type')){
+			$where = " WHERE status_type = '".intval($status_type)."' OR status_type = '0'";
+		}
+
+		$class_select = $this->adminColumnExists('hicrm_status', 'status_class')
+			? "status_class"
+			: "'' AS status_class";
+		$db->query("SELECT id, status_label, ".$class_select." FROM hicrm_status".$where." ORDER BY id ASC");
+		$rows = $db->fetch_object();
+		if(!is_array($rows) || empty($rows)){
+			return $default_map;
+		}
+
+		$map = array();
+		foreach($rows as $row){
+			$status_id = isset($row->id) ? (int)$row->id : 0;
+			if($status_id <= 0){
+				continue;
+			}
+			$status_class = isset($row->status_class) ? trim((string)$row->status_class) : '';
+			if($status_class === ''){
+				$status_class = isset($default_map[$status_id]['class']) ? $default_map[$status_id]['class'] : 'secondary';
+			}
+			$map[$status_id] = array(
+				'label' => isset($row->status_label) ? $row->status_label : (isset($default_map[$status_id]['label']) ? $default_map[$status_id]['label'] : 'Không xác định'),
+				'class' => $status_class
+			);
+		}
+
+		foreach($default_map as $status_id => $status_info){
+			if(!isset($map[$status_id])){
+				$map[$status_id] = $status_info;
+			}
+		}
+
+		return $map;
+	}
+
+	private function getAdminStatusIdByAliases($aliases = array(), $fallback = 0, $status_type = null)
+	{
+		$status_map = $this->getAdminStatusMap($status_type);
+		if(!is_array($aliases)){
+			$aliases = array($aliases);
+		}
+		$normalized_aliases = array();
+		foreach($aliases as $alias){
+			$key = $this->normalizeAdminStatusKey($alias);
+			if($key !== ''){
+				$normalized_aliases[] = $key;
+			}
+		}
+		foreach($status_map as $status_id => $status_info){
+			$status_key = $this->normalizeAdminStatusKey(isset($status_info['label']) ? $status_info['label'] : '');
+			if($status_key !== '' && in_array($status_key, $normalized_aliases, true)){
+				return (int)$status_id;
+			}
+		}
+		return (int)$fallback;
 	}
 
 	private function getAdminReferenceOptions($table_name, $label_column, $conditions = '')
@@ -1271,6 +1357,12 @@ Class adminController extends baseController
 		global $db;
 		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ $this->adminRedirect('/admin/login'); }
 
+		$candidate_status_map = $this->getAdminStatusMap();
+		$candidate_pending_status = $this->getAdminStatusIdByAliases(array('Chờ phê duyệt', 'Chờ duyệt', 'Pending'), 2);
+		$candidate_approved_status = $this->getAdminStatusIdByAliases(array('Phê duyệt', 'Đã duyệt', 'Approved'), 3);
+		$candidate_rejected_status = $this->getAdminStatusIdByAliases(array('Từ chối', 'Rejected'), 98);
+		$candidate_deleted_status = $this->getAdminStatusIdByAliases(array('Xóa', 'Đã xóa', 'Deleted'), 99);
+
 		$has_status = $this->adminColumnExists('hicrm_candidates', 'status');
 		$has_updated_at = $this->adminColumnExists('hicrm_candidates', 'updated_at');
 		$has_user_id = $this->adminColumnExists('hicrm_candidates', 'user_id');
@@ -1288,7 +1380,7 @@ Class adminController extends baseController
 				switch($_POST['candidate_action']){
 					case 'approve':
 						if($has_status){
-							$fields = array("status = 3");
+							$fields = array("status = '".$candidate_approved_status."'");
 							if($has_updated_at){
 								$fields[] = "updated_at = NOW()";
 							}
@@ -1300,7 +1392,7 @@ Class adminController extends baseController
 						break;
 					case 'reject':
 						if($has_status){
-							$fields = array("status = 2");
+							$fields = array("status = '".$candidate_rejected_status."'");
 							if($has_updated_at){
 								$fields[] = "updated_at = NOW()";
 							}
@@ -1312,7 +1404,7 @@ Class adminController extends baseController
 						break;
 					case 'delete':
 						if($has_status){
-							$fields = array("status = 99");
+							$fields = array("status = '".$candidate_deleted_status."'");
 							if($has_updated_at){
 								$fields[] = "updated_at = NOW()";
 							}
@@ -1352,10 +1444,10 @@ Class adminController extends baseController
 		if($has_status && $status_filter !== '' && is_numeric($status_filter)){
 			$where[] = "ca.status = '".intval($status_filter)."'";
 		}elseif($has_status){
-			$where[] = "IFNULL(ca.status,1) <> 99";
+			$where[] = "IFNULL(ca.status,".$candidate_pending_status.") <> ".$candidate_deleted_status;
 		}
 
-		$status_select = $has_status ? "ca.status AS status" : "1 AS status";
+		$status_select = $has_status ? "ca.status AS status" : "'".$candidate_pending_status."' AS status";
 		$province_name_column = $this->getFirstExistingColumn('hicrm_provinces', array('province_name', 'place_name'));
 		$job_category_name_column = $this->getFirstExistingColumn('hicrm_job_categories', array('job_category_name', 'category_name', 'type_name'));
 		$salary_name_column = $this->getFirstExistingColumn('hicrm_salary', array('salary_name', 'title', 'name'));
@@ -1421,6 +1513,7 @@ Class adminController extends baseController
 		$this->view->data['candidate_certificates'] = is_array($certificates) ? $certificates : array();
 		$this->view->data['candidate_keyword'] = $keyword;
 		$this->view->data['candidate_status_filter'] = $status_filter;
+		$this->view->data['candidate_status_map'] = $candidate_status_map;
 		$this->view->data['candidate_flash'] = $this->getAdminFlash();
 		$this->view->admintmp("candidates");
 	}

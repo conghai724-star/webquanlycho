@@ -112,6 +112,142 @@ Class apiController extends baseController
 		}
 		return max(0, intval($pending['expires_at']) - time());
 	}
+	private function frontendLoginReturnUrl($user)
+	{
+		$group = isset($user->user_group) ? intval($user->user_group) : 0;
+		if($group === 1){
+			return XC_URL.'/admin';
+		}
+		if($group === 2){
+			return XC_URL.'/quan-ly-nha-tuyen-dung.html';
+		}
+		if($group === 3 || $group === 4){
+			return XC_URL.'/quan-ly-ho-so-ung-vien.html';
+		}
+		return XC_URL;
+	}
+	private function frontendCurrentBaseUrl()
+	{
+		$isHttps = (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off') || (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443);
+		$scheme = $isHttps ? 'https' : 'http';
+		$host = isset($_SERVER['HTTP_HOST']) && trim((string)$_SERVER['HTTP_HOST']) !== '' ? trim((string)$_SERVER['HTTP_HOST']) : parse_url(XC_URL, PHP_URL_HOST);
+		$scriptName = isset($_SERVER['SCRIPT_NAME']) ? str_replace('\\', '/', (string)$_SERVER['SCRIPT_NAME']) : '';
+		$basePath = rtrim(dirname($scriptName), '/');
+		if($basePath === '/' || $basePath === '.'){
+			$basePath = '';
+		}
+		return $scheme.'://'.$host.$basePath;
+	}
+	private function frontendUserRequiresVerification($user)
+	{
+		return isset($user->user_is_verified) && intval($user->user_is_verified) !== 1;
+	}
+	private function frontendStorePendingVerification($user)
+	{
+		$_SESSION['frontend_pending_verification'] = array(
+			'user_id' => isset($user->id) ? intval($user->id) : 0,
+			'email' => isset($user->user_email) ? trim((string)$user->user_email) : '',
+			'full_name' => isset($user->full_name) ? trim((string)$user->full_name) : '',
+			'user_group' => isset($user->user_group) ? intval($user->user_group) : 0,
+			'created_at' => time()
+		);
+	}
+	private function frontendClearPendingVerification()
+	{
+		if(isset($_SESSION['frontend_pending_verification'])){
+			unset($_SESSION['frontend_pending_verification']);
+		}
+	}
+	private function frontendTableExists($table_name)
+	{
+		global $db;
+		$table_name = $db->escapestring($table_name);
+		$db->query("SHOW TABLES LIKE '".$table_name."'");
+		return $db->num_row() > 0;
+	}
+	private function frontendTableHasColumn($table_name, $column_name)
+	{
+		global $db;
+		$table_name = $db->escapestring($table_name);
+		$column_name = $db->escapestring($column_name);
+		$db->query("SHOW COLUMNS FROM `".$table_name."` LIKE '".$column_name."'");
+		return $db->num_row() > 0;
+	}
+	private function ensureJobApplicationsTable()
+	{
+		global $db;
+		if(!$this->frontendTableExists('hicrm_job_applications')){
+			$db->query("CREATE TABLE IF NOT EXISTS hicrm_job_applications (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				candidate_id bigint(20) unsigned NOT NULL,
+				user_id bigint(20) unsigned DEFAULT NULL,
+				job_post_id bigint(20) unsigned NOT NULL,
+				employer_id bigint(20) unsigned DEFAULT NULL,
+				status varchar(50) NOT NULL DEFAULT 'submitted',
+				applied_at datetime DEFAULT CURRENT_TIMESTAMP,
+				created_at datetime DEFAULT CURRENT_TIMESTAMP,
+				updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+				PRIMARY KEY (id),
+				UNIQUE KEY uniq_candidate_job (candidate_id, job_post_id),
+				KEY idx_candidate_id (candidate_id),
+				KEY idx_job_post_id (job_post_id),
+				KEY idx_employer_id (employer_id),
+				KEY idx_status (status)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+			return;
+		}
+
+		if(!$this->frontendTableHasColumn('hicrm_job_applications', 'user_id')){
+			$db->query("ALTER TABLE hicrm_job_applications ADD COLUMN user_id bigint(20) unsigned DEFAULT NULL AFTER candidate_id");
+		}
+		if(!$this->frontendTableHasColumn('hicrm_job_applications', 'employer_id')){
+			$db->query("ALTER TABLE hicrm_job_applications ADD COLUMN employer_id bigint(20) unsigned DEFAULT NULL AFTER job_post_id");
+		}
+		if(!$this->frontendTableHasColumn('hicrm_job_applications', 'created_at')){
+			$db->query("ALTER TABLE hicrm_job_applications ADD COLUMN created_at datetime DEFAULT CURRENT_TIMESTAMP AFTER applied_at");
+		}
+	}
+	private function frontendCandidateByUserId($userId)
+	{
+		global $db;
+		$db->query("SELECT * FROM hicrm_candidates WHERE user_id = '".intval($userId)."' LIMIT 1");
+		return $db->num_row() > 0 ? $db->fetch_object(true) : null;
+	}
+	private function frontendSendVerificationEmail($user, $forceRenewToken = true)
+	{
+		global $db;
+		$email = isset($user->user_email) ? trim((string)$user->user_email) : '';
+		if($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)){
+			return array('status' => false, 'message' => 'Tài khoản chưa có email hợp lệ để nhận liên kết xác thực.');
+		}
+
+		$token = isset($user->user_email_verify_token) ? trim((string)$user->user_email_verify_token) : '';
+		$expiresAt = isset($user->user_email_verified_at) ? trim((string)$user->user_email_verified_at) : '';
+		$shouldRenew = $forceRenewToken || $token === '' || $expiresAt === '' || strtotime($expiresAt) <= time();
+
+		if($shouldRenew){
+			try {
+				$token = bin2hex(random_bytes(32));
+			} catch (Exception $e) {
+				$token = md5(uniqid((string)mt_rand(), true)).md5((string)microtime(true));
+			}
+			$expiresAt = date('Y-m-d H:i:s', strtotime('+15 minutes'));
+			$db->query("UPDATE hicrm_users SET user_email_verify_token = '".$db->escapestring($token)."', user_email_verified_at = '".$db->escapestring($expiresAt)."' WHERE id = '".intval($user->id)."' LIMIT 1");
+		}
+
+		$displayName = isset($user->full_name) && trim((string)$user->full_name) !== '' ? trim((string)$user->full_name) : $email;
+		$sent = $this->mail->sendVerifyEmail($displayName, $email, $token, 'Xác thực tài khoản đăng nhập hệ thống Cổng thông tin việc làm Trường Cao đẳng Kon Tum');
+
+		if(!$sent){
+			return array('status' => false, 'message' => 'Không thể gửi email xác thực. Vui lòng kiểm tra cấu hình email hệ thống.');
+		}
+
+		return array(
+			'status' => true,
+			'message' => 'Hệ thống đã gửi liên kết xác thực đến email '.$this->maskEmail($email).'.',
+			'email' => $email
+		);
+	}
 
     public function index()
     {
@@ -3424,6 +3560,8 @@ Class apiController extends baseController
 	{
 		global $db;
 		$result = array();
+		$loginContext = isset($_POST['login_context']) ? trim((string)$_POST['login_context']) : '';
+		$isFrontendLogin = $loginContext === 'frontend';
 		$email = $db->escapestring(isset($_POST["email"]) ? trim($_POST["email"]) : '');
 		$password = $db->escapestring(isset($_POST["password"]) ? trim($_POST["password"]) : '');
 		if($email === '' || $password === ''){
@@ -3447,6 +3585,36 @@ Class apiController extends baseController
 			$this->adminClearTwoFactorSession();
 			unset($_SESSION['user']);
 			unset($_SESSION['LoggedIn']);
+
+			if($this->frontendUserRequiresVerification($row)){
+				$this->frontendStorePendingVerification($row);
+				$result["status"] = 200;
+				$result["requires_verification"] = true;
+				$result["message"] = "Tài khoản của bạn chưa xác thực email.";
+				$result["user_id"] = intval($row->id);
+				$result["email"] = trim((string)$row->user_email);
+				$result["full_name"] = trim((string)$row->full_name);
+				$result["return_url"] = $this->frontendCurrentBaseUrl()."/tai-khoan-chua-xac-thuc.html";
+				echo json_encode($result);
+				return;
+			}
+
+			$this->frontendClearPendingVerification();
+			if($isFrontendLogin){
+				$userGroup = intval(isset($row->user_group) ? $row->user_group : 0);
+				if($userGroup === 1){
+					$result["status"] = 403;
+					$result["message"] = "Tài khoản quản trị không thể đăng nhập tại giao diện trang chủ. Vui lòng đăng nhập tại trang quản trị.";
+					echo json_encode($result);
+					return;
+				}
+				if(!in_array($userGroup, array(2, 3, 4), true)){
+					$result["status"] = 403;
+					$result["message"] = "Tài khoản này không được hỗ trợ đăng nhập tại giao diện trang chủ.";
+					echo json_encode($result);
+					return;
+				}
+			}
 			if(intval($row->user_group) === 1 && $this->adminTwoFactorConfigEnabled()){
 				$otpResult = $this->adminStartTwoFactorSession($row);
 				if(!$otpResult['status']){
@@ -3466,13 +3634,164 @@ Class apiController extends baseController
 			$result["status"] = 200;
 			$result["name"] = $_SESSION['user']['full_name'];
 			$result["message"] = "Đăng nhập thành công";
-			$result['return_url'] = XC_URL."/admin";
+			$result['return_url'] = $this->frontendLoginReturnUrl($row);
         }
 		else
 		{
 			$result["status"] = "500";
 			$result['message'] = 'Thông tin tài khoản hoặc mật khẩu không chính xác';
 		}
+		echo json_encode($result);
+	}
+	public function resendVerificationEmail()
+	{
+		global $db;
+		$result = array();
+		$user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
+		$email = isset($_POST['email']) ? trim((string)$_POST['email']) : '';
+		$pending = isset($_SESSION['frontend_pending_verification']) && is_array($_SESSION['frontend_pending_verification']) ? $_SESSION['frontend_pending_verification'] : array();
+
+		if($user_id <= 0 && isset($pending['user_id'])){
+			$user_id = intval($pending['user_id']);
+		}
+		if($email === '' && isset($pending['email'])){
+			$email = trim((string)$pending['email']);
+		}
+
+		if($user_id > 0){
+			$db->query("SELECT * FROM hicrm_users WHERE id = '".$user_id."' AND user_status NOT IN(99) LIMIT 1");
+		}elseif($email !== ''){
+			$db->query("SELECT * FROM hicrm_users WHERE user_email = '".$db->escapestring($email)."' AND user_status NOT IN(99) LIMIT 1");
+		}else{
+			$result['status'] = 400;
+			$result['message'] = 'Không tìm thấy tài khoản cần gửi lại email xác thực.';
+			echo json_encode($result);
+			return;
+		}
+
+		if(!$db->num_row()){
+			$result['status'] = 404;
+			$result['message'] = 'Tài khoản không tồn tại hoặc đã bị vô hiệu hóa.';
+			echo json_encode($result);
+			return;
+		}
+
+		$user = $db->fetch_object(true);
+		if(!$this->frontendUserRequiresVerification($user)){
+			$this->frontendClearPendingVerification();
+			$result['status'] = 200;
+			$result['message'] = 'Tài khoản này đã được xác thực email.';
+			echo json_encode($result);
+			return;
+		}
+
+		$sendResult = $this->frontendSendVerificationEmail($user, true);
+		if(!$sendResult['status']){
+			$result['status'] = 500;
+			$result['message'] = $sendResult['message'];
+			echo json_encode($result);
+			return;
+		}
+
+		$this->frontendStorePendingVerification($user);
+		$result['status'] = 200;
+		$result['message'] = $sendResult['message'];
+		$result['email'] = $this->maskEmail($sendResult['email']);
+		echo json_encode($result);
+	}
+	public function applyJob()
+	{
+		global $db;
+		header('Content-Type: application/json; charset=utf-8');
+		$result = array();
+		if(!(isset($_SESSION['user']['id']) && intval($_SESSION['user']['id']) > 0)){
+			$result['status'] = 401;
+			$result['message'] = 'Vui lòng đăng nhập tài khoản để ứng tuyển.';
+			echo json_encode($result);
+			return;
+		}
+
+		$user_id = intval($_SESSION['user']['id']);
+		$job_id = isset($_POST['job_id']) ? intval($_POST['job_id']) : 0;
+		if($job_id <= 0){
+			$result['status'] = 400;
+			$result['message'] = 'Tin tuyển dụng không hợp lệ.';
+			echo json_encode($result);
+			return;
+		}
+
+		$db->query("SELECT * FROM hicrm_users WHERE id = '".$user_id."' AND user_status = 1 LIMIT 1");
+		if(!$db->num_row()){
+			$result['status'] = 404;
+			$result['message'] = 'Không tìm thấy tài khoản ứng tuyển.';
+			echo json_encode($result);
+			return;
+		}
+		$user = $db->fetch_object(true);
+		$userGroup = intval(isset($user->user_group) ? $user->user_group : 0);
+		if(!in_array($userGroup, array(3, 4), true)){
+			$result['status'] = 403;
+			$result['message'] = 'Chỉ tài khoản ứng viên mới có thể ứng tuyển việc làm.';
+			echo json_encode($result);
+			return;
+		}
+		if($this->frontendUserRequiresVerification($user)){
+			$this->frontendStorePendingVerification($user);
+			$result['status'] = 403;
+			$result['requires_verification'] = true;
+			$result['message'] = 'Tài khoản của bạn chưa được xác thực.';
+			$result['return_url'] = $this->frontendCurrentBaseUrl()."/tai-khoan-chua-xac-thuc.html";
+			echo json_encode($result);
+			return;
+		}
+
+		$candidate = $this->frontendCandidateByUserId($user_id);
+		if(!$candidate){
+			$result['status'] = 403;
+			$result['message'] = 'Tài khoản của bạn chưa được phê duyệt, vui lòng cập nhật hồ sơ đầy đủ.';
+			echo json_encode($result);
+			return;
+		}
+		if(intval(isset($candidate->status) ? $candidate->status : 0) !== 3){
+			$result['status'] = 403;
+			$result['message'] = 'Tài khoản của bạn chưa được phê duyệt, vui lòng cập nhật hồ sơ đầy đủ.';
+			echo json_encode($result);
+			return;
+		}
+
+		$db->query("SELECT * FROM hicrm_job_posts WHERE id = '".$job_id."' AND status = 'published' LIMIT 1");
+		if(!$db->num_row()){
+			$result['status'] = 404;
+			$result['message'] = 'Bài đăng tuyển dụng không tồn tại hoặc đã ngừng nhận hồ sơ.';
+			echo json_encode($result);
+			return;
+		}
+		$job = $db->fetch_object(true);
+		if(!empty($job->deadline)){
+			$deadlineTs = strtotime((string)$job->deadline.' 23:59:59');
+			if($deadlineTs && $deadlineTs < time()){
+				$result['status'] = 410;
+				$result['message'] = 'Bài đăng đã hết hạn nộp hồ sơ.';
+				echo json_encode($result);
+				return;
+			}
+		}
+
+		$this->ensureJobApplicationsTable();
+		$db->query("SELECT id FROM hicrm_job_applications WHERE candidate_id = '".intval($candidate->id)."' AND job_post_id = '".$job_id."' LIMIT 1");
+		if($db->num_row()){
+			$result['status'] = 409;
+			$result['message'] = 'Bạn đã ứng tuyển công việc này trước đó.';
+			echo json_encode($result);
+			return;
+		}
+
+		$db->query("INSERT INTO hicrm_job_applications(candidate_id, user_id, job_post_id, employer_id, status, applied_at, created_at, updated_at)
+			VALUES ('".intval($candidate->id)."', '".$user_id."', '".$job_id."', '".intval(isset($job->employer_id) ? $job->employer_id : 0)."', 'submitted', NOW(), NOW(), NOW())");
+
+		$result['status'] = 200;
+		$result['message'] = 'Ứng tuyển thành công.';
+		$result['return_url'] = $this->frontendCurrentBaseUrl().'/quan-ly-ho-so-ung-vien.html';
 		echo json_encode($result);
 	}
 	public function admin_verify_2fa()
