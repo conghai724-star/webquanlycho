@@ -92,6 +92,7 @@ jQuery.validator.addMethod('strongPassword', function(value, element) {
 					var user_password = jQuery('#password').val();
 					var user_group = jQuery('#user_group').val();
 					var method = jQuery('#method').val();
+					var user_id = jQuery('#user_id').val();
 					jQuery.ajax({
 						type: "POST",
 						url: "<?php echo XC_URL;?>/api/userAction",
@@ -99,8 +100,10 @@ jQuery.validator.addMethod('strongPassword', function(value, element) {
 							'full_name': full_name,
 							'user_email': user_email,
 							'user_password': user_password,
-							'user_group': user_group,
-							'method': method
+						'user_group': user_group,
+						'method': method,
+						'user_id': user_id,
+						'csrf_token': '<?php echo htmlspecialchars($admin_csrf_token, ENT_QUOTES, 'UTF-8'); ?>'
 						},
 						dataType: 'json',
 						success: function(data){
@@ -159,17 +162,18 @@ jQuery.validator.addMethod('strongPassword', function(value, element) {
 								<?php } ?>
 							  </div>
                               
-							  <!-- <div class="form-group col-md-6">
+							  <div class="form-group col-md-6">
                                  <label class="form-label" for="user_category">Quyền tài khoản:</label>
                                  <select class='form-control selectpicker' id='user_group' name='user_group' data-live-search="true">
                                    <?php foreach($roles as $role){ ?>
 								   <option <?php if(isset($user) && $user->user_group == $role->id) echo "selected"; ?> value="<?php echo $role->id;?>"><?php echo $role->group_name;?></option>
                                    <?php } ?>
                                  </select>
-                              </div> -->
+                              </div>
 								  <div class="text-end">
 									  <a href="<?php echo XC_URL; ?>/admin/users"><button type="button" class="btn btn-warning btn-sm">Quay lại</button></a>
-									<input type="hidden" id="method" value="<?php echo isset($method) ? $method : ''; ?>">	
+									<input type="hidden" id="method" value="<?php echo isset($method) ? $method : ''; ?>">
+									<input type="hidden" id="user_id" value="<?php echo isset($user) ? (int)$user->uid : 0; ?>">
 									  <button type="button" id='send_DB' class="btn btn-primary btn-sm">Lưu</button>
 								  </div>
 							</div>

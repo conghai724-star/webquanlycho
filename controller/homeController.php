@@ -966,6 +966,21 @@ Class homeController Extends baseController
         $this->view->data['job_apply_message_type'] = $applyMessageType;
         $this->view->data['job_deadline_expired'] = $deadlineExpired;
         $this->view->data['job_candidate_profile'] = $candidateProfile;
+
+        if(empty($_SESSION['job_support_csrf_token'])){
+            try {
+                $_SESSION['job_support_csrf_token'] = bin2hex(random_bytes(32));
+            } catch (Exception $e) {
+                $_SESSION['job_support_csrf_token'] = md5(uniqid((string)mt_rand(), true));
+            }
+        }
+        $showJobSupportModal = empty($_SESSION['job_support_modal_shown']);
+        if($showJobSupportModal){
+            $_SESSION['job_support_modal_shown'] = time();
+        }
+        $this->view->data['show_job_support_modal'] = $showJobSupportModal;
+        $this->view->data['job_support_csrf_token'] = $_SESSION['job_support_csrf_token'];
+
         $db->query("UPDATE hicrm_job_posts SET views_count = COALESCE(views_count, 0) + 1 WHERE id = '".$jobId."' LIMIT 1");
         $this->view->show("chi-tiet-viec-lam");
     }

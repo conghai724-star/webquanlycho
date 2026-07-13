@@ -232,15 +232,15 @@ if ($session_id) {
         <ul class="footer-info-list">
           <li class="footer-info-item">
             <i class="ti ti-phone"></i>
-            <span>SĐT: 0282312312</span>
+            <span>SĐT: <?php echo $this->helper->get_config('site_phone'); ?></span>
           </li>
           <li class="footer-info-item">
             <i class="ti ti-map-pin"></i>
-            <span>Địa chỉ: 14 Ngụy Như Kon Tum, TP. Kon Tum, Tỉnh Kon Tum</span>
+            <span>Địa chỉ: <?php echo $this->helper->get_config('site_address'); ?></span>
           </li>
           <li class="footer-info-item">
             <i class="ti ti-mail"></i>
-            <span>Email: vieclam@cdkontum.edu.vn</span>
+            <span>Email: <?php echo $this->helper->get_config('site_email'); ?></span>
           </li>
         </ul>
       </div>
@@ -271,8 +271,9 @@ if ($session_id) {
 
       <div class="footer-col-3">
         <div class="footer-map-container">
-          <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3862.062226259074!2d107.99401777590895!3d14.538804978864756!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x316c1faf744ba953%3A0xb3ab20d2d3a4362a!2zVHLGsOG7nW5nIENhbyDEkeG6s25nIEtvbiBUdW0!5e0!3m2!1svi!2s!4v1720250000000!5m2!1svi!2s" width="100%" height="150" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
-        </div>
+          <!-- <iframe src="https://maps.app.goo.gl/CTvMi75GKntVEFyRA" width="100%" height="150" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe> -->
+       <iframe src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d3593.134326441834!2d107.982716!3d14.376124!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x316bff93738e53c3%3A0x4738fa311885a20b!2zVHLGsOG7nW5nIENhbyDEkeG6s25nIEtvbiBUdW0!5e1!3m2!1svi!2sus!4v1783957173965!5m2!1svi!2sus" width="600" height="150" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+          </div>
         <div class="footer-stats-box">
           <div class="footer-stat-row">
             <span class="footer-stat-label"><i class="ti ti-users"></i> Đang online:</span>

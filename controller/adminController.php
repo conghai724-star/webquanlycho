@@ -36,7 +36,8 @@ Class adminController extends baseController
 			array('key' => 'events', 'name' => 'Quản lý tin tức & sự kiện', 'parent' => 'news_section', 'sort' => 50),
 			array('key' => 'news_comments', 'name' => 'Quản lý bình luận tin tức', 'parent' => 'news_section', 'sort' => 51),
 			array('key' => 'customer_feedbacks', 'name' => 'Quản lý phản hồi khách hàng', 'parent' => '', 'sort' => 54),
-			array('key' => 'market_results', 'name' => 'Quản lý kết quả sàn', 'parent' => '', 'sort' => 55),
+			array('key' => 'job_support_customers', 'name' => 'Quản lý khách hàng hỗ trợ tìm việc', 'parent' => '', 'sort' => 55),
+			array('key' => 'market_results', 'name' => 'Quản lý kết quả sàn', 'parent' => '', 'sort' => 56),
 			array('key' => 'google_meet', 'name' => 'Sàn việc làm online', 'parent' => '', 'sort' => 60),
 			array('key' => 'users', 'name' => 'Quản lý tài khoản', 'parent' => 'account_section', 'sort' => 70),
 			array('key' => 'groups', 'name' => 'Quản lý nhóm quyền', 'parent' => 'account_section', 'sort' => 71),
@@ -50,9 +51,16 @@ Class adminController extends baseController
 	private function seedAdminMenuPermissions()
 	{
 		global $db;
+		$active_keys = array();
 		foreach($this->getAdminMenuDefinitions() as $menu){
-			$db->query("INSERT IGNORE INTO hicrm_admin_menu_permissions(permission_key, permission_name, parent_key, sort_order, permission_status)
-				VALUES ('".$db->escapestring($menu['key'])."','".$db->escapestring($menu['name'])."','".$db->escapestring($menu['parent'])."','".intval($menu['sort'])."','1')");
+			$key = $db->escapestring($menu['key']);
+			$active_keys[] = "'".$key."'";
+			$db->query("INSERT INTO hicrm_admin_menu_permissions(permission_key, permission_name, parent_key, sort_order, permission_status)
+				VALUES ('".$key."','".$db->escapestring($menu['name'])."','".$db->escapestring($menu['parent'])."','".intval($menu['sort'])."','1')
+				ON DUPLICATE KEY UPDATE permission_name = VALUES(permission_name), parent_key = VALUES(parent_key), sort_order = VALUES(sort_order), permission_status = 1");
+		}
+		if(!empty($active_keys)){
+			$db->query("UPDATE hicrm_admin_menu_permissions SET permission_status = 0 WHERE permission_key NOT IN (".implode(',', $active_keys).")");
 		}
 	}
 
@@ -64,8 +72,8 @@ Class adminController extends baseController
 		}
 		$db->query("SELECT u.*, g.group_name
 			FROM hicrm_users AS u
-			LEFT JOIN hicrm_user_groups AS g ON g.id = u.user_group
-			WHERE u.id = '".intval($_SESSION['user']['id'])."' LIMIT 1");
+			INNER JOIN hicrm_user_groups AS g ON g.id = u.user_group AND g.group_status NOT IN(99)
+			WHERE u.id = '".intval($_SESSION['user']['id'])."' AND u.user_status = 1 LIMIT 1");
 		return $db->fetch_object(true);
 	}
 
@@ -85,7 +93,7 @@ Class adminController extends baseController
 		$db->query("SELECT p.permission_key
 			FROM hicrm_user_group_permissions AS gp
 			INNER JOIN hicrm_admin_menu_permissions AS p ON p.id = gp.permission_id
-			WHERE gp.group_id = '".$group_id."' AND p.permission_status NOT IN(99)");
+			WHERE gp.group_id = '".$group_id."' AND p.permission_status = 1");
 		$rows = $db->fetch_object();
 		$allowed = array();
 		if(is_array($rows)){
@@ -119,10 +127,19 @@ Class adminController extends baseController
 		$allowed_keys = $this->getUserAllowedMenuKeys($user);
 		$this->view->data['current_admin_user'] = $user;
 		$this->view->data['allowed_admin_menu'] = $allowed_keys;
+		if(!isset($_SESSION['admin_csrf_token']) || !is_string($_SESSION['admin_csrf_token']) || $_SESSION['admin_csrf_token'] === ''){
+			try {
+				$_SESSION['admin_csrf_token'] = bin2hex(random_bytes(32));
+			} catch(Exception $e) {
+				$_SESSION['admin_csrf_token'] = md5(uniqid((string)mt_rand(), true));
+			}
+		}
+		$this->view->data['admin_csrf_token'] = $_SESSION['admin_csrf_token'];
 		if(!$this->adminHasMenuPermission($allowed_keys, $permission_key)){
 			$this->view->data['page_title'] = "Bạn không có quyền truy cập trang này";
 			$this->view->data['page_description'] = "Tài khoản hiện tại chưa được cấp quyền cho chức năng quản trị này.";
-			$this->view->show('404');
+			http_response_code(403);
+			$this->view->admintmp('403');
 			return false;
 		}
 		return true;
@@ -130,24 +147,22 @@ Class adminController extends baseController
 
     public function index()
     {
-		global $db;
-		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ header("Location: ".XC_URL."/admin/login"); return; }
-		$db->query("SELECT * FROM hicrm_users WHERE id = '".$_SESSION['user']['id']."'");
-		
-		$user = $db->fetch_object(true);
-		if($user->user_group == 1){
+		if(!$this->prepareAdminAccess('')){ return; }
+		$allowed = $this->view->data['allowed_admin_menu'];
+		if($this->adminHasMenuPermission($allowed, 'dashboard')){
 			$this->view->data['dashboard_stats'] = $this->getAdminDashboardStats();
 			$this->view->data['active_menu'] = 'dashboard';
 			$this->view->admintmp('index');
-		}else{
-			$this->view->data['page_title'] = "Bạn không có quyền truy cập trang này";
-			$this->view->data['page_description'] = "Xin lỗi, Trang này yêu cầu quyền quản trị.";
-			$this->view->show('404');
+			return;
 		}
-		// $this->view->show("backend/index");
-		
-		
-		
+		$routes = array('employers'=>'/admin/employers','employer_posts'=>'/admin/employers/posts','candidates'=>'/admin/candidates','students'=>'/admin/students','events'=>'/admin/events','news_comments'=>'/admin/newscomments','customer_feedbacks'=>'/admin/customerfeedbacks','job_support_customers'=>'/admin/jobsupportcustomers','market_results'=>'/admin/marketresults','google_meet'=>'/admin/googlemeet','users'=>'/admin/users','groups'=>'/admin/groups','images'=>'/admin/images','videos'=>'/admin/videos','config'=>'/admin/config','settings'=>'/admin/settings');
+		foreach($routes as $key => $route){
+			if($this->adminHasMenuPermission($allowed, $key)){ header('Location: '.XC_URL.$route); return; }
+		}
+		http_response_code(403);
+		$this->view->data['page_title'] = 'Tài khoản chưa được cấp quyền';
+		$this->view->data['page_description'] = 'Vui lòng liên hệ Super Admin để được cấp ít nhất một quyền quản trị.';
+		$this->view->admintmp('403');
     }
 	public function login()
 	{ 
@@ -156,7 +171,7 @@ Class adminController extends baseController
 	}
 	public function employyer($para = ''){
 		global $db;
-		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ header("Location: ".XC_URL."/admin/login"); return; }
+		if(!$this->prepareAdminAccess('employers')){ return; }
 		if(!$this->adminTableExists('hicrm_employers')){
 			$this->renderAdminNotice(
 				"Quản lý nhà tuyển dụng",
@@ -1304,20 +1319,26 @@ Class adminController extends baseController
 
 	public function users($para)
 	{
-		
+		if(!$this->prepareAdminAccess('users')){ return; }
 		$userModel = $this->model->get('userModel');
-		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ header("Location: ".XC_URL."/admin/login"); }
+		global $db;
+		$db->query("SELECT DISTINCT g.* FROM hicrm_user_groups g
+			LEFT JOIN hicrm_user_group_permissions gp ON gp.group_id = g.id
+			LEFT JOIN hicrm_admin_menu_permissions p ON p.id = gp.permission_id AND p.permission_status = 1
+			WHERE g.group_status NOT IN(99) AND (g.id = 1 OR p.id IS NOT NULL)
+			ORDER BY g.id ASC");
+		$admin_groups = $db->fetch_object();
 		if(isset($para[1]) && $para[1] == "add"){
 			$this->view->data['method'] = 'add';
 			$user_category = $userModel->get_user_category();
 			$this->view->data['user_category'] = $user_category;
-			$this->view->data['roles'] = $userModel->role_user();
+			$this->view->data['roles'] = $admin_groups;
 			$this->view->data['pagetitle'] = 'Thêm tài khoản';
 			$this->view->admintmp("user-action");
 		}elseif(isset($para[1]) && $para[1] == "edit"){
 			$this->view->data['method'] = 'edit';
 			$this->view->data['user_categories'] = $userModel->get_user_category();
-			$this->view->data['roles'] = $userModel->role_user();
+			$this->view->data['roles'] = $admin_groups;
 			$this->view->data['user'] = $userModel->get_user($para[2]);
 			$this->view->data['pagetitle'] = 'Sửa tài khoản';
 			$this->view->admintmp("user-action");
@@ -1346,6 +1367,7 @@ Class adminController extends baseController
 		else{
 			$this->view->data['active_menu'] = "users";
 			$this->view->data['users'] = $userModel->get_user_list();
+			$this->view->data['admin_groups'] = $admin_groups;
 			$this->view->admintmp("users");
 		}
 		
@@ -1355,7 +1377,7 @@ Class adminController extends baseController
 	public function candidates($para = array())
 	{
 		global $db;
-		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ $this->adminRedirect('/admin/login'); }
+		if(!$this->prepareAdminAccess('candidates')){ return; }
 
 		$candidate_status_map = $this->getAdminStatusMap();
 		$candidate_pending_status = $this->getAdminStatusIdByAliases(array('Chờ phê duyệt', 'Chờ duyệt', 'Pending'), 2);
@@ -1521,17 +1543,39 @@ Class adminController extends baseController
 	// Quản lý nhóm quyền
 	public function groups($para)
 	{
-		$userModel = $this->model->get('userModel');
-		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ header("Location: ".XC_URL."/admin/login"); }
+		global $db;
+		if(!$this->prepareAdminAccess('groups')){ return; }
+		$db->query("SELECT * FROM hicrm_admin_menu_permissions WHERE permission_status = 1 ORDER BY parent_key, sort_order, id");
+		$permissions = $db->fetch_object();
 
-		if(isset($para[1]) && $para[1] == "add"){
-			$this->view->data['method'] = 'add';
-			$this->view->data['pagetitle'] = 'Thêm nhóm quyền mới';
-			$this->view->data['user_roles'] = $userModel->get_user_role(); // Load quyền chi tiết để chọn
+		if(isset($para[1]) && ($para[1] == "add" || $para[1] == "edit")){
+			$method = $para[1];
+			$group_id = ($method === 'edit' && isset($para[2])) ? intval($para[2]) : 0;
+			$group = null;
+			$selected = array();
+			if($group_id > 0){
+				$db->query("SELECT * FROM hicrm_user_groups WHERE id = '".$group_id."' AND group_status NOT IN(99) LIMIT 1");
+				$group = $db->fetch_object(true);
+				if(!$group){ $this->adminRedirect('/admin/groups'); }
+				$db->query("SELECT permission_id FROM hicrm_user_group_permissions WHERE group_id = '".$group_id."'");
+				$rows = $db->fetch_object();
+				if(is_array($rows)){ foreach($rows as $row){ $selected[] = intval($row->permission_id); } }
+			}
+			$this->view->data['method'] = $method;
+			$this->view->data['group'] = $group;
+			$this->view->data['permissions'] = is_array($permissions) ? $permissions : array();
+			$this->view->data['selected_permission_ids'] = $selected;
+			$this->view->data['pagetitle'] = $method === 'edit' ? 'Phân quyền nhóm' : 'Thêm nhóm quyền mới';
 			$this->view->admintmp("group-add");
 		}else{
 			$this->view->data['active_menu'] = "groups";
-			$this->view->data['groups'] = $userModel->role_user(); // Load nhóm quyền
+			$db->query("SELECT g.*, COUNT(DISTINCT gp.permission_id) AS permission_count, COUNT(DISTINCT u.id) AS user_count
+				FROM hicrm_user_groups g
+				LEFT JOIN hicrm_user_group_permissions gp ON gp.group_id = g.id
+				LEFT JOIN hicrm_users u ON u.user_group = g.id AND u.user_status NOT IN(99)
+				WHERE g.group_status NOT IN(99)
+				GROUP BY g.id ORDER BY g.id ASC");
+			$this->view->data['groups'] = $db->fetch_object();
 			$this->view->data['pagetitle'] = 'Danh sách nhóm quyền';
 			$this->view->admintmp("groups");
 		}
@@ -1603,6 +1647,7 @@ Class adminController extends baseController
 	// Quản lý sinh viên
 	public function students($para)
 	{
+		if(!$this->prepareAdminAccess('students')){ return; }
 		global $db;
 		
 		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ header("Location: ".XC_URL."/admin/login"); }
@@ -1733,6 +1778,7 @@ Class adminController extends baseController
 
 	public function images($para = array())
 	{
+		if(!$this->prepareAdminAccess('images')){ return; }
 		global $db;
 		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ header("Location: ".XC_URL."/admin/login"); return; }
 		$page = (isset($_GET['page']) && (int)$_GET['page'] > 0) ? (int)$_GET['page'] : 1;
@@ -1819,6 +1865,7 @@ Class adminController extends baseController
 		}
 	}
 	public function events($para){
+		if(!$this->prepareAdminAccess('events')){ return; }
 		global $db;
 		$method = $para[1];
 		$id = $para[2];
@@ -1878,6 +1925,7 @@ Class adminController extends baseController
 
 	public function newscomments($para = array())
 	{
+		if(!$this->prepareAdminAccess('news_comments')){ return; }
 		global $db;
 		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ $this->adminRedirect('/admin/login'); }
 		$this->ensureAdminFeatureTables();
@@ -1935,6 +1983,7 @@ Class adminController extends baseController
 
 	public function customerfeedbacks($para = array())
 	{
+		if(!$this->prepareAdminAccess('customer_feedbacks')){ return; }
 		global $db;
 		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ $this->adminRedirect('/admin/login'); }
 		$this->ensureAdminFeatureTables();
@@ -2000,6 +2049,100 @@ Class adminController extends baseController
 		}
 
 		$this->view->admintmp("customer-feedbacks");
+	}
+
+	public function jobsupportcustomers($para = array())
+	{
+		global $db;
+		if(!$this->prepareAdminAccess('job_support_customers')){
+			return;
+		}
+		if(!$this->adminTableExists('hicrm_job_support_requests')){
+			$this->renderAdminNotice(
+				'Quản lý khách hàng',
+				'Không tìm thấy bảng hicrm_job_support_requests trong cơ sở dữ liệu hiện tại.',
+				'jobsupportcustomers'
+			);
+			return;
+		}
+
+		$filters = array(
+			'full_name' => isset($_GET['full_name']) ? trim((string)$_GET['full_name']) : '',
+			'phone' => isset($_GET['phone']) ? trim((string)$_GET['phone']) : '',
+			'email' => isset($_GET['email']) ? trim((string)$_GET['email']) : '',
+			'job_keyword' => isset($_GET['job_keyword']) ? trim((string)$_GET['job_keyword']) : '',
+			'job_id' => isset($_GET['job_id']) ? max(0, intval($_GET['job_id'])) : 0,
+			'date_from' => isset($_GET['date_from']) ? trim((string)$_GET['date_from']) : '',
+			'date_to' => isset($_GET['date_to']) ? trim((string)$_GET['date_to']) : ''
+		);
+
+		foreach(array('date_from', 'date_to') as $dateKey){
+			if($filters[$dateKey] !== ''){
+				$dateParts = explode('-', $filters[$dateKey]);
+				if(count($dateParts) !== 3 || !checkdate(intval($dateParts[1]), intval($dateParts[2]), intval($dateParts[0]))){
+					$filters[$dateKey] = '';
+				}
+			}
+		}
+
+		$where = array('1=1');
+		if($filters['full_name'] !== ''){
+			$where[] = "r.full_name LIKE '%".$db->escapestring($filters['full_name'])."%'";
+		}
+		if($filters['phone'] !== ''){
+			$where[] = "r.phone LIKE '%".$db->escapestring($filters['phone'])."%'";
+		}
+		if($filters['email'] !== ''){
+			$where[] = "r.email LIKE '%".$db->escapestring($filters['email'])."%'";
+		}
+		if($filters['job_keyword'] !== ''){
+			$where[] = "j.title LIKE '%".$db->escapestring($filters['job_keyword'])."%'";
+		}
+		if($filters['job_id'] > 0){
+			$where[] = "r.job_id = '".intval($filters['job_id'])."'";
+		}
+		if($filters['date_from'] !== ''){
+			$where[] = "r.created_at >= '".$db->escapestring($filters['date_from'])." 00:00:00'";
+		}
+		if($filters['date_to'] !== ''){
+			$where[] = "r.created_at <= '".$db->escapestring($filters['date_to'])." 23:59:59'";
+		}
+
+		$baseSql = "FROM hicrm_job_support_requests r
+			LEFT JOIN hicrm_job_posts j ON j.id = r.job_id
+			WHERE ".implode(' AND ', $where);
+		$db->query("SELECT COUNT(r.id) AS total ".$baseSql);
+		$totalRow = $db->fetch_object(true);
+		$totalCustomers = $totalRow ? intval($totalRow->total) : 0;
+		$perPage = 20;
+		$totalPages = max(1, (int)ceil($totalCustomers / $perPage));
+		$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+		if($page > $totalPages){
+			$page = $totalPages;
+		}
+		$offset = ($page - 1) * $perPage;
+
+		$db->query("SELECT r.*, j.title AS job_title, j.status AS job_status
+			".$baseSql."
+			ORDER BY r.created_at DESC, r.id DESC
+			LIMIT ".$offset.", ".$perPage);
+		$items = $db->fetch_object();
+
+		$db->query("SELECT DISTINCT j.id, j.title
+			FROM hicrm_job_support_requests r
+			INNER JOIN hicrm_job_posts j ON j.id = r.job_id
+			ORDER BY j.title ASC, j.id DESC");
+		$jobOptions = $db->fetch_object();
+
+		$this->view->data['active_menu'] = 'jobsupportcustomers';
+		$this->view->data['job_support_customers'] = is_array($items) ? $items : array();
+		$this->view->data['job_support_customer_filters'] = $filters;
+		$this->view->data['job_support_job_options'] = is_array($jobOptions) ? $jobOptions : array();
+		$this->view->data['job_support_customer_page'] = $page;
+		$this->view->data['job_support_customer_per_page'] = $perPage;
+		$this->view->data['job_support_customer_total'] = $totalCustomers;
+		$this->view->data['job_support_customer_total_pages'] = $totalPages;
+		$this->view->admintmp('job-support-customers');
 	}
 	public function products($para)
 	{
@@ -2242,6 +2385,7 @@ Class adminController extends baseController
 
 	public function settings($para = array())
 	{
+		if(!$this->prepareAdminAccess('settings')){ return; }
 		$this->renderAdminNotice(
 			"Cài đặt hệ thống",
 			"Trang cài đặt hệ thống chuyên sâu đang được tách riêng. Hiện tại bạn có thể dùng mục Danh mục tham số để cập nhật các cấu hình hiện có.",
@@ -2373,7 +2517,8 @@ Class adminController extends baseController
 		return $db->fetch_object(true)->countorder;
 	}
 	public function config()
-    {
+	{
+		if(!$this->prepareAdminAccess('config')){ return; }
 		global $db;
 		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ header("Location: ".XC_URL."/admin/login"); return; }
 
@@ -2397,6 +2542,7 @@ Class adminController extends baseController
 
 	public function googlemeet($para = array())
 	{
+		if(!$this->prepareAdminAccess('google_meet')){ return; }
 		global $db;
 		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ $this->adminRedirect('/admin/login'); }
 		$this->ensureAdminFeatureTables();
@@ -2471,6 +2617,7 @@ Class adminController extends baseController
 
 	public function marketresults($para = array())
 	{
+		if(!$this->prepareAdminAccess('market_results')){ return; }
 		global $db;
 		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ $this->adminRedirect('/admin/login'); }
 		$this->ensureAdminFeatureTables();
@@ -2585,6 +2732,7 @@ Class adminController extends baseController
 
 	public function videos($para = array())
 	{
+		if(!$this->prepareAdminAccess('videos')){ return; }
 		global $db;
 		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ $this->adminRedirect('/admin/login'); }
 		$this->ensureAdminFeatureTables();
@@ -2937,6 +3085,7 @@ Class adminController extends baseController
 
 	public function employerposts($para = array())
 	{
+		if(!$this->prepareAdminAccess('employer_posts')){ return; }
 		global $db;
 		if(!(isset($_SESSION['user']['id']) && $_SESSION['user']['id'] != "")){ $this->adminRedirect('/admin/login'); }
 		if(!$this->adminTableExists('hicrm_job_posts')){

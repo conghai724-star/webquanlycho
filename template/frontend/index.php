@@ -659,6 +659,7 @@ function homeNewsUrl($news){
     ?>;
     if(originalBtn && dropdown && originalSearchInput && listEl && emptyEl && labelEl){
       var cleanBtn = originalBtn.cloneNode(true);
+      cleanBtn.setAttribute('data-location-initialized', 'true');
       originalBtn.parentNode.replaceChild(cleanBtn, originalBtn);
       var searchInput = originalSearchInput.cloneNode(true);
       originalSearchInput.parentNode.replaceChild(searchInput, originalSearchInput);

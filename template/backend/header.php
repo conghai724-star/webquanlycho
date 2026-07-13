@@ -1,4 +1,14 @@
 <?php require "config.php";?>
+<?php
+$adminAllowedKeys = isset($allowed_admin_menu) && is_array($allowed_admin_menu) ? $allowed_admin_menu : array();
+$adminCan = function($key) use ($adminAllowedKeys){
+    return in_array('*', $adminAllowedKeys, true) || in_array($key, $adminAllowedKeys, true);
+};
+$adminCanAny = function($keys) use ($adminCan){
+    foreach($keys as $key){ if($adminCan($key)){ return true; } }
+    return false;
+};
+?>
 <!doctype html>
 <html lang="en" dir="ltr">
   <head>
@@ -97,6 +107,7 @@
                             <span class="mini-icon">-</span>
                         </a>
                     </li>
+                    <?php if($adminCan('dashboard')): ?>
                     <li class="nav-item">
                         <a class="nav-link " aria-current="page" href="<?php echo XC_URL;?>/admin">
                             <i class="icon">
@@ -108,8 +119,10 @@
                             <span class="item-name">Trang chủ</span>
                         </a>
                     </li>
+                    <?php endif; ?>
                     
                     
+                    <?php if($adminCanAny(array('employers','employer_posts','candidates','students','events','news_comments','google_meet','market_results','customer_feedbacks','job_support_customers','users','groups'))): ?>
                     <li><hr class="hr-horizontal"></li>
                     <li class="nav-item static-item">
                         <a class="nav-link static-item disabled" href="#" tabindex="-1">
@@ -117,8 +130,10 @@
                             <span class="mini-icon">-</span>
                         </a>
                     </li>
+                    <?php endif; ?>
                    
 
+                    <?php if($adminCan('employers') || $adminCan('employer_posts')): ?>
                     <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="collapse" href="#sidebar-employee" role="button" aria-expanded="false" aria-controls="sidebar-user">
                               <i class="fa-solid fa-city"></i>
@@ -130,6 +145,7 @@
                             </i>
                         </a>
                         <ul class="sub-nav collapse" id="sidebar-employee" data-bs-parent="#sidebar-menu">
+                            <?php if($adminCan('employers')): ?>
                             <li class="nav-item">
                                 <a class="nav-link " href="<?php echo XC_URL;?>/admin/employers">
                                     <i class="icon">
@@ -143,6 +159,8 @@
                                     <span class="item-name <?php echo (isset($active_menu) && $active_menu == 'employers') ? 'active' : ''; ?>">QL nhà tuyển dụng</span>
                                 </a>
                             </li>
+                            <?php endif; ?>
+                            <?php if($adminCan('employer_posts')): ?>
                             <li class="nav-item">
                                 <a class="nav-link " href="<?php echo XC_URL;?>/admin/employers/posts">
                                     <i class="icon">
@@ -156,22 +174,28 @@
                                     <span class="item-name <?php echo (isset($active_menu) && $active_menu == 'post_employers') ? 'active' : ''; ?>">Quản lý bài đăng</span>
                                 </a>
                             </li>
+                            <?php endif; ?>
                          
-                            
                         </ul>
                     </li>
+                    <?php endif; ?>
+                     <?php if($adminCan('candidates')): ?>
                      <li class="nav-item">
                         <a class="nav-link <?php echo (isset($active_menu) && $active_menu == 'candidates') ? 'active' : ''; ?>"  href="<?php echo XC_URL;?>/admin/candidates">
                           <i class="fa-solid fa-chalkboard-user"></i>
                             <span class="item-name">Ứng viên</span>
                         </a>
                     </li>
+                    <?php endif; ?>
+                     <?php if($adminCan('students')): ?>
                      <li class="nav-item">
                         <a class="nav-link "  href="<?php echo XC_URL;?>/admin/students">
                          <i class="fa-solid fa-user-graduate"></i>
                             <span class="item-name">Sinh viên</span>
                         </a>
                     </li>
+                    <?php endif; ?>
+                     <?php if($adminCan('events') || $adminCan('news_comments')): ?>
                      <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="collapse" href="#sidebar-event" role="button" aria-expanded="false" aria-controls="sidebar-event">
                             <i class="fa-solid fa-calendar-plus"></i>
@@ -183,6 +207,7 @@
                             </i>
                         </a>
                         <ul class="sub-nav collapse" id="sidebar-event" data-bs-parent="#sidebar-menu">
+                            <?php if($adminCan('events')): ?>
                             <li class="nav-item">
                                 <a class="nav-link " href="<?php echo XC_URL;?>/admin/events">
                                     <i class="icon">
@@ -196,6 +221,8 @@
                                     <span class="item-name <?php echo (isset($active_menu) && $active_menu == 'events') ? 'active' : ''; ?>">QL Tin tức & Sự kiện</span>
                                 </a>
                             </li>
+                            <?php endif; ?>
+                             <?php if($adminCan('news_comments')): ?>
                              <li class="nav-item">
                                 <a class="nav-link " href="<?php echo XC_URL;?>/admin/newscomments">
                                     <i class="icon">
@@ -209,10 +236,11 @@
                                     <span class="item-name <?php echo (isset($active_menu) && $active_menu == 'newscomments') ? 'active' : ''; ?>">QL Bình luận Tin tức</span>
                                 </a>
                             </li>
+                            <?php endif; ?>
                          
-                            
                         </ul>
                     </li>
+                    <?php endif; ?>
                     
                     <!-- <li class="nav-item">
                         <a class="nav-link <?php echo (isset($active_menu) && $active_menu == 'newscomments') ? 'active' : ''; ?>"  href="<?php echo XC_URL;?>/admin/newscomments">
@@ -220,24 +248,39 @@
                             <span class="item-name">Bình luận tin tức</span>
                         </a>
                     </li> -->
+                    <?php if($adminCan('google_meet')): ?>
                     <li class="nav-item">
                         <a class="nav-link <?php echo (isset($active_menu) && $active_menu == 'googlemeet') ? 'active' : ''; ?>"  href="<?php echo XC_URL;?>/admin/googlemeet">
                          <i class="fa-brands fa-google"></i>
                             <span class="item-name">Sàn việc làm online</span>
                         </a>
                     </li>
+                    <?php endif; ?>
+                    <?php if($adminCan('market_results')): ?>
                     <li class="nav-item">
                         <a class="nav-link <?php echo (isset($active_menu) && $active_menu == 'marketresults') ? 'active' : ''; ?>"  href="<?php echo XC_URL;?>/admin/marketresults">
                          <i class="fa-solid fa-chart-line"></i>
                             <span class="item-name">Kết quả sàn</span>
                         </a>
                     </li>
+                    <?php endif; ?>
+                    <?php if($adminCan('customer_feedbacks')): ?>
                     <li class="nav-item">
                         <a class="nav-link <?php echo (isset($active_menu) && $active_menu == 'customerfeedbacks') ? 'active' : ''; ?>"  href="<?php echo XC_URL;?>/admin/customerfeedbacks">
                          <i class="fa-solid fa-envelope-open-text"></i>
                             <span class="item-name">Phản hồi KH</span>
                         </a>
                     </li>
+                    <?php endif; ?>
+                    <?php if($adminCan('job_support_customers')): ?>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo (isset($active_menu) && $active_menu == 'jobsupportcustomers') ? 'active' : ''; ?>" href="<?php echo XC_URL;?>/admin/jobsupportcustomers">
+                         <i class="fa-solid fa-address-book"></i>
+                            <span class="item-name">Khách hàng</span>
+                        </a>
+                    </li>
+                    <?php endif; ?>
+                    <?php if($adminCan('users') || $adminCan('groups')): ?>
                     <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="collapse" href="#sidebar-user" role="button" aria-expanded="false" aria-controls="sidebar-user">
                             <i class="icon">
@@ -258,6 +301,7 @@
                             </i>
                         </a>
                         <ul class="sub-nav collapse" id="sidebar-user" data-bs-parent="#sidebar-menu">
+                            <?php if($adminCan('users')): ?>
                             <li class="nav-item">
                                 <a class="nav-link " href="<?php echo XC_URL;?>/admin/users">
                                     <i class="icon">
@@ -271,6 +315,15 @@
                                     <span class="item-name <?php echo (isset($active_menu) && $active_menu == 'users') ? 'active' : ''; ?>">Quản lý Tài khoản</span>
                                 </a>
                             </li>
+                            <?php endif; ?>
+                            <?php if($adminCan('groups')): ?>
+                            <li class="nav-item">
+                                <a class="nav-link" href="<?php echo XC_URL;?>/admin/groups">
+                                    <i class="fa-solid fa-user-shield"></i>
+                                    <span class="item-name <?php echo (isset($active_menu) && $active_menu == 'groups') ? 'active' : ''; ?>">Quản lý Nhóm Quyền</span>
+                                </a>
+                            </li>
+                            <?php endif; ?>
                           <!-- <li class="nav-item">
                                 <a class="nav-link " href="<?php echo XC_URL;?>/admin/users/role">
                                     <i class="icon">
@@ -300,6 +353,8 @@
                             
                         </ul>
                     </li>
+                    <?php endif; ?>
+                    <?php if($adminCan('images') || $adminCan('videos')): ?>
                     <li><hr class="hr-horizontal"></li>
                     <li class="nav-item static-item">
                         <a class="nav-link static-item disabled" href="#" tabindex="-1">
@@ -307,6 +362,7 @@
                             <span class="mini-icon">-</span>
                         </a>
                     </li>
+                    <?php if($adminCan('images')): ?>
                     <li class="nav-item">
                         <a class="nav-link <?php echo (isset($active_menu) && $active_menu == 'images') ? 'active' : ''; ?>" href="<?php echo XC_URL;?>/admin/images">
                             <i class="fa-solid fa-image">
@@ -315,6 +371,8 @@
                             <span class="item-name">Thư viện hình ảnh</span>
                         </a>
                     </li>
+                    <?php endif; ?>
+                    <?php if($adminCan('videos')): ?>
                     <li class="nav-item">
                         <a class="nav-link <?php echo (isset($active_menu) && $active_menu == 'videos') ? 'active' : ''; ?>" href="<?php echo XC_URL;?>/admin/videos">
                             <i class="fa-solid fa-video">
@@ -322,7 +380,10 @@
                             <span class="item-name">Thư viện video</span>
                         </a>
                     </li>
+                    <?php endif; ?>
+                    <?php endif; ?>
 
+                    <?php if($adminCan('config') || $adminCan('settings')): ?>
                     <li><hr class="hr-horizontal"></li>
                     <li class="nav-item static-item">
                         <a class="nav-link static-item disabled" href="<?php echo XC_URL;?>/admin/system" tabindex="-1">
@@ -330,6 +391,7 @@
                             <span class="mini-icon">-</span>
                         </a>
                     </li>
+                    <?php if($adminCan('config')): ?>
                     <li class="nav-item">
                         <a class="nav-link <?php echo (isset($active_menu) && $active_menu == 'config') ? 'active' : ''; ?>" href="<?php echo XC_URL;?>/admin/config">
                             <i class="fa-solid fa-gears">
@@ -338,6 +400,8 @@
                             <span class="item-name">DM Tham số</span>
                         </a>
                     </li>
+                    <?php endif; ?>
+                    <?php if($adminCan('settings')): ?>
                     <li class="nav-item">
                         <a class="nav-link" href="<?php echo XC_URL;?>/admin/settings">
                             <i class="fa-solid fa-wrench">
@@ -345,6 +409,8 @@
                             <span class="item-name">Cài đặt hệ thống</span>
                         </a>
                     </li>
+                    <?php endif; ?>
+                    <?php endif; ?>
                    <br><br>
                 </ul>
                 <!-- Sidebar Menu End -->        </div>

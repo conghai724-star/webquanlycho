@@ -47,10 +47,10 @@ public static function getInstance() {
  * @return void
  *
  */
- public function __set($index, $value)
- {
-        $this->vars[$index] = $value;
- }
+//  public function __set($index, $value)
+//  {
+//         $this->vars[$index] = $value;
+//  }
 
 
 function show($name) {

@@ -198,7 +198,7 @@ $breadcrumbUrl = XC_URL.'/quan-ly-ung-vien.html';
             <?php }else{ ?>
               <button class="cd-btn cd-btn-outline" type="button" disabled><i class="ti ti-file-cv"></i> Chưa có CV</button>
             <?php } ?>
-            <button class="cd-btn cd-btn-outline" type="button"><i class="ti ti-heart"></i> Lưu hồ sơ</button>
+            <!-- <button class="cd-btn cd-btn-outline" type="button"><i class="ti ti-heart"></i> Lưu hồ sơ</button> -->
           </div>
         </div>
       </div>
@@ -327,9 +327,9 @@ $breadcrumbUrl = XC_URL.'/quan-ly-ung-vien.html';
           </div>
         </section>
 
-        <section class="cd-card">
+        <!-- <section class="cd-card">
           <button class="cd-btn cd-btn-blue" type="button" style="width:100%;justify-content:center"><i class="ti ti-send"></i> Mời ứng viên ứng tuyển</button>
-        </section>
+        </section> -->
 
         <section class="cd-card">
           <h2 class="cd-title"><i class="ti ti-users-star"></i> Ứng viên tiêu biểu</h2>

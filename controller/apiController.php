@@ -158,6 +158,60 @@ Class apiController extends baseController
 			unset($_SESSION['frontend_pending_verification']);
 		}
 	}
+	private function adminApiAllowedMenuKeys()
+	{
+		global $db;
+		if(!isset($_SESSION['user']['id']) || intval($_SESSION['user']['id']) <= 0){ return array(); }
+		$db->query("SELECT user_group FROM hicrm_users WHERE id = '".intval($_SESSION['user']['id'])."' AND user_status = 1 LIMIT 1");
+		$user = $db->fetch_object(true);
+		if(!$user){ return array(); }
+		if(intval($user->user_group) === 1){ return array('*'); }
+		$this->ensureAdminPermissionTables();
+		$db->query("SELECT p.permission_key FROM hicrm_user_group_permissions gp
+			INNER JOIN hicrm_admin_menu_permissions p ON p.id = gp.permission_id
+			WHERE gp.group_id = '".intval($user->user_group)."' AND p.permission_status = 1");
+		$rows = $db->fetch_object();
+		$keys = array();
+		if(is_array($rows)){ foreach($rows as $row){ $keys[] = $row->permission_key; } }
+		return $keys;
+	}
+	private function requireAdminApiPermission($permission_key, $verify_csrf = true)
+	{
+		$keys = $this->adminApiAllowedMenuKeys();
+		if(!in_array('*', $keys, true) && !in_array($permission_key, $keys, true)){
+			http_response_code(403);
+			echo json_encode(array('status' => 403, 'message' => 'Bạn không có quyền thực hiện thao tác này.'));
+			return false;
+		}
+		if($verify_csrf){
+			$token = isset($_POST['csrf_token']) ? (string)$_POST['csrf_token'] : '';
+			$session_token = isset($_SESSION['admin_csrf_token']) ? (string)$_SESSION['admin_csrf_token'] : '';
+			if($token === '' || $session_token === '' || !hash_equals($session_token, $token)){
+				http_response_code(419);
+				echo json_encode(array('status' => 419, 'message' => 'Phiên thao tác đã hết hạn. Vui lòng tải lại trang.'));
+				return false;
+			}
+		}
+		return true;
+	}
+	private function adminAccountHasAccess($group_id)
+	{
+		global $db;
+		if(intval($group_id) === 1){ return true; }
+		$this->ensureAdminPermissionTables();
+		$db->query("SELECT gp.id FROM hicrm_user_group_permissions gp
+			INNER JOIN hicrm_admin_menu_permissions p ON p.id = gp.permission_id AND p.permission_status = 1
+			WHERE gp.group_id = '".intval($group_id)."' LIMIT 1");
+		return $db->num_row() > 0;
+	}
+	private function currentAdminIsSuperAdmin()
+	{
+		global $db;
+		if(!isset($_SESSION['user']['id'])){ return false; }
+		$db->query("SELECT user_group FROM hicrm_users WHERE id = '".intval($_SESSION['user']['id'])."' AND user_status = 1 LIMIT 1");
+		$user = $db->fetch_object(true);
+		return $user && intval($user->user_group) === 1;
+	}
 	private function frontendTableExists($table_name)
 	{
 		global $db;
@@ -499,6 +553,7 @@ Class apiController extends baseController
 	}
 	//======================== user =================================//
 	public function adduser(){
+		if(!$this->requireAdminApiPermission('users', false)){ return; }
 		global $db;
 		
 		// $user_fullname = $_POST['user_fullname'];
@@ -555,6 +610,7 @@ Class apiController extends baseController
 	}
 	public function resetpassword(){
 		global $db;
+		if(!$this->requireAdminApiPermission('users')){ return; }
 		$result = array();
 		$id = isset($_POST['id']) ? $db->escapestring($_POST['id']) : '';
 		if(empty($id)){
@@ -566,7 +622,7 @@ Class apiController extends baseController
 
 		$db->query("SELECT * FROM hicrm_users WHERE id = '".$id."'");
 		$user = $db->fetch_object(true);
-		if(!$db->num_row($user)){
+		if(!$db->num_row()){
 			$result['status'] = 404;
 			$result['message'] = 'Người dùng không tồn tại';
 			echo json_encode($result);
@@ -586,6 +642,7 @@ Class apiController extends baseController
 	//insert user database
 	public function userAction(){
 		global $db;
+		if(!$this->requireAdminApiPermission('users')){ return; }
 		
 		$full_name = $db->escapestring($_POST['full_name']);
 		$email = $db->escapestring($_POST['user_email']);
@@ -605,6 +662,24 @@ Class apiController extends baseController
 		if(!$db->num_row()){
 			$result['status'] = 400;
 			$result['message'] = 'Nhóm quyền không tồn tại hoặc đã bị xóa';
+			echo json_encode($result);
+			return;
+		}
+		if(intval($user->user_group) === 1 && !$this->currentAdminIsSuperAdmin()){
+			$result['status'] = 403;
+			$result['message'] = 'Không thể reset mật khẩu tài khoản Super Admin.';
+			echo json_encode($result);
+			return;
+		}
+		if(!$this->adminAccountHasAccess($user_group)){
+			$result['status'] = 400;
+			$result['message'] = 'Nhóm được chọn chưa có quyền truy cập Admin.';
+			echo json_encode($result);
+			return;
+		}
+		if($user_group === 1 && !$this->currentAdminIsSuperAdmin()){
+			$result['status'] = 403;
+			$result['message'] = 'Chỉ Super Admin mới được gán nhóm Super Admin.';
 			echo json_encode($result);
 			return;
 		}
@@ -643,6 +718,14 @@ Class apiController extends baseController
 			if($user_id <= 0){
 				$result['status'] = 400;
 				$result['message'] = 'Tài khoản cần cập nhật không hợp lệ';
+				echo json_encode($result);
+				return;
+			}
+			$db->query("SELECT user_group FROM hicrm_users WHERE id = '".$user_id."' LIMIT 1");
+			$target_user = $db->fetch_object(true);
+			if($target_user && intval($target_user->user_group) === 1 && !$this->currentAdminIsSuperAdmin()){
+				$result['status'] = 403;
+				$result['message'] = 'Không thể chỉnh sửa tài khoản Super Admin.';
 				echo json_encode($result);
 				return;
 			}
@@ -808,6 +891,7 @@ Class apiController extends baseController
 		echo json_encode($result);
 	}
 	public function libraryImageAdd(){
+		if(!$this->requireAdminApiPermission('images', false)){ return; }
 		global $db;
 		$result = array();
 		$image_name = isset($_POST['image_name']) ? $db->escapestring(trim($_POST['image_name'])) : '';
@@ -859,6 +943,7 @@ Class apiController extends baseController
 		echo json_encode($result);
 	}
 	public function libraryImageUpdate(){
+		if(!$this->requireAdminApiPermission('images', false)){ return; }
 		global $db;
 		$result = array();
 		$id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
@@ -918,6 +1003,7 @@ Class apiController extends baseController
 		echo json_encode($result);
 	}
 	public function libraryImageDelete(){
+		if(!$this->requireAdminApiPermission('images', false)){ return; }
 		global $db;
 		$result = array();
 		$id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
@@ -1064,6 +1150,7 @@ Class apiController extends baseController
 	//===== API NEWS === 
 	public function news()
 	{
+		if(!$this->requireAdminApiPermission('events', false)){ return; }
 		global $db;
 		$new_name = $_POST['new_name'];
 		$new_description = $_POST['new_description'];
@@ -1174,6 +1261,7 @@ Class apiController extends baseController
 	//===== API events === 
 	public function events()
 	{
+		if(!$this->requireAdminApiPermission('events', false)){ return; }
 		global $db;
 		$event_name = isset($_POST['event_name']) ? $db->escapestring($_POST['event_name']) : '';
 		$event_description = isset($_POST['event_description']) ? $db->escapestring($_POST['event_description']) : '';
@@ -1801,6 +1889,7 @@ Class apiController extends baseController
 	}
 	
 	public function deleteEvent(){
+		if(!$this->requireAdminApiPermission('events', false)){ return; }
 		$id = $_POST['id'];
 		$table = 'hicrm_events';
 		$row = 'event_status';
@@ -3615,6 +3704,12 @@ Class apiController extends baseController
 					return;
 				}
 			}
+			if(!$isFrontendLogin && !$this->adminAccountHasAccess(intval($row->user_group))){
+				$result["status"] = 403;
+				$result["message"] = "Tài khoản chưa được cấp quyền truy cập trang quản trị.";
+				echo json_encode($result);
+				return;
+			}
 			if(intval($row->user_group) === 1 && $this->adminTwoFactorConfigEnabled()){
 				$otpResult = $this->adminStartTwoFactorSession($row);
 				if(!$otpResult['status']){
@@ -3634,7 +3729,7 @@ Class apiController extends baseController
 			$result["status"] = 200;
 			$result["name"] = $_SESSION['user']['full_name'];
 			$result["message"] = "Đăng nhập thành công";
-			$result['return_url'] = $this->frontendLoginReturnUrl($row);
+			$result['return_url'] = $isFrontendLogin ? $this->frontendLoginReturnUrl($row) : XC_URL.'/admin';
         }
 		else
 		{
@@ -3710,7 +3805,6 @@ Class apiController extends baseController
 			echo json_encode($result);
 			return;
 		}
-
 		$user_id = intval($_SESSION['user']['id']);
 		$job_id = isset($_POST['job_id']) ? intval($_POST['job_id']) : 0;
 		if($job_id <= 0){
@@ -3792,6 +3886,91 @@ Class apiController extends baseController
 		$result['status'] = 200;
 		$result['message'] = 'Ứng tuyển thành công.';
 		$result['return_url'] = $this->frontendCurrentBaseUrl().'/quan-ly-ho-so-ung-vien.html';
+		echo json_encode($result);
+	}
+	public function saveJobSupportRequest()
+	{
+		global $db;
+		header('Content-Type: application/json; charset=utf-8');
+		$result = array('status' => 400, 'message' => 'Dữ liệu gửi lên không hợp lệ.');
+
+		if(!isset($_SERVER['REQUEST_METHOD']) || strtoupper((string)$_SERVER['REQUEST_METHOD']) !== 'POST'){
+			$result['status'] = 405;
+			$result['message'] = 'Phương thức gửi dữ liệu không được hỗ trợ.';
+			echo json_encode($result);
+			return;
+		}
+
+		$csrfToken = isset($_POST['csrf_token']) ? trim((string)$_POST['csrf_token']) : '';
+		$sessionToken = isset($_SESSION['job_support_csrf_token']) ? (string)$_SESSION['job_support_csrf_token'] : '';
+		if($csrfToken === '' || $sessionToken === '' || !hash_equals($sessionToken, $csrfToken)){
+			$result['status'] = 403;
+			$result['message'] = 'Phiên gửi thông tin không hợp lệ. Vui lòng tải lại trang.';
+			echo json_encode($result);
+			return;
+		}
+
+		$jobId = isset($_POST['job_id']) ? intval($_POST['job_id']) : 0;
+		$fullName = trim(preg_replace('/\s+/u', ' ', isset($_POST['full_name']) ? (string)$_POST['full_name'] : ''));
+		$phoneInput = trim(isset($_POST['phone']) ? (string)$_POST['phone'] : '');
+		$phone = preg_replace('/[^0-9+]/', '', $phoneInput);
+		$email = trim(isset($_POST['email']) ? (string)$_POST['email'] : '');
+
+		$errors = array();
+		$nameLength = function_exists('mb_strlen') ? mb_strlen($fullName, 'UTF-8') : strlen($fullName);
+		if($nameLength < 2 || $nameLength > 150){
+			$errors['full_name'] = 'Họ và tên phải có từ 2 đến 150 ký tự.';
+		}
+		if(!preg_match('/^(?:\+84|0)[0-9]{8,10}$/', $phone)){
+			$errors['phone'] = 'Số điện thoại không đúng định dạng.';
+		}
+		if(strlen($email) > 191 || !filter_var($email, FILTER_VALIDATE_EMAIL)){
+			$errors['email'] = 'Email không đúng định dạng.';
+		}
+		if($jobId <= 0){
+			$errors['job_id'] = 'Bài tuyển dụng không hợp lệ.';
+		}
+		if(!empty($errors)){
+			$result['errors'] = $errors;
+			$result['message'] = 'Vui lòng kiểm tra lại thông tin.';
+			echo json_encode($result);
+			return;
+		}
+
+		$db->query("SELECT id FROM hicrm_job_posts WHERE id = '".$jobId."' AND status = 'published' LIMIT 1");
+		if(!$db->num_row()){
+			$result['status'] = 404;
+			$result['message'] = 'Bài tuyển dụng không tồn tại hoặc đã ngừng hiển thị.';
+			echo json_encode($result);
+			return;
+		}
+
+		$sessionId = session_id();
+		if($sessionId === ''){
+			$result['status'] = 403;
+			$result['message'] = 'Không xác định được phiên truy cập. Vui lòng tải lại trang.';
+			echo json_encode($result);
+			return;
+		}
+
+		$sessionIdEsc = $db->escapestring(substr($sessionId, 0, 128));
+		$db->query("SELECT id FROM hicrm_job_support_requests WHERE session_id = '".$sessionIdEsc."' LIMIT 1");
+		if($db->num_row()){
+			$result['status'] = 409;
+			$result['message'] = 'Thông tin hỗ trợ đã được ghi nhận trong phiên này.';
+			echo json_encode($result);
+			return;
+		}
+
+		$ipAddress = isset($_SERVER['REMOTE_ADDR']) ? trim((string)$_SERVER['REMOTE_ADDR']) : '';
+		$db->query("INSERT INTO hicrm_job_support_requests
+			(job_id, full_name, phone, email, session_id, ip_address, created_at)
+			VALUES
+			('".$jobId."', '".$db->escapestring($fullName)."', '".$db->escapestring($phone)."', '".$db->escapestring($email)."', '".$sessionIdEsc."', '".$db->escapestring(substr($ipAddress, 0, 45))."', NOW())");
+
+		$_SESSION['job_support_request_saved'] = true;
+		$result['status'] = 200;
+		$result['message'] = 'Thông tin của bạn đã được ghi nhận. Chúng tôi sẽ hỗ trợ bạn sớm nhất.';
 		echo json_encode($result);
 	}
 	public function admin_verify_2fa()
@@ -4414,11 +4593,20 @@ Class apiController extends baseController
 	public function deleteuser()
 	{
 		global $db;
+		if(!$this->requireAdminApiPermission('users')){ return; }
 		$result = array();
-		$db->query("SELECT * FROM hicrm_users WHERE id = '".$_POST['id']."'");
+		$id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+		$db->query("SELECT * FROM hicrm_users WHERE id = '".$id."'");
 		if($db->num_row())
 		{
-			$db->query("UPDATE hicrm_users SET user_status = '99' WHERE id = '".$_POST['id']."'");
+			$user = $db->fetch_object(true);
+			if($id === intval($_SESSION['user']['id']) || (intval($user->user_group) === 1 && !$this->currentAdminIsSuperAdmin())){
+				$result["status"] = 403;
+				$result["message"] = "Không thể xóa tài khoản đang đăng nhập hoặc tài khoản Super Admin.";
+				echo json_encode($result);
+				return;
+			}
+			$db->query("UPDATE hicrm_users SET user_status = '99' WHERE id = '".$id."'");
 			$result["status"] = 200;
 		}
 		else
@@ -5695,7 +5883,8 @@ Class apiController extends baseController
 /// Start Code Cuong
 // API Student register
 public function addstudent()
-	{
+{
+	if(!$this->requireAdminApiPermission('students', false)){ return; }
 		global $db;
 
 		header('Content-Type: application/json; charset=utf-8');
@@ -6114,6 +6303,7 @@ public function addstudent()
 
 	public function insertStudents()
 	{
+		if(!$this->requireAdminApiPermission('students', false)){ return; }
 		return $this->insertStudens();
 	}
 
@@ -6636,6 +6826,7 @@ public function addstudent()
 	public function addGroup(){
 		global $db;
 		$this->ensureAdminPermissionTables();
+		if(!$this->requireAdminApiPermission('groups')){ return; }
 		$group_id = isset($_POST['group_id']) ? intval($_POST['group_id']) : 0;
 		$group_name = $db->escapestring(trim($_POST['group_name'] ?? ''));
 		$group_class = $db->escapestring($_POST['group_class'] ?? '');
@@ -6648,6 +6839,35 @@ public function addstudent()
 			$result['message'] = 'Tên nhóm quyền không được để trống';
 			echo json_encode($result);
 			return;
+		}
+		if($group_id === 1){
+			$result['status'] = 403;
+			$result['message'] = 'Không thể thay đổi nhóm Super Admin.';
+			echo json_encode($result);
+			return;
+		}
+		if(in_array($group_id, array(2, 3, 4), true)){
+			$result['status'] = 403;
+			$result['message'] = 'Đây là nhóm tài khoản ngoài trang chủ, không thể cấp quyền Admin trực tiếp.';
+			echo json_encode($result);
+			return;
+		}
+		if($group_id > 0){
+			$db->query("SELECT user_group FROM hicrm_users WHERE id = '".intval($_SESSION['user']['id'])."' LIMIT 1");
+			$current_admin = $db->fetch_object(true);
+			if($current_admin && intval($current_admin->user_group) === $group_id){
+				$result['status'] = 403;
+				$result['message'] = 'Không thể chỉnh sửa nhóm quyền của chính tài khoản đang đăng nhập.';
+				echo json_encode($result);
+				return;
+			}
+			$db->query("SELECT id FROM hicrm_user_groups WHERE id = '".$group_id."' AND group_status NOT IN(99) LIMIT 1");
+			if(!$db->num_row()){
+				$result['status'] = 404;
+				$result['message'] = 'Nhóm quyền không tồn tại.';
+				echo json_encode($result);
+				return;
+			}
 		}
 
 		// Kiểm tra nhóm quyền đã tồn tại chưa
@@ -6667,18 +6887,28 @@ public function addstudent()
 			}
 		}
 		$valid_permission_ids = array_values(array_unique($valid_permission_ids));
+		if(!empty($valid_permission_ids)){
+			$db->query("SELECT id FROM hicrm_admin_menu_permissions WHERE permission_status = 1 AND id IN (".implode(',', $valid_permission_ids).")");
+			$rows = $db->fetch_object();
+			$valid_permission_ids = array();
+			if(is_array($rows)){ foreach($rows as $row){ $valid_permission_ids[] = intval($row->id); } }
+		}
 
+		$db->query("START TRANSACTION");
 		if($group_id > 0){
 			$db->query("UPDATE hicrm_user_groups SET group_name = '".$group_name."', group_class = '".$group_class."', group_icon = '".$group_icon."' WHERE id = '".$group_id."' LIMIT 1");
 		}else{
 			$db->query("INSERT INTO hicrm_user_groups(group_name, group_class, group_icon, group_status) VALUES ('".$group_name."','".$group_class."','".$group_icon."',1)");
-			$group_id = intval($db->insert_id());
+			$db->query("SELECT LAST_INSERT_ID() AS id");
+			$inserted = $db->fetch_object(true);
+			$group_id = $inserted ? intval($inserted->id) : 0;
 		}
 
 		$db->query("DELETE FROM hicrm_user_group_permissions WHERE group_id = '".$group_id."'");
 		foreach($valid_permission_ids as $permission_id){
 			$db->query("INSERT IGNORE INTO hicrm_user_group_permissions(group_id, permission_id) VALUES ('".$group_id."','".$permission_id."')");
 		}
+		$db->query("COMMIT");
 
 		$result['status'] = 200;
 		$result['message'] = (isset($_POST['method']) && $_POST['method'] === 'edit') ? 'Cập nhật nhóm quyền thành công' : 'Thêm nhóm quyền thành công';
@@ -6690,6 +6920,7 @@ public function addstudent()
 	public function assignAdminGroup()
 	{
 		global $db;
+		if(!$this->requireAdminApiPermission('users')){ return; }
 		$result = array();
 		$user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
 		$user_group = isset($_POST['user_group']) ? intval($_POST['user_group']) : 0;
@@ -6707,6 +6938,18 @@ public function addstudent()
 			echo json_encode($result);
 			return;
 		}
+		if($user_id === intval($_SESSION['user']['id'])){
+			$result['status'] = 403;
+			$result['message'] = 'Không thể tự thay đổi nhóm quyền của tài khoản đang đăng nhập.';
+			echo json_encode($result);
+			return;
+		}
+		if($user_group === 1 && !$this->currentAdminIsSuperAdmin()){
+			$result['status'] = 403;
+			$result['message'] = 'Chỉ Super Admin mới được gán nhóm Super Admin.';
+			echo json_encode($result);
+			return;
+		}
 
 		$db->query("SELECT id FROM hicrm_user_groups WHERE id = '".$user_group."' AND group_status NOT IN(99) LIMIT 1");
 		if(!$db->num_row()){
@@ -6715,8 +6958,14 @@ public function addstudent()
 			echo json_encode($result);
 			return;
 		}
+		if(!$this->adminAccountHasAccess($user_group)){
+			$result['status'] = 400;
+			$result['message'] = 'Nhóm được chọn chưa có quyền truy cập Admin.';
+			echo json_encode($result);
+			return;
+		}
 
-		$db->query("SELECT u.id
+		$db->query("SELECT u.id, u.user_group
 			FROM hicrm_users u
 			INNER JOIN hicrm_user_groups g ON u.user_group = g.id AND g.group_status NOT IN(99)
 			WHERE u.id = '".$user_id."' AND u.user_status NOT IN(99)
@@ -6724,6 +6973,13 @@ public function addstudent()
 		if(!$db->num_row()){
 			$result['status'] = 404;
 			$result['message'] = 'Không tìm thấy tài khoản admin cần phân quyền';
+			echo json_encode($result);
+			return;
+		}
+		$target_user = $db->fetch_object(true);
+		if($target_user && intval($target_user->user_group) === 1 && !$this->currentAdminIsSuperAdmin()){
+			$result['status'] = 403;
+			$result['message'] = 'Không thể thay đổi nhóm của tài khoản Super Admin.';
 			echo json_encode($result);
 			return;
 		}
@@ -6738,6 +6994,7 @@ public function addstudent()
 
 	public function linkemployer(){
 		global $db;
+		if(!$this->requireAdminApiPermission('employers', false)){ return; }
 		$result = array();
 		$id = isset($_POST['id']) ? $db->escapestring($_POST['id']) : '';
 
@@ -6764,6 +7021,7 @@ public function addstudent()
 
 	public function deleteemployer(){
 		global $db;
+		if(!$this->requireAdminApiPermission('employers', false)){ return; }
 		$result = array();
 		$id = isset($_POST['id']) ? $db->escapestring($_POST['id']) : '';
 
@@ -7145,13 +7403,25 @@ public function addstudent()
 	// Xóa nhóm quyền
 	public function deletegroup(){
 		global $db;
+		if(!$this->requireAdminApiPermission('groups')){ return; }
 		$result = array();
-		$id = $_POST['id'];
-		$group_status = $_POST['group_status'];
+		$id = isset($_POST['id']) ? intval($_POST['id']) : 0;
 
 		if(empty($id)){
 			$result['status'] = 400;
 			$result['message'] = 'ID nhóm quyền không hợp lệ';
+			echo json_encode($result);
+			return;
+		}
+		if($id === 1){
+			$result['status'] = 403;
+			$result['message'] = 'Không thể xóa nhóm Super Admin.';
+			echo json_encode($result);
+			return;
+		}
+		if(in_array($id, array(2, 3, 4), true)){
+			$result['status'] = 403;
+			$result['message'] = 'Không thể xóa nhóm tài khoản hệ thống ngoài trang chủ.';
 			echo json_encode($result);
 			return;
 		}
@@ -7164,17 +7434,19 @@ public function addstudent()
 			echo json_encode($result);
 			return;
 		}
+		$db->query("SELECT id FROM hicrm_users WHERE user_group = '".$id."' AND user_status NOT IN(99) LIMIT 1");
+		if($db->num_row()){
+			$result['status'] = 400;
+			$result['message'] = 'Không thể xóa nhóm đang có tài khoản sử dụng.';
+			echo json_encode($result);
+			return;
+		}
 
 		// Xóa nhóm quyền (đánh dấu xóa)
 		$db->query("UPDATE hicrm_user_groups SET group_status = 99 WHERE id = '".$id."'");
 
-		if($db->affected_rows() > 0){
-			$result['status'] = 200;
-			$result['message'] = 'Xóa nhóm quyền thành công';
-		}else{
-			$result['status'] = 500;
-			$result['message'] = 'Có lỗi xảy ra khi xóa nhóm quyền';
-		}
+		$result['status'] = 200;
+		$result['message'] = 'Xóa nhóm quyền thành công';
 
 		echo json_encode($result);
 	}

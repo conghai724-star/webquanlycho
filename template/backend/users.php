@@ -68,7 +68,7 @@ $(document).ready(function () {
       $.ajax({
          type: "POST",
          url: "<?php echo XC_URL; ?>/api/resetpassword",
-         data: { id: id },
+         data: { id: id, csrf_token: '<?php echo htmlspecialchars($admin_csrf_token, ENT_QUOTES, 'UTF-8'); ?>' },
          dataType: "json",
          success: function (data) {
             if (Number(data.status) === 200) {
@@ -97,6 +97,31 @@ $(document).ready(function () {
       });
    });
 
+   $(document).on('click', '.btn-assign-admin-group', function () {
+      var userId = $(this).data('user-id');
+      var currentGroup = String($(this).data('group-id'));
+      $('#assign_admin_user_id').val(userId);
+      $('#assign_admin_group_id').val(currentGroup);
+      $('#assignAdminGroupModal').modal('show');
+   });
+
+   $('#saveAdminGroupBtn').on('click', function () {
+      var $button = $(this).prop('disabled', true);
+      $.ajax({
+         type: 'POST',
+         url: '<?php echo XC_URL; ?>/api/assignAdminGroup',
+         data: {
+            user_id: $('#assign_admin_user_id').val(),
+            user_group: $('#assign_admin_group_id').val(),
+            csrf_token: '<?php echo htmlspecialchars($admin_csrf_token, ENT_QUOTES, 'UTF-8'); ?>'
+         },
+         dataType: 'json'
+      }).done(function (result) {
+         if (Number(result.status) === 200) location.reload();
+         else Swal.fire({icon:'error', title:'Không thể phân quyền', text:result.message});
+      }).always(function () { $button.prop('disabled', false); });
+   });
+
    $(document).on('click', '.btn-open-delete-user', function (e) {
       e.preventDefault();
       $('#delete_user_id').val($(this).data('user-id'));
@@ -116,7 +141,8 @@ $(document).ready(function () {
          url: "<?php echo XC_URL; ?>/api/deleteuser",
          data: {
             id: id,
-            user_status: user_status
+            user_status: user_status,
+            csrf_token: '<?php echo htmlspecialchars($admin_csrf_token, ENT_QUOTES, 'UTF-8'); ?>'
          },
          dataType: "json",
          success: function (data) {
@@ -182,7 +208,7 @@ $(document).ready(function () {
                               <th>STT</th>
                               <th>Họ và tên</th>
                               <th>Email</th>
-                              <th>Nhóm quyền</th>
+                              <th>Đối tượng</th>
                               <th>Trạng thái</th>
                               <th style="min-width: 220px">Thao tác</th>
                            </tr>
@@ -196,7 +222,7 @@ $(document).ready(function () {
                               </th>
                               <th>
                                  <select class="form-select form-select-sm">
-                                    <option value="">Tất cả nhóm quyền</option>
+                                    <option value="">Tất cả đối tượng</option>
                                  </select>
                               </th>
                               <th>
@@ -226,6 +252,9 @@ $(document).ready(function () {
                               </td>
                               <td>
                                  <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <?php if((int)$user->uid !== (int)$_SESSION['user']['id']): ?>
+                                    <button type="button" class="btn btn-sm btn-primary btn-assign-admin-group" data-user-id="<?php echo (int)$user->uid; ?>" data-group-id="<?php echo (int)$user->user_group; ?>">Gán quyền</button>
+                                    <?php endif; ?>
                                     <!-- <a class="btn btn-sm btn-primary" href="<?php echo XC_URL; ?>/admin/users/role/<?php echo $user->uid; ?>">
                                        Phân quyền
                                     </a> -->
@@ -260,6 +289,16 @@ $(document).ready(function () {
          </div>
       </div>
    </div>
+</div>
+
+<div class="modal fade" id="assignAdminGroupModal" tabindex="-1" aria-hidden="true">
+ <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title">Gán nhóm quyền Admin</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body"><input type="hidden" id="assign_admin_user_id"><label class="form-label" for="assign_admin_group_id">Nhóm quyền</label><select class="form-select" id="assign_admin_group_id">
+   <?php foreach((isset($admin_groups) && is_array($admin_groups)) ? $admin_groups : array() as $adminGroup): ?><option value="<?php echo (int)$adminGroup->id; ?>"><?php echo htmlspecialchars($adminGroup->group_name, ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?>
+  </select><small class="text-muted d-block mt-2">Chỉ hiển thị các nhóm đã có ít nhất một quyền Admin.</small></div>
+  <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button><button type="button" class="btn btn-primary" id="saveAdminGroupBtn">Lưu</button></div>
+ </div></div>
 </div>
 
 <div class="modal fade" id="deleteUserModal" tabindex="-1" aria-labelledby="deleteUserModalLabel" aria-hidden="true">

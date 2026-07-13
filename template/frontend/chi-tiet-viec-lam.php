@@ -10,6 +10,8 @@ $jobApplyMessage = isset($job_apply_message) ? trim((string)$job_apply_message) 
 $jobApplyMessageType = isset($job_apply_message_type) ? trim((string)$job_apply_message_type) : '';
 $jobDeadlineExpired = !empty($job_deadline_expired);
 $jobCandidateProfile = isset($job_candidate_profile) && is_object($job_candidate_profile) ? $job_candidate_profile : null;
+$showJobSupportModal = !empty($show_job_support_modal);
+$jobSupportCsrfToken = isset($job_support_csrf_token) ? (string)$job_support_csrf_token : '';
 $jobUrl = general::getInstance()->permalink((int)($jobDetail->id ?? 0), 'job_post');
 $siteScriptName = isset($_SERVER['SCRIPT_NAME']) ? str_replace('\\', '/', (string)$_SERVER['SCRIPT_NAME']) : '';
 $siteBasePath = rtrim(dirname($siteScriptName), '/');
@@ -113,6 +115,40 @@ $jobRequirementItems = jobDetailTextLines($jobDetail->requirements ?? '', 'Yêu 
 $jobBenefitItems = jobDetailTextLines($jobDetail->benefits ?? '', 'Quyền lợi đang được cập nhật.');
 $jobShareUrl = $jobUrl;
 ?>
+
+<?php if($showJobSupportModal){ ?>
+<style>
+body.jd-support-modal-open{overflow:hidden}
+.jd-support-modal{position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;visibility:hidden;transition:opacity .2s ease,visibility .2s ease;font-family:'Inter',system-ui,sans-serif}
+.jd-support-modal.open{opacity:1;visibility:visible}
+.jd-support-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.62);backdrop-filter:blur(3px)}
+.jd-support-dialog{position:relative;width:min(100%,510px);max-height:calc(100vh - 40px);overflow:auto;background:#fff;border-radius:20px;box-shadow:0 24px 70px rgba(15,23,42,.3);transform:translateY(14px) scale(.98);transition:transform .2s ease}
+.jd-support-modal.open .jd-support-dialog{transform:translateY(0) scale(1)}
+.jd-support-head{padding:28px 60px 12px 28px}
+.jd-support-head h2{margin:0;color:#172033;font-size:23px;line-height:1.35;font-weight:800}
+.jd-support-head p{margin:8px 0 0;color:#64748b;font-size:14px;line-height:1.6}
+.jd-support-close{position:absolute;right:18px;top:18px;width:38px;height:38px;border:0;border-radius:50%;background:#f1f5f9;color:#475569;font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.jd-support-close:hover{background:#e2e8f0;color:#0f172a}
+.jd-support-form{padding:10px 28px 24px}
+.jd-support-field{margin-bottom:16px}
+.jd-support-field label{display:block;margin-bottom:7px;color:#26344d;font-size:14px;font-weight:700}
+.jd-support-required{color:#dc2626}
+.jd-support-field input{width:100%;height:48px;box-sizing:border-box;border:1px solid #d7dfeb;border-radius:11px;padding:0 14px;color:#172033;background:#fff;font:inherit;outline:none;transition:border-color .15s ease,box-shadow .15s ease}
+.jd-support-field input:focus{border-color:#1769aa;box-shadow:0 0 0 3px rgba(23,105,170,.12)}
+.jd-support-field input.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,38,38,.08)}
+.jd-support-error{display:block;min-height:18px;margin-top:5px;color:#dc2626;font-size:12px}
+.jd-support-message{display:none;margin:0 0 14px;padding:10px 12px;border-radius:9px;background:#fff1f2;color:#b42318;font-size:13px;line-height:1.45}
+.jd-support-message.show{display:block}
+.jd-support-submit{width:100%;min-height:49px;border:0;border-radius:11px;background:linear-gradient(135deg,#0d4e96,#1672b8);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 8px 22px rgba(13,78,150,.2)}
+.jd-support-submit:hover{filter:brightness(1.04)}
+.jd-support-submit:disabled{opacity:.68;cursor:wait}
+.jd-support-footer{display:flex;justify-content:center;align-items:center;gap:9px;padding:17px 24px 21px;border-top:1px solid #e8edf4;background:#f8fafc;border-radius:0 0 20px 20px;color:#64748b;font-size:14px}
+.jd-support-footer a,.jd-support-login{border:0;background:none;padding:0;color:#0d5ea6;font:inherit;font-weight:800;text-decoration:none;cursor:pointer}
+.jd-support-footer a:hover,.jd-support-login:hover{text-decoration:underline}
+.jd-support-separator{color:#cbd5e1}
+@media(max-width:560px){.jd-support-modal{padding:12px;align-items:flex-end}.jd-support-dialog{width:100%;max-height:calc(100vh - 24px);border-radius:18px 18px 12px 12px}.jd-support-head{padding:24px 54px 8px 20px}.jd-support-head h2{font-size:20px}.jd-support-form{padding:10px 20px 20px}.jd-support-footer{flex-wrap:wrap;padding:15px 18px 18px}.jd-support-close{right:14px;top:14px}}
+</style>
+<?php } ?>
 
 <main class="job-detail-page">
 <div class="jd-container">
@@ -428,7 +464,157 @@ $jobShareUrl = $jobUrl;
 </div>
 </main>
 
+<?php if($showJobSupportModal){ ?>
+<div class="jd-support-modal" id="jobSupportModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="jobSupportModalTitle">
+  <div class="jd-support-backdrop" data-support-close></div>
+  <div class="jd-support-dialog" role="document">
+    <button type="button" class="jd-support-close" data-support-close aria-label="Đóng cửa sổ hỗ trợ"><i class="ti ti-x"></i></button>
+    <div class="jd-support-head">
+      <h2 id="jobSupportModalTitle">Hỗ trợ tìm việc nhanh nhất</h2>
+      <p>Bạn vui lòng điền thông tin để được hỗ trợ tìm việc nhanh nhất.</p>
+    </div>
+    <form class="jd-support-form" id="jobSupportForm" novalidate>
+      <input type="hidden" name="job_id" value="<?php echo intval($jobDetail->id ?? 0); ?>">
+      <input type="hidden" name="csrf_token" value="<?php echo jobDetailH($jobSupportCsrfToken); ?>">
+      <div class="jd-support-message" id="jobSupportMessage" role="alert"></div>
+      <div class="jd-support-field">
+        <label for="jobSupportFullName">Họ và tên <span class="jd-support-required">*</span></label>
+        <input type="text" id="jobSupportFullName" name="full_name" maxlength="150" autocomplete="name" placeholder="Nhập họ và tên">
+        <span class="jd-support-error" data-error-for="full_name"></span>
+      </div>
+      <div class="jd-support-field">
+        <label for="jobSupportPhone">SĐT <span class="jd-support-required">*</span></label>
+        <input type="tel" id="jobSupportPhone" name="phone" maxlength="20" autocomplete="tel" inputmode="tel" placeholder="Nhập số điện thoại">
+        <span class="jd-support-error" data-error-for="phone"></span>
+      </div>
+      <div class="jd-support-field">
+        <label for="jobSupportEmail">Email <span class="jd-support-required">*</span></label>
+        <input type="email" id="jobSupportEmail" name="email" maxlength="191" autocomplete="email" inputmode="email" placeholder="Nhập địa chỉ email">
+        <span class="jd-support-error" data-error-for="email"></span>
+      </div>
+      <button type="submit" class="jd-support-submit" id="jobSupportSubmit">Lưu thông tin</button>
+    </form>
+    <div class="jd-support-footer">
+      <span>Bạn đã có tài khoản?</span>
+      <button type="button" class="jd-support-login" id="jobSupportLogin">Đăng nhập</button>
+      <span class="jd-support-separator">hoặc</span>
+      <a href="<?php echo jobDetailH(XC_URL.'/dang-ky-tai-khoan.html'); ?>">Đăng ký</a>
+    </div>
+  </div>
+</div>
+<?php } ?>
+
 <script>
+<?php if($showJobSupportModal){ ?>
+(function(){
+  var modal = document.getElementById('jobSupportModal');
+  var form = document.getElementById('jobSupportForm');
+  var submitButton = document.getElementById('jobSupportSubmit');
+  var message = document.getElementById('jobSupportMessage');
+  var loginButton = document.getElementById('jobSupportLogin');
+  var lastActiveElement = null;
+  if(!modal || !form) return;
+
+  function openModal(){
+    lastActiveElement = document.activeElement;
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('jd-support-modal-open');
+    setTimeout(function(){
+      var firstInput = document.getElementById('jobSupportFullName');
+      if(firstInput) firstInput.focus();
+    }, 100);
+  }
+
+  function closeModal(){
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('jd-support-modal-open');
+    if(lastActiveElement && typeof lastActiveElement.focus === 'function'){
+      setTimeout(function(){ lastActiveElement.focus(); }, 80);
+    }
+  }
+
+  function clearErrors(){
+    message.classList.remove('show');
+    message.textContent = '';
+    form.querySelectorAll('.jd-support-error').forEach(function(item){ item.textContent = ''; });
+    form.querySelectorAll('input.invalid').forEach(function(input){ input.classList.remove('invalid'); });
+  }
+
+  function showErrors(errors){
+    Object.keys(errors || {}).forEach(function(field){
+      var errorNode = form.querySelector('[data-error-for="' + field + '"]');
+      var input = form.querySelector('[name="' + field + '"]');
+      if(errorNode) errorNode.textContent = errors[field];
+      if(input) input.classList.add('invalid');
+    });
+  }
+
+  modal.querySelectorAll('[data-support-close]').forEach(function(item){
+    item.addEventListener('click', closeModal);
+  });
+  document.addEventListener('keydown', function(event){
+    if(event.key === 'Escape' && modal.classList.contains('open')) closeModal();
+  });
+
+  if(loginButton){
+    loginButton.addEventListener('click', function(){
+      closeModal();
+      var headerLoginButton = document.querySelector('header .js-login-open, .top-header .js-login-open, .js-login-open');
+      if(headerLoginButton){
+        setTimeout(function(){ headerLoginButton.click(); }, 100);
+      }
+    });
+  }
+
+  form.addEventListener('submit', function(event){
+    event.preventDefault();
+    clearErrors();
+    submitButton.disabled = true;
+    submitButton.textContent = 'Đang lưu...';
+
+    fetch('<?php echo $jobApiBaseUrl; ?>/saveJobSupportRequest', {
+      method: 'POST',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      body: new FormData(form)
+    })
+      .then(function(response){
+        return response.text().then(function(text){
+          try { return text ? JSON.parse(text) : null; }
+          catch(error){ throw new Error('Hệ thống đang trả về dữ liệu không hợp lệ.'); }
+        });
+      })
+      .then(function(result){
+        if(!result || Number(result.status) !== 200){
+          if(result && result.errors) showErrors(result.errors);
+          throw new Error((result && result.message) || 'Không thể lưu thông tin lúc này.');
+        }
+        closeModal();
+        if(window.Swal){
+          Swal.fire({ icon:'success', title:'Đã lưu thông tin', text:result.message });
+        }else{
+          window.alert(result.message);
+        }
+      })
+      .catch(function(error){
+        message.textContent = error.message;
+        message.classList.add('show');
+      })
+      .finally(function(){
+        submitButton.disabled = false;
+        submitButton.textContent = 'Lưu thông tin';
+      });
+  });
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', openModal);
+  }else{
+    openModal();
+  }
+})();
+<?php } ?>
+
 (function(){
   var current = 0;
   var timer = null;
