@@ -117,9 +117,9 @@ $siteApiBaseUrl = $siteBasePath.'/api';
     </div>
     <div class="app-banner-right">
       <div class="app-contact-list">
-        <a href="tel:02603860000" class="app-contact-item"><i class="ti ti-phone-call"></i> 0260 3860 000</a>
-        <a href="mailto:vieclam@cdkontum.edu.vn" class="app-contact-item"><i class="ti ti-mail"></i> vieclam@cdkontum.edu.vn</a>
-        <a href="#" class="app-contact-item"><i class="ti ti-map-pin"></i> Kon Tum</a>
+        <a href="tel:02603860000" class="app-contact-item"><i class="ti ti-phone-call"></i> <?php echo $this->helper->get_config('site_phone'); ?></a>
+        <a href="mailto:vieclam@cdkontum.edu.vn" class="app-contact-item"><i class="ti ti-mail"></i><?php echo $this->helper->get_config('site_email'); ?></a>
+        <a href="#" class="app-contact-item"><i class="ti ti-map-pin"></i> Quảng Ngãi</a>
       </div>
     </div>
   </div>
