@@ -1,22 +1,52 @@
 <?php
 global $db;
 $session_id = session_id();
-$ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
-$user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-$page_url = $_SERVER['REQUEST_URI'] ?? '';
 $current_time = date('Y-m-d H:i:s');
 $current_date = date('Y-m-d');
+$visit_stats = array('online' => 0, 'yesterday' => 0, 'total' => 0);
 
 if ($session_id) {
     $session_id_esc = $db->escapestring($session_id);
-    $ip_address_esc = $db->escapestring($ip_address);
-    $user_agent_esc = $db->escapestring(substr($user_agent, 0, 255));
-    $page_url_esc = $db->escapestring(substr($page_url, 0, 500));
-    
-    // Log visit in database (Insert or update last_seen)
-    $db->query("INSERT INTO hicrm_website_visits (session_id, ip_address, user_agent, page_url, visit_date, first_seen, last_seen)
-                VALUES ('$session_id_esc', '$ip_address_esc', '$user_agent_esc', '$page_url_esc', '$current_date', '$current_time', '$current_time')
-                ON DUPLICATE KEY UPDATE last_seen = '$current_time', page_url = '$page_url_esc'");
+    $is_new_visit = empty($_SESSION['website_visit_recorded']);
+
+    // Count each PHP session once. The totals table remains constant in size.
+    if ($is_new_visit) {
+        $db->query("INSERT INTO hicrm_website_visit_daily (visit_date, visit_count)
+                    VALUES ('$current_date', 1)
+                    ON DUPLICATE KEY UPDATE visit_count = visit_count + 1");
+        $db->query("INSERT INTO hicrm_website_visit_stats (stat_key, stat_value)
+                    VALUES ('total_visits', 1)
+                    ON DUPLICATE KEY UPDATE stat_value = stat_value + 1");
+        $_SESSION['website_visit_recorded'] = 1;
+    }
+
+    // Refresh the active-session row at most once every five minutes.
+    $now = time();
+    if (empty($_SESSION['website_online_refreshed_at']) || $now - (int) $_SESSION['website_online_refreshed_at'] >= 300) {
+        $expires_at = date('Y-m-d H:i:s', $now + 300);
+        $db->query("INSERT INTO hicrm_website_active_sessions (session_id, expires_at)
+                    VALUES ('$session_id_esc', '$expires_at')
+                    ON DUPLICATE KEY UPDATE expires_at = '$expires_at'");
+        $_SESSION['website_online_refreshed_at'] = $now;
+
+        // A new visit clears expired rows. The expiry index makes this inexpensive.
+        if ($is_new_visit) {
+            $db->query("DELETE FROM hicrm_website_active_sessions
+                        WHERE expires_at < '$current_time' LIMIT 1000");
+        }
+    }
+
+    $yesterday = date('Y-m-d', strtotime('-1 day'));
+    $db->query("SELECT
+                    (SELECT COUNT(*) FROM hicrm_website_active_sessions WHERE expires_at >= '$current_time') AS online,
+                    (SELECT visit_count FROM hicrm_website_visit_daily WHERE visit_date = '$yesterday') AS yesterday,
+                    (SELECT stat_value FROM hicrm_website_visit_stats WHERE stat_key = 'total_visits') AS total");
+    $visit_stats_row = $db->fetch_object(true);
+    if ($visit_stats_row) {
+        $visit_stats['online'] = (int) $visit_stats_row->online;
+        $visit_stats['yesterday'] = (int) $visit_stats_row->yesterday;
+        $visit_stats['total'] = (int) $visit_stats_row->total;
+    }
 }
 ?>
 
@@ -277,15 +307,15 @@ if ($session_id) {
         <div class="footer-stats-box">
           <div class="footer-stat-row">
             <span class="footer-stat-label"><i class="ti ti-users"></i> Đang online:</span>
-            <span class="footer-stat-value">12</span>
+            <span class="footer-stat-value"><?php echo number_format($visit_stats['online']); ?></span>
           </div>
           <div class="footer-stat-row">
             <span class="footer-stat-label"><i class="ti ti-calendar-event"></i> Truy cập hôm qua:</span>
-            <span class="footer-stat-value">500</span>
+            <span class="footer-stat-value"><?php echo number_format($visit_stats['yesterday']); ?></span>
           </div>
           <div class="footer-stat-row">
             <span class="footer-stat-label"><i class="ti ti-chart-line"></i> Tổng lượt truy cập:</span>
-            <span class="footer-stat-value">1000</span>
+            <span class="footer-stat-value"><?php echo number_format($visit_stats['total']); ?></span>
           </div>
         </div>
       </div>
