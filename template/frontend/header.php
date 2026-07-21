@@ -34,7 +34,9 @@ $siteApiBaseUrl = $siteBasePath.'/api';
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Việc Làm  - Tìm việc làm nhanh, tuyển dụng hiệu quả</title>
+<title>Việc Làm  - Trường Cao đẳng Kon Tum</title>
+<meta name="description" content="Cổng thông tin việc làm Trường Cao đẳng Kon Tum - Kết nối sinh viên, người tìm việc và doanh nghiệp tuyển dụng uy tín"/>
+<link rel="icon" href="<?php echo $template_path; ?>/assets/images/logo.png" type="image/x-icon">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css"/>
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="<?php echo $template_path;?>/assets/css/style.css?version<?php echo time();?>">

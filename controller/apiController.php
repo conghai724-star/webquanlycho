@@ -7400,6 +7400,152 @@ public function addstudent()
 		$this->employerDashboardApiResponse(array('status' => 200, 'data' => $db->fetch_object()));
 	}
 
+	private function candidateProfileApiResponse($payload){
+		header('Content-Type: application/json; charset=utf-8');
+		echo json_encode($payload);
+	}
+
+	private function candidateProfileUpload($fieldName, $candidateId, $kind, $maxSize, $extensions, $imageOnly = false){
+		if(!isset($_FILES[$fieldName]) || intval($_FILES[$fieldName]['error']) === UPLOAD_ERR_NO_FILE){
+			return array('status' => 204, 'path' => '');
+		}
+		if(intval($_FILES[$fieldName]['error']) !== UPLOAD_ERR_OK){
+			return array('status' => 400, 'message' => 'Tệp tải lên không hợp lệ.');
+		}
+		if(intval($_FILES[$fieldName]['size']) <= 0 || intval($_FILES[$fieldName]['size']) > $maxSize){
+			return array('status' => 400, 'message' => 'Dung lượng tệp tải lên vượt quá giới hạn cho phép.');
+		}
+		$extension = strtolower(pathinfo((string)$_FILES[$fieldName]['name'], PATHINFO_EXTENSION));
+		if(!in_array($extension, $extensions, true)){
+			return array('status' => 400, 'message' => 'Định dạng tệp tải lên không được hỗ trợ.');
+		}
+		if($imageOnly && !@getimagesize($_FILES[$fieldName]['tmp_name'])){
+			return array('status' => 400, 'message' => 'Ảnh đại diện không phải là hình ảnh hợp lệ.');
+		}
+
+		$uploadDir = './uploads/candidate-profiles/';
+		if(!is_dir($uploadDir) && !mkdir($uploadDir, 0775, true)){
+			return array('status' => 500, 'message' => 'Không thể tạo thư mục lưu tệp.');
+		}
+		try {
+			$token = bin2hex(random_bytes(12));
+		} catch (Exception $e) {
+			$token = md5(uniqid((string)mt_rand(), true));
+		}
+		$fileName = $kind.'_'.intval($candidateId).'_'.date('YmdHis').'_'.$token.'.'.$extension;
+		if(!move_uploaded_file($_FILES[$fieldName]['tmp_name'], $uploadDir.$fileName)){
+			return array('status' => 500, 'message' => 'Không thể lưu tệp tải lên.');
+		}
+		return array('status' => 200, 'path' => 'uploads/candidate-profiles/'.$fileName);
+	}
+
+	public function candidateProfileSave(){
+		global $db;
+		if($_SERVER['REQUEST_METHOD'] !== 'POST'){
+			$this->candidateProfileApiResponse(array('status' => 405, 'message' => 'Phương thức gửi dữ liệu không hợp lệ.'));
+			return;
+		}
+		$userId = isset($_SESSION['user']['id']) ? intval($_SESSION['user']['id']) : 0;
+		if($userId <= 0){
+			$this->candidateProfileApiResponse(array('status' => 401, 'message' => 'Vui lòng đăng nhập để lưu hồ sơ.'));
+			return;
+		}
+		$db->query("SELECT * FROM hicrm_users WHERE id = '".$userId."' AND user_status = 1 LIMIT 1");
+		if($db->num_row() <= 0){
+			$this->candidateProfileApiResponse(array('status' => 401, 'message' => 'Tài khoản không hợp lệ hoặc đã bị khóa.'));
+			return;
+		}
+		$user = $db->fetch_object(true);
+
+		$input = array();
+		foreach(array('full_name','email','phone','date_of_birth','gender','province_id','address_detail','degree','major','graduation_year','school_name','soft_skills','career_goal_short','career_goal_long','desired_position','desired_salary','desired_province_id','desired_work_type') as $field){
+			$input[$field] = isset($_POST[$field]) ? trim((string)$_POST[$field]) : '';
+		}
+		$required = array('full_name','email','phone','date_of_birth','gender','province_id','address_detail','degree','major','graduation_year','school_name','soft_skills','career_goal_short','career_goal_long','desired_position','desired_salary','desired_province_id','desired_work_type');
+		foreach($required as $field){
+			if($input[$field] === ''){
+				$this->candidateProfileApiResponse(array('status' => 400, 'message' => 'Vui lòng điền đầy đủ các trường bắt buộc.'));
+				return;
+			}
+		}
+		if(!filter_var($input['email'], FILTER_VALIDATE_EMAIL)){
+			$this->candidateProfileApiResponse(array('status' => 400, 'message' => 'Email không hợp lệ.'));
+			return;
+		}
+		$date = DateTime::createFromFormat('Y-m-d', $input['date_of_birth']);
+		if(!$date || $date->format('Y-m-d') !== $input['date_of_birth'] || $date > new DateTime('today')){
+			$this->candidateProfileApiResponse(array('status' => 400, 'message' => 'Ngày sinh không hợp lệ.'));
+			return;
+		}
+		if(!in_array($input['gender'], array('male','female','other'), true) || !in_array($input['degree'], array('high_school','intermediate','college','university','postgraduate','other'), true) || !in_array($input['desired_work_type'], array('full_time','part_time','remote','hybrid','any'), true)){
+			$this->candidateProfileApiResponse(array('status' => 400, 'message' => 'Dữ liệu hồ sơ không hợp lệ.'));
+			return;
+		}
+		$year = intval($input['graduation_year']);
+		if($year < 1950 || $year > 2100 || intval($input['province_id']) <= 0 || intval($input['major']) <= 0 || intval($input['desired_salary']) <= 0 || intval($input['desired_province_id']) <= 0){
+			$this->candidateProfileApiResponse(array('status' => 400, 'message' => 'Vui lòng chọn đầy đủ thông tin danh mục.'));
+			return;
+		}
+		$db->query("SELECT id FROM hicrm_users WHERE user_email = '".$db->escapestring($input['email'])."' AND id <> '".$userId."' LIMIT 1");
+		if($db->num_row() > 0){
+			$this->candidateProfileApiResponse(array('status' => 409, 'message' => 'Email này đã được sử dụng bởi tài khoản khác.'));
+			return;
+		}
+		$db->query("SELECT id FROM hicrm_candidates WHERE user_id = '".$userId."' LIMIT 1");
+		$candidate = $db->num_row() > 0 ? $db->fetch_object(true) : null;
+		if(!$candidate){
+			$db->query("INSERT INTO hicrm_candidates (user_id, full_name, phone, status, profile_completeness, created_at, updated_at) VALUES ('".$userId."', '".$db->escapestring($input['full_name'])."', '".$db->escapestring($input['phone'])."', 0, 0, NOW(), NOW())");
+			$db->query("SELECT * FROM hicrm_candidates WHERE user_id = '".$userId."' LIMIT 1");
+			$candidate = $db->fetch_object(true);
+		}
+		$candidateId = intval($candidate->id);
+
+		$avatar = $this->candidateProfileUpload('avatar_file', $candidateId, 'avatar', 2097152, array('jpg','jpeg','png','webp'), true);
+		if($avatar['status'] !== 200 && $avatar['status'] !== 204){ $this->candidateProfileApiResponse($avatar); return; }
+		$cv = $this->candidateProfileUpload('cv_file', $candidateId, 'cv', 5242880, array('pdf','doc','docx'));
+		if($cv['status'] !== 200 && $cv['status'] !== 204){ $this->candidateProfileApiResponse($cv); return; }
+		$avatarUrl = $avatar['status'] === 200 ? $avatar['path'] : trim((string)$candidate->avatar_url);
+		$cvUrl = $cv['status'] === 200 ? $cv['path'] : trim((string)$candidate->cv_url);
+		if($avatarUrl === '' || $cvUrl === ''){
+			$this->candidateProfileApiResponse(array('status' => 400, 'message' => 'Vui lòng tải lên ảnh đại diện và CV.'));
+			return;
+		}
+
+		$skills = array_values(array_filter(array_map('trim', explode(',', $input['soft_skills'])), function($skill){ return $skill !== ''; }));
+		if(count($skills) === 0){ $this->candidateProfileApiResponse(array('status' => 400, 'message' => 'Vui lòng nhập ít nhất một kỹ năng mềm.')); return; }
+		$experienceCompanies = isset($_POST['experience_company']) && is_array($_POST['experience_company']) ? $_POST['experience_company'] : array();
+		$experienceRows = array();
+		foreach($experienceCompanies as $index => $company){
+			$row = array('company' => trim((string)$company), 'position' => trim((string)($_POST['experience_position'][$index] ?? '')), 'start' => trim((string)($_POST['experience_start'][$index] ?? '')), 'end' => trim((string)($_POST['experience_end'][$index] ?? '')), 'description' => trim((string)($_POST['experience_description'][$index] ?? '')));
+			if(implode('', $row) === ''){ continue; }
+			if($row['company'] === '' || $row['position'] === '' || $row['start'] === ''){ $this->candidateProfileApiResponse(array('status' => 400, 'message' => 'Mỗi kinh nghiệm cần có công ty, vị trí và ngày bắt đầu.')); return; }
+			$start = DateTime::createFromFormat('Y-m-d', $row['start']); $end = $row['end'] === '' ? null : DateTime::createFromFormat('Y-m-d', $row['end']);
+			if(!$start || $start->format('Y-m-d') !== $row['start'] || ($end && ($end->format('Y-m-d') !== $row['end'] || $end < $start))){ $this->candidateProfileApiResponse(array('status' => 400, 'message' => 'Thời gian kinh nghiệm không hợp lệ.')); return; }
+			$experienceRows[] = $row;
+		}
+		$certificateNames = isset($_POST['certificate_name']) && is_array($_POST['certificate_name']) ? $_POST['certificate_name'] : array();
+		$certificateRows = array();
+		foreach($certificateNames as $index => $name){
+			$row = array('name' => trim((string)$name), 'issuer' => trim((string)($_POST['certificate_issuer'][$index] ?? '')), 'issued' => trim((string)($_POST['certificate_issued_date'][$index] ?? '')), 'expiry' => trim((string)($_POST['certificate_expiry_date'][$index] ?? '')), 'url' => trim((string)($_POST['certificate_url'][$index] ?? '')));
+			if(implode('', $row) === ''){ continue; }
+			if($row['name'] === ''){ $this->candidateProfileApiResponse(array('status' => 400, 'message' => 'Vui lòng nhập tên chứng chỉ.')); return; }
+			foreach(array('issued','expiry') as $dateField){ if($row[$dateField] !== ''){ $parsed = DateTime::createFromFormat('Y-m-d', $row[$dateField]); if(!$parsed || $parsed->format('Y-m-d') !== $row[$dateField]){ $this->candidateProfileApiResponse(array('status' => 400, 'message' => 'Ngày chứng chỉ không hợp lệ.')); return; } } }
+			if($row['url'] !== '' && !filter_var($row['url'], FILTER_VALIDATE_URL)){ $this->candidateProfileApiResponse(array('status' => 400, 'message' => 'Liên kết chứng chỉ không hợp lệ.')); return; }
+			$certificateRows[] = $row;
+		}
+
+		$fields = array("full_name = '".$db->escapestring($input['full_name'])."'", "date_of_birth = '".$db->escapestring($input['date_of_birth'])."'", "gender = '".$db->escapestring($input['gender'])."'", "phone = '".$db->escapestring($input['phone'])."'", "avatar_url = '".$db->escapestring($avatarUrl)."'", "province_id = '".intval($input['province_id'])."'", "address_detail = '".$db->escapestring($input['address_detail'])."'", "degree = '".$db->escapestring($input['degree'])."'", "major = '".intval($input['major'])."'", "graduation_year = '".$year."'", "school_name = '".$db->escapestring($input['school_name'])."'", "soft_skills = '".$db->escapestring(json_encode($skills, JSON_UNESCAPED_UNICODE))."'", "career_goal = '".$db->escapestring($input['career_goal_long'])."'", "career_goal_short = '".$db->escapestring($input['career_goal_short'])."'", "career_goal_long = '".$db->escapestring($input['career_goal_long'])."'", "desired_position = '".$db->escapestring($input['desired_position'])."'", "desired_salary = '".intval($input['desired_salary'])."'", "desired_province_id = '".intval($input['desired_province_id'])."'", "desired_work_type = '".$db->escapestring($input['desired_work_type'])."'", "cv_url = '".$db->escapestring($cvUrl)."'", "is_seeking = '".(isset($_POST['is_seeking']) ? 1 : 0)."'", "profile_completeness = 100", "updated_at = NOW()");
+		if($cv['status'] === 200){ $fields[] = 'cv_uploaded_at = NOW()'; }
+		$db->query("UPDATE hicrm_candidates SET ".implode(',', $fields)." WHERE id = '".$candidateId."' AND user_id = '".$userId."' LIMIT 1");
+		$db->query("UPDATE hicrm_users SET full_name = '".$db->escapestring($input['full_name'])."', user_email = '".$db->escapestring($input['email'])."', user_phone = '".$db->escapestring($input['phone'])."', user_updated_at = NOW() WHERE id = '".$userId."' LIMIT 1");
+		$db->query("DELETE FROM hicrm_candidate_experiences WHERE candidate_id = '".$candidateId."'");
+		foreach($experienceRows as $row){ $db->query("INSERT INTO hicrm_candidate_experiences (candidate_id, company_name, position, start_date, end_date, description) VALUES ('".$candidateId."', '".$db->escapestring($row['company'])."', '".$db->escapestring($row['position'])."', '".$db->escapestring($row['start'])."', ".($row['end'] === '' ? 'NULL' : "'".$db->escapestring($row['end'])."'").", '".$db->escapestring($row['description'])."')"); }
+		$db->query("DELETE FROM hicrm_candidate_certificates WHERE candidate_id = '".$candidateId."'");
+		foreach($certificateRows as $row){ $db->query("INSERT INTO hicrm_candidate_certificates (candidate_id, cert_name, issuer, issued_date, expiry_date, cert_url) VALUES ('".$candidateId."', '".$db->escapestring($row['name'])."', '".$db->escapestring($row['issuer'])."', ".($row['issued'] === '' ? 'NULL' : "'".$db->escapestring($row['issued'])."'").", ".($row['expiry'] === '' ? 'NULL' : "'".$db->escapestring($row['expiry'])."'").", '".$db->escapestring($row['url'])."')"); }
+		if(isset($_SESSION['user']['id']) && intval($_SESSION['user']['id']) === $userId){ $_SESSION['user']['email'] = $input['email']; $_SESSION['user']['full_name'] = $input['full_name']; }
+		$this->candidateProfileApiResponse(array('status' => 200, 'message' => 'Lưu hồ sơ thành công.', 'candidate_id' => $candidateId, 'profile_completeness' => 100));
+	}
+
 	// Xóa nhóm quyền
 	public function deletegroup(){
 		global $db;

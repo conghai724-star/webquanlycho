@@ -52,14 +52,14 @@ function homeEmployerCard($employer, $compact = false, $isClone = false){
 
   if($compact){
     echo '<a class="employer-logo-slide" href="'.homeJobH($href).'" title="'.homeJobH($name).'" aria-label="Việc làm tại '.homeJobH($name).'"'.$cloneAttribute.'>';
-    echo '<span class="employer-slide-logo"><span class="employer-slide-fallback">'.homeJobH($initials).'</span>';
+    echo '<span class="employer-slide-logo">';
     if($logo !== ''){ echo '<img src="'.homeJobH($logo).'" alt="'.homeJobH($name).'" loading="lazy" onerror="this.style.display=\'none\'">'; }
     echo '</span></a>';
     return;
   }
 
   echo '<a class="employer-featured-card" href="'.homeJobH($href).'" aria-label="Xem việc làm tại '.homeJobH($name).'"'.$cloneAttribute.'>';
-  echo '<span class="employer-featured-logo"><span class="employer-featured-fallback">'.homeJobH($initials).'</span>';
+  echo '<span class="employer-featured-logo">';
   if($logo !== ''){ echo '<img src="'.homeJobH($logo).'" alt="'.homeJobH($name).'" loading="lazy" onerror="this.style.display=\'none\'">'; }
   echo '</span>';
   echo '<span class="employer-featured-name" title="'.homeJobH($name).'">'.homeJobH($name).'</span>';
@@ -171,6 +171,7 @@ function homeJobIndustryKey($text){
 
 function homeJobCard($job, $extraClass = '', $isLatest = false, $includeDeadline = false){
   $companyName = $job->company_name ?: 'Nhà tuyển dụng';
+  $url_logo = $job->logo_url ?? '';
   $urgent = homeJobIsUrgent($job);
   $postType = isset($job->job_post_type) ? $job->job_post_type : 'normal';
   $salary = $job->salary_name ?: '';
@@ -184,7 +185,7 @@ function homeJobCard($job, $extraClass = '', $isLatest = false, $includeDeadline
   echo '<a href="'.homeJobH($href).'" class="'.$classes.'" data-salary="'.homeJobH(homeJobSalaryKey($salary)).'" data-location="'.homeJobH(homeJobLocationKey($location)).'" data-experience="'.homeJobH($job->experience_years).'" data-industry="'.homeJobH(homeJobIndustryKey($industry.' '.$job->title)).'">';
   // if($isLatest){ echo '<span class="job-new-label">new</span>'; }
   echo '<div class="job-card-header">';
-  echo '<div class="company-logo" style="background:#eef6ff;color:#0d4e96">'.homeJobH(homeJobInitials($companyName)).'</div>';
+  if($url_logo){ echo '<div class="company-logo"><img src="'.homeJobH($url_logo).'" alt="'.homeJobH($companyName).'" /></div>'; } else { echo '<div class="company-logo" style="background:#eef6ff;color:#0d4e96">'.homeJobH(homeJobInitials($companyName)).'</div>'; }
   echo '<div><div class="job-title'.$titleClass.'">'.homeJobH($job->title).'</div><div class="company-name"><i class="ti ti-building"></i> '.homeJobH($companyName).'</div></div>';
   echo '</div>';
   echo '<div class="job-card-tags">';
@@ -549,7 +550,7 @@ function homeNewsUrl($news){
 
     <div style="width:300px;flex-shrink:0">
       <div class="hero-login-card">
-        <p>Đăng ký để trở thành thành viên của Vieclam.vn!</p>
+        <p>Đăng ký để trở thành thành viên của cổng thông tin việc làm Trường Cao đẳng Kon Tum</p>
         <span>Tìm việc nhanh hơn, tìm ứng viên phù hợp và nhiều ưu tiên khác!.</span>
         <!-- <div class="btn-google">
           <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 01-7.18-2.54H1.83v2.07A8 8 0 008.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 010-3.04V5.41H1.83a8 8 0 000 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 001.83 5.4L4.5 7.49a4.77 4.77 0 014.48-3.31z"/></svg>
@@ -913,19 +914,19 @@ function homeNewsUrl($news){
 <section class="section latest-jobs-section">
   <div class="section-inner">
     <div class="section-header">
-      <div class="section-title">Việc làm mới nhất</div>
-      <a href="<?php echo XC_URL; ?>/quan-ly-viec-lam.html" class="see-all">Xem tất cả <i class="ti ti-arrow-right"></i></a>
+      <div class="section-title">Việc làm tuyển gấp</div>
+      <a href="<?php echo XC_URL; ?>/quan-ly-viec-lam.html?post_type=urgent" class="see-all">Xem tất cả <i class="ti ti-arrow-right"></i></a>
     </div>
 
-    <div class="urgent-jobs-filter" aria-label="Bộ lọc việc làm mới nhất">
-      <div class="urgent-filter-select" id="latestFilterSelect">
-        <button type="button" class="urgent-filter-toggle" id="latestFilterToggle" aria-expanded="false" aria-haspopup="listbox">
+    <div class="urgent-jobs-filter" aria-label="Bộ lọc việc làm tuyển gấp">
+      <div class="urgent-filter-select" id="urgentFilterSelect">
+        <button type="button" class="urgent-filter-toggle" id="urgentFilterToggle" aria-expanded="false" aria-haspopup="listbox">
           <i class="ti ti-filter"></i>
           <span>Lọc theo:</span>
-          <strong id="latestFilterLabel">Lọc theo</strong>
+          <strong id="urgentFilterLabel">Lọc theo</strong>
           <i class="ti ti-chevron-down"></i>
         </button>
-        <div class="urgent-filter-menu" id="latestFilterMenu" role="listbox" aria-label="Chọn loại bộ lọc">
+        <div class="urgent-filter-menu" id="urgentFilterMenu" role="listbox" aria-label="Chọn loại bộ lọc">
           <button type="button" class="urgent-filter-option active" data-filter-type="all" role="option" aria-selected="true">Lọc theo <i class="ti ti-check"></i></button>
           <button type="button" class="urgent-filter-option" data-filter-type="location" role="option" aria-selected="false">Địa điểm <i class="ti ti-check"></i></button>
           <button type="button" class="urgent-filter-option" data-filter-type="salary" role="option" aria-selected="false">Mức lương <i class="ti ti-check"></i></button>
@@ -933,25 +934,25 @@ function homeNewsUrl($news){
           <button type="button" class="urgent-filter-option" data-filter-type="industry" role="option" aria-selected="false">Ngành nghề <i class="ti ti-check"></i></button>
         </div>
       </div>
-      <button type="button" class="urgent-filter-nav prev" id="latestFilterPrev" aria-label="Cuộn bộ lọc sang trái"><i class="ti ti-chevron-left"></i></button>
-      <div class="urgent-filter-chips" id="latestFilterChips">
+      <button type="button" class="urgent-filter-nav prev" id="urgentSalaryPrev" aria-label="Cuộn bộ lọc sang trái"><i class="ti ti-chevron-left"></i></button>
+      <div class="urgent-filter-chips" id="urgentSalaryChips">
         <button type="button" class="urgent-filter-chip active" data-filter-value="all">Tất cả</button>
       </div>
-      <button type="button" class="urgent-filter-nav next" id="latestFilterNext" aria-label="Cuộn bộ lọc sang phải"><i class="ti ti-chevron-right"></i></button>
+      <button type="button" class="urgent-filter-nav next" id="urgentSalaryNext" aria-label="Cuộn bộ lọc sang phải"><i class="ti ti-chevron-right"></i></button>
       <label class="mobile-filter-value">
-        <i class="ti ti-map-pin" id="latestMobileFilterIcon"></i>
-        <select id="latestMobileFilterValue" aria-label="Giá trị lọc việc làm mới nhất"></select>
+        <i class="ti ti-map-pin" id="urgentMobileFilterIcon"></i>
+        <select id="urgentMobileFilterValue" aria-label="Giá trị lọc việc làm tuyển gấp"></select>
       </label>
     </div>
 
-    <div class="jobs-grid" id="latestJobsGrid" data-total-pages="<?php echo (int)$featured_jobs_total_pages; ?>" data-server-pagination="true">
-      <?php foreach($featured_jobs as $job){ homeJobCard($job, '', true); } ?>
+    <div class="jobs-grid" id="urgentJobsGrid" data-total-pages="<?php echo (int)$urgent_jobs_total_pages; ?>" data-server-pagination="true">
+      <?php foreach($urgent_jobs as $job){ homeJobCard($job, 'urgent-job-card', false, true); } ?>
     </div>
-    <div class="latest-jobs-empty" id="latestJobsEmpty">Không có việc làm mới nhất phù hợp với bộ lọc đã chọn.</div>
-    <div class="jobs-pagination" id="latestJobsPagination" aria-label="Phân trang việc làm mới nhất">
-      <button type="button" class="jobs-nav jobs-nav-prev" id="latestJobsPrev" aria-label="Trang trước"><i class="ti ti-chevron-left"></i></button>
-      <div class="jobs-dots-wrap" id="latestJobsDots"></div>
-      <button type="button" class="jobs-nav jobs-nav-next" id="latestJobsNext" aria-label="Trang sau"><i class="ti ti-chevron-right"></i></button>
+    <div class="urgent-jobs-empty" id="urgentJobsEmpty">Không có việc làm tuyển gấp phù hợp với bộ lọc đã chọn.</div>
+    <div class="jobs-pagination" id="urgentJobsPagination" aria-label="Phân trang việc làm tuyển gấp">
+      <button type="button" class="jobs-nav jobs-nav-prev" id="urgentJobsPrev" aria-label="Trang trước"><i class="ti ti-chevron-left"></i></button>
+      <div class="jobs-dots-wrap" id="urgentJobsDots"></div>
+      <button type="button" class="jobs-nav jobs-nav-next" id="urgentJobsNext" aria-label="Trang sau"><i class="ti ti-chevron-right"></i></button>
     </div>
   </div>
 </section>
@@ -961,20 +962,14 @@ function homeNewsUrl($news){
   <div class="section-inner">
     <div class="section-header">
       <div class="section-title">Việc làm tại tỉnh</div>
-      <a href="<?php echo XC_URL; ?>/quan-ly-viec-lam.html" class="see-all">Xem tất cả <i class="ti ti-arrow-right"></i></a>
+      <a href="<?php echo XC_URL; ?>/quan-ly-viec-lam.html?keyword=&province_id=22&job_category_id=&salary_id=&work_type=&post_type=" class="see-all">Xem tất cả <i class="ti ti-arrow-right"></i></a>
     </div>
 
     <div class="province-jobs-layout">
-      <a href="<?php echo XC_URL; ?>/quan-ly-viec-lam.html" class="province-jobs-banner" aria-label="Khám phá việc làm tại tỉnh">
-        <span class="province-banner-orb orb-one"></span>
-        <span class="province-banner-orb orb-two"></span>
-        <i class="ti ti-map-2 province-banner-map"></i>
-        <div class="province-banner-content">
-          <span class="province-banner-kicker"><i class="ti ti-map-pin"></i> Cơ hội gần bạn</span>
-          <strong>Việc làm<br>tại tỉnh</strong>
-          <p>Kết nối ứng viên với các doanh nghiệp trên toàn quốc.</p>
-          <span class="province-banner-action">Khám phá ngay <i class="ti ti-arrow-right"></i></span>
-        </div>
+      <a href="<?php echo XC_URL; ?>/quan-ly-viec-lam.html?keyword=&province_id=22&job_category_id=&salary_id=&work_type=&post_type=" class="province-jobs-banner" aria-label="Khám phá việc làm tại tỉnh">
+        <img src="<?php echo XC_URL; ?>/template/frontend/assets/images/banner_doc_1.png"
+             alt="Khám phá việc làm tại tỉnh"
+             onerror="this.parentElement.style.background='linear-gradient(135deg,#0d4e96,#ff8a65)';this.style.display='none'"/>
       </a>
 
       <div class="province-jobs-content">
@@ -1349,19 +1344,19 @@ function homeNewsUrl($news){
 <section class="section urgent-jobs-section">
   <div class="section-inner">
     <div class="section-header">
-      <div class="section-title">Việc làm tuyển gấp</div>
-      <a href="<?php echo XC_URL; ?>/quan-ly-viec-lam.html?post_type=urgent" class="see-all">Xem tất cả <i class="ti ti-arrow-right"></i></a>
+      <div class="section-title">Việc làm mới nhất</div>
+      <a href="<?php echo XC_URL; ?>/quan-ly-viec-lam.html" class="see-all">Xem tất cả <i class="ti ti-arrow-right"></i></a>
     </div>
 
-    <div class="urgent-jobs-filter" aria-label="Bộ lọc việc làm tuyển gấp">
-      <div class="urgent-filter-select" id="urgentFilterSelect">
-        <button type="button" class="urgent-filter-toggle" id="urgentFilterToggle" aria-expanded="false" aria-haspopup="listbox">
+    <div class="urgent-jobs-filter" aria-label="Bộ lọc việc làm mới nhất">
+      <div class="urgent-filter-select" id="latestFilterSelect">
+        <button type="button" class="urgent-filter-toggle" id="latestFilterToggle" aria-expanded="false" aria-haspopup="listbox">
           <i class="ti ti-filter"></i>
           <span>Lọc theo:</span>
-          <strong id="urgentFilterLabel">Lọc theo</strong>
+          <strong id="latestFilterLabel">Lọc theo</strong>
           <i class="ti ti-chevron-down"></i>
         </button>
-        <div class="urgent-filter-menu" id="urgentFilterMenu" role="listbox" aria-label="Chọn loại bộ lọc">
+        <div class="urgent-filter-menu" id="latestFilterMenu" role="listbox" aria-label="Chọn loại bộ lọc">
           <button type="button" class="urgent-filter-option active" data-filter-type="all" role="option" aria-selected="true">Lọc theo <i class="ti ti-check"></i></button>
           <button type="button" class="urgent-filter-option" data-filter-type="location" role="option" aria-selected="false">Địa điểm <i class="ti ti-check"></i></button>
           <button type="button" class="urgent-filter-option" data-filter-type="salary" role="option" aria-selected="false">Mức lương <i class="ti ti-check"></i></button>
@@ -1369,25 +1364,25 @@ function homeNewsUrl($news){
           <button type="button" class="urgent-filter-option" data-filter-type="industry" role="option" aria-selected="false">Ngành nghề <i class="ti ti-check"></i></button>
         </div>
       </div>
-      <button type="button" class="urgent-filter-nav prev" id="urgentSalaryPrev" aria-label="Cuộn bộ lọc sang trái"><i class="ti ti-chevron-left"></i></button>
-      <div class="urgent-filter-chips" id="urgentSalaryChips">
+      <button type="button" class="urgent-filter-nav prev" id="latestFilterPrev" aria-label="Cuộn bộ lọc sang trái"><i class="ti ti-chevron-left"></i></button>
+      <div class="urgent-filter-chips" id="latestFilterChips">
         <button type="button" class="urgent-filter-chip active" data-filter-value="all">Tất cả</button>
       </div>
-      <button type="button" class="urgent-filter-nav next" id="urgentSalaryNext" aria-label="Cuộn bộ lọc sang phải"><i class="ti ti-chevron-right"></i></button>
+      <button type="button" class="urgent-filter-nav next" id="latestFilterNext" aria-label="Cuộn bộ lọc sang phải"><i class="ti ti-chevron-right"></i></button>
       <label class="mobile-filter-value">
-        <i class="ti ti-map-pin" id="urgentMobileFilterIcon"></i>
-        <select id="urgentMobileFilterValue" aria-label="Giá trị lọc việc làm tuyển gấp"></select>
+        <i class="ti ti-map-pin" id="latestMobileFilterIcon"></i>
+        <select id="latestMobileFilterValue" aria-label="Giá trị lọc việc làm mới nhất"></select>
       </label>
     </div>
 
-    <div class="jobs-grid" id="urgentJobsGrid" data-total-pages="<?php echo (int)$urgent_jobs_total_pages; ?>" data-server-pagination="true">
-      <?php foreach($urgent_jobs as $job){ homeJobCard($job, 'urgent-job-card', false, true); } ?>
+    <div class="jobs-grid" id="latestJobsGrid" data-total-pages="<?php echo (int)$featured_jobs_total_pages; ?>" data-server-pagination="true">
+      <?php foreach($featured_jobs as $job){ homeJobCard($job, '', true); } ?>
     </div>
-    <div class="urgent-jobs-empty" id="urgentJobsEmpty">Không có việc làm tuyển gấp phù hợp với bộ lọc đã chọn.</div>
-    <div class="jobs-pagination" id="urgentJobsPagination" aria-label="Phân trang việc làm tuyển gấp">
-      <button type="button" class="jobs-nav jobs-nav-prev" id="urgentJobsPrev" aria-label="Trang trước"><i class="ti ti-chevron-left"></i></button>
-      <div class="jobs-dots-wrap" id="urgentJobsDots"></div>
-      <button type="button" class="jobs-nav jobs-nav-next" id="urgentJobsNext" aria-label="Trang sau"><i class="ti ti-chevron-right"></i></button>
+    <div class="latest-jobs-empty" id="latestJobsEmpty">Không có việc làm mới nhất phù hợp với bộ lọc đã chọn.</div>
+    <div class="jobs-pagination" id="latestJobsPagination" aria-label="Phân trang việc làm mới nhất">
+      <button type="button" class="jobs-nav jobs-nav-prev" id="latestJobsPrev" aria-label="Trang trước"><i class="ti ti-chevron-left"></i></button>
+      <div class="jobs-dots-wrap" id="latestJobsDots"></div>
+      <button type="button" class="jobs-nav jobs-nav-next" id="latestJobsNext" aria-label="Trang sau"><i class="ti ti-chevron-right"></i></button>
     </div>
   </div>
 </section>
