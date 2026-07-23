@@ -34,11 +34,26 @@ $post_statuses = array(
    'closed' => 'Đóng',
    'rejected' => 'Từ chối'
 );
+$employer_post_keyword = isset($employer_post_keyword) ? $employer_post_keyword : '';
+$employer_post_filters = isset($employer_post_filters) && is_array($employer_post_filters) ? $employer_post_filters : array();
+$selected_status = isset($employer_post_filters['status']) ? $employer_post_filters['status'] : '';
+$selected_employer_id = isset($employer_post_filters['employer_id']) ? (int) $employer_post_filters['employer_id'] : 0;
+$selected_job_category_id = isset($employer_post_filters['job_category_id']) ? (int) $employer_post_filters['job_category_id'] : 0;
+$selected_province_id = isset($employer_post_filters['province_id']) ? (int) $employer_post_filters['province_id'] : 0;
 $e = function ($value) {
    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 };
-$buildUrl = function ($targetPage) {
-   return XC_URL.'/admin/employers/posts?page='.(int) $targetPage;
+$filterParams = array_filter(array(
+   'keyword' => $employer_post_keyword,
+   'status' => $selected_status,
+   'employer_id' => $selected_employer_id > 0 ? $selected_employer_id : '',
+   'job_category_id' => $selected_job_category_id > 0 ? $selected_job_category_id : '',
+   'province_id' => $selected_province_id > 0 ? $selected_province_id : ''
+), function ($value) {
+   return $value !== '' && $value !== null;
+});
+$buildUrl = function ($targetPage) use ($filterParams) {
+   return XC_URL.'/admin/employers/posts?'.http_build_query(array_merge($filterParams, array('page' => (int) $targetPage)));
 };
 $importTemplateUrl = XC_URL.'/admin/employers/posts?download_template=1';
 ?>
@@ -189,6 +204,54 @@ $importTemplateUrl = XC_URL.'/admin/employers/posts?download_template=1';
                </div>
             </div>
             <div class="card-body px-0">
+               <form method="get" class="px-4 pb-3 border-bottom">
+                  <div class="row g-2 align-items-end">
+                     <div class="col-md-3">
+                        <label class="form-label mb-1" for="post-filter-keyword">Từ khóa</label>
+                        <input type="search" class="form-control" id="post-filter-keyword" name="keyword" value="<?php echo $e($employer_post_keyword); ?>" placeholder="Tiêu đề, nhà tuyển dụng...">
+                     </div>
+                     <div class="col-md-2">
+                        <label class="form-label mb-1" for="post-filter-status">Trạng thái</label>
+                        <select class="form-control" id="post-filter-status" name="status">
+                           <option value="">Tất cả</option>
+                           <?php foreach ($post_statuses as $value => $label): ?>
+                              <option value="<?php echo $e($value); ?>" <?php echo $selected_status === $value ? 'selected' : ''; ?>><?php echo $e($label); ?></option>
+                           <?php endforeach; ?>
+                        </select>
+                     </div>
+                     <div class="col-md-2">
+                        <label class="form-label mb-1" for="post-filter-employer">Nhà tuyển dụng</label>
+                        <select class="form-control" id="post-filter-employer" name="employer_id">
+                           <option value="">Tất cả</option>
+                           <?php foreach ($employer_options as $opt): ?>
+                              <option value="<?php echo (int) $opt->id; ?>" <?php echo $selected_employer_id === (int) $opt->id ? 'selected' : ''; ?>><?php echo $e($opt->label); ?></option>
+                           <?php endforeach; ?>
+                        </select>
+                     </div>
+                     <div class="col-md-2">
+                        <label class="form-label mb-1" for="post-filter-category">Ngành nghề</label>
+                        <select class="form-control" id="post-filter-category" name="job_category_id">
+                           <option value="">Tất cả</option>
+                           <?php foreach ($job_category_options as $opt): ?>
+                              <option value="<?php echo (int) $opt->id; ?>" <?php echo $selected_job_category_id === (int) $opt->id ? 'selected' : ''; ?>><?php echo $e($opt->label); ?></option>
+                           <?php endforeach; ?>
+                        </select>
+                     </div>
+                     <div class="col-md-2">
+                        <label class="form-label mb-1" for="post-filter-province">Tỉnh/thành</label>
+                        <select class="form-control" id="post-filter-province" name="province_id">
+                           <option value="">Tất cả</option>
+                           <?php foreach ($province_options as $opt): ?>
+                              <option value="<?php echo (int) $opt->id; ?>" <?php echo $selected_province_id === (int) $opt->id ? 'selected' : ''; ?>><?php echo $e($opt->label); ?></option>
+                           <?php endforeach; ?>
+                        </select>
+                     </div>
+                     <div class="col-md-1 d-flex gap-1">
+                        <button type="submit" class="btn btn-primary" title="Lọc"><i class="fa-solid fa-filter"></i></button>
+                        <a href="<?php echo XC_URL; ?>/admin/employers/posts" class="btn btn-light" title="Xóa bộ lọc"><i class="fa-solid fa-rotate-left"></i></a>
+                     </div>
+                  </div>
+               </form>
                <form method="post" id="bulkApproveForm" class="px-4 pb-3 border-bottom">
                   <input type="hidden" name="employer_post_action" value="approve_selected">
                   <div class="d-flex align-items-center justify-content-between flex-wrap post-bulk-bar">

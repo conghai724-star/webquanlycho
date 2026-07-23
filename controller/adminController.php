@@ -3367,11 +3367,31 @@ Class adminController extends baseController
 
 		$where = array("1=1");
 		$keyword = isset($_GET['keyword']) ? trim($_GET['keyword']) : '';
+		$status = isset($_GET['status']) ? trim($_GET['status']) : '';
+		$employer_id = isset($_GET['employer_id']) ? intval($_GET['employer_id']) : 0;
+		$job_category_id = isset($_GET['job_category_id']) ? intval($_GET['job_category_id']) : 0;
+		$province_id = isset($_GET['province_id']) ? intval($_GET['province_id']) : 0;
+		$allowed_statuses = array('draft', 'pending', 'published', 'closed', 'rejected');
+		if(!in_array($status, $allowed_statuses)){
+			$status = '';
+		}
 		$page = (isset($_GET['page']) && (int)$_GET['page'] > 0) ? (int)$_GET['page'] : 1;
 		$per_page = 10;
 		if($keyword !== ''){
 			$kw = $db->escapestring($keyword);
 			$where[] = "(p.title LIKE '%".$kw."%' OR e.company_name LIKE '%".$kw."%' OR c.job_category_name LIKE '%".$kw."%')";
+		}
+		if($status !== ''){
+			$where[] = "IFNULL(p.status,'pending') = '".$status."'";
+		}
+		if($employer_id > 0){
+			$where[] = "p.employer_id = '".$employer_id."'";
+		}
+		if($job_category_id > 0){
+			$where[] = "p.job_category_id = '".$job_category_id."'";
+		}
+		if($province_id > 0){
+			$where[] = "p.province_id = '".$province_id."'";
 		}
 		if($this->adminColumnExists('hicrm_job_posts', 'status')){
 			$where[] = "IFNULL(p.status,'pending') <> '99'";
@@ -3427,6 +3447,12 @@ Class adminController extends baseController
 		$this->view->data['employer_post_detail'] = $detail_item;
 		$this->view->data['employer_post_flash'] = $this->getAdminFlash();
 		$this->view->data['employer_post_keyword'] = $keyword;
+		$this->view->data['employer_post_filters'] = array(
+			'status' => $status,
+			'employer_id' => $employer_id,
+			'job_category_id' => $job_category_id,
+			'province_id' => $province_id
+		);
 		$this->view->data['employer_options'] = $this->getEmployerOptions();
 		$this->view->data['job_category_options'] = $this->getAdminReferenceOptions('hicrm_job_categories', 'job_category_name');
 		$this->view->data['province_options'] = $this->getAdminReferenceOptions('hicrm_provinces', 'province_name');

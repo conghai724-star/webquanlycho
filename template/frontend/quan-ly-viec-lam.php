@@ -152,6 +152,7 @@ function jobsPagePaginationItems($currentPage, $totalPages){
             $urgent = jobsPageIsUrgent($job);
             $typeLabel = jobsPageTypeLabel($job);
             $logoText = jobsPageInitials($companyName);
+            $company_logo = $job->logo_url ?: $logoText;
             $searchTitle = mb_strtolower(trim($job->title.' '.$companyName.' '.$job->job_category_name), 'UTF-8');
             $jobUrl = general::getInstance()->permalink((int)$job->id, 'job_post');
           ?>
@@ -168,7 +169,7 @@ function jobsPagePaginationItems($currentPage, $totalPages){
           >
             <span class="job-urgent-badge"><i class="ti ti-bolt"></i> <?php echo jobsPageH($typeLabel ?: 'Tuyển gấp'); ?></span>
             <div class="job-box-head">
-              <div class="job-logo" style="background:#eef6ff;color:#0d4e96"><?php echo jobsPageH($logoText); ?></div>
+              <div class="job-logo" style="background:#eef6ff;color:#0d4e96"><img src="<?php echo jobsPageH($company_logo); ?>" alt="<?php echo jobsPageH($companyName); ?>"></div>
               <div>
                 <h2 class="job-box-title"><?php echo jobsPageH($job->title); ?></h2>
                 <div class="job-box-company"><i class="ti ti-building"></i> <?php echo jobsPageH($companyName); ?></div>

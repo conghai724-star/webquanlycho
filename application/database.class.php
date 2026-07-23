@@ -136,4 +136,8 @@ class Database{
 		$result = mysqli_real_escape_string($this->connection, $string);
 		return $result;
 	}
+	
+	public function insert_id(){
+		return mysqli_insert_id($this->connection);
+	}
 } 
