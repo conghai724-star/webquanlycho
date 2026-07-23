@@ -89,7 +89,6 @@ function jobDetailInitials($text){
   }
   return $initials !== '' ? $initials : 'VL';
 }
-
 $jobTitle = trim((string)($jobDetail->title ?? 'Chi tiết tuyển dụng'));
 $companyName = trim((string)($jobDetail->company_name ?? 'Nhà tuyển dụng'));
 $companyLogo = jobDetailAsset($jobDetail->logo_url ?? '');
@@ -110,9 +109,9 @@ $companyAddress = trim((string)($jobDetail->company_address ?? 'Đang cập nh�
 $companySize = trim((string)($jobDetail->company_size ?? 'Đang cập nhật'));
 $websiteUrl = trim((string)($jobDetail->website_url ?? ''));
 $jobCategoryName = trim((string)($jobDetail->job_category_name ?? 'Đang cập nhật'));
-$jobDescriptionItems = jobDetailTextLines($jobDetail->description ?? $jobDetail->responsibilities ?? '', 'Nội dung công việc đang được cập nhật.');
-$jobRequirementItems = jobDetailTextLines($jobDetail->requirements ?? '', 'Yêu cầu ứng viên đang được cập nhật.');
-$jobBenefitItems = jobDetailTextLines($jobDetail->benefits ?? '', 'Quyền lợi đang được cập nhật.');
+$jobDescriptionItems = jobDetailTextLines($jobDetail->job_description ?? $jobDetail->responsibilities ?? '', 'Nội dung công việc đang được cập nhật.');
+$jobRequirementItems = jobDetailTextLines($jobDetail->other_requirements ?? '', 'Yêu cầu ứng viên đang được cập nhật.');
+$jobBenefitItems = jobDetailTextLines($jobDetail->benefits_description ?? '', 'Quyền lợi đang được cập nhật.');
 $jobShareUrl = $jobUrl;
 ?>
 
@@ -758,3 +757,4 @@ body.jd-support-modal-open{overflow:hidden}
   });
 })();
 </script>
+<?php require_once 'footer.php'; ?>

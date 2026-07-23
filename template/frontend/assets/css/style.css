@@ -172,7 +172,7 @@ img{display:block;max-width:100%}
 /* ===== PROVINCIAL JOBS ===== */
 .province-jobs-section{background:#f5f8fc}
 .province-jobs-layout{display:grid;grid-template-columns:minmax(260px,29%) minmax(0,1fr);gap:20px;align-items:stretch}
-.province-jobs-banner{position:relative;display:flex;align-items:flex-end;min-height:530px;overflow:hidden;border-radius:14px;background:linear-gradient(145deg,#0d4e96 0%,#1769bd 56%,#65b6e8 100%);color:#fff;isolation:isolate;box-shadow:0 12px 26px rgba(13,78,150,.20);text-decoration:none}
+.province-jobs-banner{position:relative;display:flex;min-height:530px;overflow:hidden;border-radius:14px;background:linear-gradient(145deg,#0d4e96 0%,#1769bd 56%,#65b6e8 100%);color:#fff;isolation:isolate;box-shadow:0 12px 26px rgba(13,78,150,.20);text-decoration:none}
 .province-jobs-banner:before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.08),transparent 46%,rgba(3,35,79,.28));z-index:-1}
 .province-banner-orb{position:absolute;display:block;border-radius:50%;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);z-index:-1}
 .province-banner-orb.orb-one{width:235px;height:235px;top:-72px;right:-82px}

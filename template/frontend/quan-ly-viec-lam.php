@@ -169,7 +169,13 @@ function jobsPagePaginationItems($currentPage, $totalPages){
           >
             <span class="job-urgent-badge"><i class="ti ti-bolt"></i> <?php echo jobsPageH($typeLabel ?: 'Tuyển gấp'); ?></span>
             <div class="job-box-head">
-              <div class="job-logo" style="background:#eef6ff;color:#0d4e96"><img src="<?php echo jobsPageH($company_logo); ?>" alt="<?php echo jobsPageH($companyName); ?>"></div>
+              <div class="job-logo" style="background:#eef6ff;color:#0d4e96">
+                <?php if(!empty($job->logo_url)){ ?>
+                  <img src="<?php echo jobsPageH($company_logo); ?>" alt="<?php echo jobsPageH($companyName); ?>">
+                <?php }else{ ?>
+                  <span class="job-logo-text"><?php echo jobsPageH($logoText); ?></span>
+                <?php } ?>
+              </div>
               <div>
                 <h2 class="job-box-title"><?php echo jobsPageH($job->title); ?></h2>
                 <div class="job-box-company"><i class="ti ti-building"></i> <?php echo jobsPageH($companyName); ?></div>

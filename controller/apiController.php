@@ -397,12 +397,17 @@ Class apiController extends baseController
 		$industry = !empty($job->job_category_name) ? $job->job_category_name : '';
 		$href = general::getInstance()->permalink((int)$job->id, 'job_post');
 		$workType = $this->homeApiWorkTypeLabel($job->work_type ?? '');
+		
 		$postType = isset($job->job_post_type) ? $job->job_post_type : 'normal';
 		$titleClass = $postType === 'hot' ? ' job-title-hot' : ($postType === 'urgent' ? ' job-title-urgent' : '');
 		$classes = trim('job-card job-card-'.$postType.' '.$extraClass);
 		$initials = mb_strtoupper(mb_substr($company, 0, 1, 'UTF-8'), 'UTF-8');
+		$logo_url = !empty($job->logo_url) ? '<img src="'.XC_URL.'/'.$this->homeApiH($job->logo_url).'" alt="'.$this->homeApiH($company).'" />' : $initials ;
 		$html = '<a href="'.$this->homeApiH($href).'" class="'.$this->homeApiH($classes).'" data-salary="'.$this->homeApiH($this->homeApiSalaryKey($salary)).'" data-location="'.$this->homeApiH($this->homeApiLocationKey($location)).'" data-experience="'.$this->homeApiH($job->experience_years ?? '').'" data-industry="'.$this->homeApiH($this->homeApiIndustryKey($industry.' '.$title)).'">';
-		$html .= '<div class="job-card-header"><div class="company-logo" style="background:#eef6ff;color:#0d4e96">'.$this->homeApiH($initials).'</div><div><div class="job-title'.$titleClass.'">'.$this->homeApiH($title).'</div><div class="company-name"><i class="ti ti-building"></i> '.$this->homeApiH($company).'</div></div></div>';
+		$html .= '<div class="job-card-header">
+		<div class="company-logo" style="background:#eef6ff;color:#0d4e96">'.$logo_url.'</div>
+		
+		<div><div class="job-title'.$titleClass.'">'.$this->homeApiH($title).'</div><div class="company-name"><i class="ti ti-building"></i> '.$this->homeApiH($company).'</div></div></div>';
 		$html .= '<div class="job-card-tags"><span class="tag tag-salary">'.$this->homeApiH($salary).'</span><span class="tag tag-location"><i class="ti ti-map-pin" style="font-size:10px"></i> '.$this->homeApiH($location).'</span><span class="tag tag-type">'.$this->homeApiH($workType).'</span><span class="tag tag-experience">'.$this->homeApiH($this->homeApiExperienceText($job->experience_years ?? '')).'</span>';
 		if($includeDeadline){ $html .= '<span class="tag tag-deadline"><i class="ti ti-calendar-event" style="font-size:10px"></i> Hạn nộp: '.$this->homeApiH($this->homeApiDeadlineText($job->deadline ?? '')).'</span>'; }
 		$html .= '</div><div class="job-card-footer"><span class="job-date"><i class="ti ti-clock"></i> '.$this->homeApiH($this->homeApiDateText($job->published_at ?? $job->created_at ?? '')).'</span></div></a>';
