@@ -56,6 +56,7 @@ $htmlBg = $theme === 'dark' ? '#0f1623' : '#f5f7fb';
 
 
     <script>
+        window.BASE_URL = '<?php echo BASE_URL; ?>';
         window.ADMINMASTER_URL = '<?php echo ADMINMASTER_URL; ?>';
         window.CSRF_TOKEN = '<?php echo security::getToken(); ?>';
         (function(){

@@ -20,8 +20,8 @@
  * KHÔNG load tất cả JS vì các file page-specific (chat, faq, invoice...) 
  * tìm DOM element của trang riêng mình → gây lỗi null trên các trang khác.
  */
-$jsDir  = XC_URL . 'teamplate/adminmaster/assets/js/dist';
-$jsBase = XC_URL . 'template/adminmaster/assets/js/dist/';
+$jsDir  = XC_URL . '/template/adminmaster/assets/js/dist';
+$jsBase = XC_URL . '/template/adminmaster/assets/js/dist/';
 
 // Helper: tìm file JS theo prefix tên, bỏ qua .map
 // function findJsFile(string $dir, string $prefix): ?string {
@@ -50,7 +50,7 @@ $jsBase = XC_URL . 'template/adminmaster/assets/js/dist/';
 
 <!-- Nạp SweetAlert2 & App Custom JS dùng chung cho toàn bộ các view PHP -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="<?php echo XC_URL; ?>template/adminmaster/assets/js/pages/app-custom.js?v=<?php echo time(); ?>"></script>
+<script src="<?php echo XC_URL; ?>/template/adminmaster/assets/js/pages/app-custom.js?v=<?php echo time(); ?>"></script>
 
 </body>
 </html>
