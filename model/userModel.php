@@ -13,7 +13,7 @@ class userModel {
      * Lấy danh sách tất cả người dùng
      */
     public function getAll() {
-        $sql = "SELECT id, username, fullname, email, user_group, is_active, created_at FROM users ORDER BY id DESC";
+        $sql = "SELECT user_id, username, fullname, email, user_group, is_active, created_at FROM users ORDER BY id DESC";
         return $this->db->select($sql);
     }
 
@@ -21,7 +21,7 @@ class userModel {
      * Lấy người dùng theo ID
      */
     public function getById($id) {
-        $sql = "SELECT id, username, fullname, email, user_group, is_active FROM users WHERE id = :id";
+        $sql = "SELECT user_id, username, fullname, email, user_group, is_active FROM users WHERE id = :id";
         return $this->db->selectOne($sql, ['id' => $id]);
     }
 
@@ -31,7 +31,7 @@ class userModel {
     public function getByUsername($username) {
         $sql = "SELECT u.*, sa.actor_code 
                 FROM users u 
-                LEFT JOIN system_actors sa ON u.actor_id = sa.id 
+                LEFT JOIN system_actors sa ON u.actor_id = sa.actor_id 
                 WHERE u.username = :username";
         return $this->db->selectOne($sql, ['username' => $username]);
     }

@@ -1,3 +1,0 @@
-<?php require "header.php"; ?>
-<div class="conatiner-fluid content-inner mt-n5 py-0"><div class="row justify-content-center"><div class="col-lg-7"><div class="card text-center"><div class="card-body py-5"><div class="display-1 fw-bold text-danger">403</div><h3><?php echo htmlspecialchars(isset($page_title) ? $page_title : 'Không có quyền truy cập', ENT_QUOTES, 'UTF-8'); ?></h3><p class="text-muted"><?php echo htmlspecialchars(isset($page_description) ? $page_description : 'Tài khoản chưa được cấp quyền cho chức năng này.', ENT_QUOTES, 'UTF-8'); ?></p><a class="btn btn-primary" href="<?php echo XC_URL; ?>/admin">Về trang quản trị</a></div></div></div></div></div>
-<?php require "footer.php"; ?>

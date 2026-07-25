@@ -34,16 +34,16 @@ class marketModel {
      * Tạo chợ mới
      */
     public function create($data) {
-        $sql = "INSERT INTO markets (market_code, name, phone, email, manager_name, status_code)
+        $sql = "INSERT INTO markets (market_code, market_name, market_phone, market_email, market_manager_name, market_status_code)
                 VALUES (:market_code, :name, :phone, :email, :manager_name, :status_code)";
         
         $this->db->query($sql, [
             'market_code'  => $data['market_code'],
-            'name'         => $data['name'],
-            'phone'        => $data['phone'] ?? null,
-            'email'        => $data['email'] ?? null,
-            'manager_name' => $data['manager_name'] ?? null,
-            'status_code'  => $data['status_code'] ?? 'active'
+            'name'         => $data['market_name'],
+            'phone'        => $data['market_phone'] ?? null,
+            'email'        => $data['market_email'] ?? null,
+            'manager_name' => $data['market_manager_name'] ?? null,
+            'status_code'  => $data['market_status_code'] ?? 'active'
         ]);
         
         return $this->db->lastInsertId();
@@ -65,18 +65,18 @@ class marketModel {
         return $this->db->query($sql, [
             'id'           => $id,
             'market_code'  => $data['market_code'],
-            'name'         => $data['name'],
-            'phone'        => $data['phone'] ?? null,
-            'email'        => $data['email'] ?? null,
-            'manager_name' => $data['manager_name'] ?? null,
-            'status_code'  => $data['status_code'] ?? 'active'
+            'name'         => $data['market_name'],
+            'phone'        => $data['market_phone'] ?? null,
+            'email'        => $data['market_email'] ?? null,
+            'manager_name' => $data['market_manager_name'] ?? null,
+            'status_code'  => $data['market_status_code'] ?? 'active'
         ]);
     }
     /**
      * Xóa chợ (Soft Delete)
      */
     public function delete($id) {
-        $sql = "UPDATE markets SET status_code = 'deleted' WHERE id = :id";
+        $sql = "UPDATE markets SET market_status_code = 'deleted' WHERE id = :id";
         return $this->db->query($sql, ['id' => $id]);
     }
 }

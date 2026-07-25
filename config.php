@@ -47,7 +47,7 @@ define('DB_PORT', '3307');
 	define('XC_URL','http://localhost/quanlycho.vn'); //Replace by your site url
 	define('BASE_URL', XC_URL . '/');
 	define('DIR_ROOT', __DIR__);
-	define('DIR_TEMPLATE', __DIR__ . '/template/' . AdminThemeMaster);
+	define('DIR_TEMPLATE', __DIR__ . '/template/' . AdminTheme);
 	define('ADMINMASTER_URL','http://localhost/quanlycho.vn/admin'); //Replace by your site url
 	define('APP_URL','http://localhost/quanlycho.vn/app'); //Replace by your site url
 }

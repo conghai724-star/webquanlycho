@@ -22,13 +22,13 @@ class statusModel {
             return self::$cache[$cacheKey];
         }
 
-        $sql = "SELECT id FROM system_statuses WHERE domain = :domain AND code = :code LIMIT 1";
+        $sql = "SELECT status_id FROM system_statuses WHERE status_domain = :domain AND status_code = :code LIMIT 1";
         $res = $this->db->selectOne($sql, [
             'domain' => $domain,
             'code'   => $code
         ]);
 
-        $id = $res ? (int)$res['id'] : null;
+        $id = $res ? (int)$res['status_id'] : null;
         self::$cache[$cacheKey] = $id;
         return $id;
     }

@@ -1235,9 +1235,11 @@ Class general{
 
         $db = database::getInstance();
         $res = $db->selectOne("
-            SELECT id 
+            SELECT permission_id 
             FROM user_market_permissions 
-            WHERE user_id = :user_id AND market_id = :market_id AND module_code = :module_code
+            WHERE permission_user_id = :user_id 
+              AND permission_market_id = :market_id 
+              AND permission_module_code = :module_code
         ", [
             'user_id'     => $userId,
             'market_id'   => $currentMarketId,
@@ -1330,15 +1332,15 @@ Class general{
         $db = database::getInstance();
         if (self::isSuperAdmin()) {
             // Super Admin truy cập toàn bộ các chợ đang hoạt động
-            $rows = $db->select("SELECT id FROM markets WHERE status_code = 'active'");
-            $ids = array_map(function($r) { return (int)$r['id']; }, $rows);
+            $rows = $db->select("SELECT market_id FROM markets WHERE market_status_code = 'active'");
+            $ids = array_map(function($r) { return (int)$r['market_id']; }, $rows);
         } else {
             // Nhân viên hoặc Quản lý chợ chỉ truy cập các chợ được phân công trong user_markets
             $rows = $db->select("
-                SELECT market_id 
+                SELECT um.user_market_market_id AS market_id
                 FROM user_markets um
-                JOIN markets m ON um.market_id = m.id
-                WHERE um.user_id = :user_id AND m.status_code = 'active'
+                JOIN markets m ON um.user_market_market_id = m.market_id
+                WHERE um.user_market_user_id = :user_id AND m.market_status_code = 'active'
             ", ['user_id' => $userId]);
             $ids = array_map(function($r) { return (int)$r['market_id']; }, $rows);
         }

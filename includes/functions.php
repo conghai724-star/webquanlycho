@@ -19,3 +19,15 @@ spl_autoload_register(function ($className) {
         }
     }
 });
+
+if (!function_exists('csrf_field')) {
+    function csrf_field() {
+        echo '<input type="hidden" name="csrf_token" value="' . htmlspecialchars(security::getToken()) . '">';
+    }
+}
+
+if (!function_exists('csrf_token')) {
+    function csrf_token() {
+        return security::getToken();
+    }
+}

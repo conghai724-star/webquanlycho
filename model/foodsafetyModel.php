@@ -13,95 +13,92 @@ class foodsafetyModel {
      * Lấy danh sách giấy chứng nhận vệ sinh ATTP, sức khỏe, tập huấn của tiểu thương
      */
     public function getCertificates($traderId = null, $docType = null, $status = null, $search = null, $marketId = null) {
-        $sql = "SELECT c.*, dt.type_name AS doc_type, dt.type_code, t.fullname AS trader_name, t.phone AS trader_phone, t.description AS shop_name,
+        $sql = "SELECT c.*, dt.doc_type_name AS doc_type, dt.doc_type_code, t.trader_fullname AS trader_name, t.trader_phone AS trader_phone, t.trader_description AS shop_name,
                        bl.line_name AS business_line,
-                       ss.code AS status_code, ss.status_name, sc.color_class,
-                       DATEDIFF(c.expiry_date, CURRENT_DATE) AS days_remaining
+                       ss.status_code AS status_code, ss.status_name, sc.color_class,
+                       DATEDIFF(c.attp_expiry_date, CURRENT_DATE) AS days_remaining
                 FROM trader_attp c
-                LEFT JOIN document_types dt ON c.doc_type_id = dt.id
-                LEFT JOIN traders t ON c.trader_id = t.id
-                LEFT JOIN business_lines bl ON bl.id = t.business_line_id
-                LEFT JOIN system_statuses ss ON c.status_id = ss.id
-                LEFT JOIN status_colors sc ON ss.color_id = sc.id
-                WHERE ss.code != '99' AND (t.id IS NULL OR t.status_id != (SELECT id FROM system_statuses WHERE domain = 'trader' AND code = '99'))";
+                LEFT JOIN document_types dt ON c.attp_doc_type_id = dt.doc_type_id
+                LEFT JOIN traders t ON c.attp_trader_id = t.trader_id
+                LEFT JOIN business_lines bl ON bl.line_id = t.trader_business_line_id
+                LEFT JOIN system_statuses ss ON c.attp_status_id = ss.status_id
+                LEFT JOIN status_colors sc ON ss.status_color_id = sc.color_id
+                WHERE ss.status_code != '99' AND (t.trader_id IS NULL OR t.trader_status_id != (SELECT status_id FROM system_statuses WHERE status_domain = 'trader' AND status_code = '99'))";
         
         $params = [];
 
         if ($marketId) {
-            $sql .= " AND t.id IN (
-                SELECT DISTINCT c2.trader_id 
+            $sql .= " AND t.trader_id IN (
+                SELECT DISTINCT c2.contract_trader_id 
                 FROM contracts c2
-                JOIN stalls s2 ON c2.stall_id = s2.id
-                JOIN areas a2 ON s2.area_id = a2.id
-                WHERE a2.market_id = :market_id
+                JOIN stalls s2 ON c2.contract_stall_id = s2.stall_id
+                JOIN areas a2 ON s2.stall_area_id = a2.area_id
+                WHERE a2.area_market_id = :market_id
             )";
             $params['market_id'] = $marketId;
         }
 
         if ($traderId) {
-            $sql .= " AND c.trader_id = :trader_id";
-            $params['trader_id'] = $traderId;
+            $sql .= " AND c.attp_trader_id = :attp_trader_id";
+            $params['attp_trader_id'] = $traderId;
         }
 
         if ($docType) {
-            $sql .= " AND c.doc_type_id = :doc_type";
+            $sql .= " AND c.attp_doc_type_id = :doc_type";
             $params['doc_type'] = $docType;
         }
 
         if ($status) {
-            $sql .= " AND ss.code = :status";
+            $sql .= " AND ss.status_code = :status";
             $params['status'] = $status;
         }
 
         if (!empty($search)) {
-            $sql .= " AND (c.doc_number LIKE :search1 OR c.name LIKE :search2 OR t.fullname LIKE :search3)";
+            $sql .= " AND (c.attp_doc_number LIKE :search1 OR c.contract_name LIKE :search2 OR t.trader_fullname LIKE :search3)";
             $params['search1'] = "%$search%";
             $params['search2'] = "%$search%";
             $params['search3'] = "%$search%";
         }
 
-        $sql .= " ORDER BY c.expiry_date ASC";
+        $sql .= " ORDER BY c.attp_expiry_date ASC";
         return $this->db->select($sql, $params);
     }
 
     /**
-     * Lấy thông tin một giấy chứng nhận theo ID
+     * Lấy thông tin một giấy chứng nhận theo attp_status_id
      */
-    public function getById($id) {
-        $sql = "SELECT c.*, dt.type_name AS doc_type, dt.type_code, t.fullname AS trader_name, t.phone AS trader_phone, t.description AS shop_name,
-                       ss.code AS status_code, ss.status_name, sc.color_class,
-                       DATEDIFF(c.expiry_date, CURRENT_DATE) AS days_remaining
+    public function getById($attp_id) {
+        $sql = "SELECT c.*, dt.doc_type_name AS doc_type, dt.doc_type_code, t.trader_fullname AS trader_name, t.trader_phone AS trader_phone, t.trader_description AS shop_name,
+                       ss.status_code AS status_code, ss.status_name, sc.color_class,
+                       DATEDIFF(c.attp_expiry_date, CURRENT_DATE) AS days_remaining
                 FROM trader_attp c
-                LEFT JOIN document_types dt ON c.doc_type_id = dt.id
-                LEFT JOIN traders t ON c.trader_id = t.id
-                LEFT JOIN system_statuses ss ON c.status_id = ss.id
-                LEFT JOIN status_colors sc ON ss.color_id = sc.id
-                WHERE c.id = :id AND ss.code != '99' AND (t.id IS NULL OR t.status_id != (SELECT id FROM system_statuses WHERE domain = 'trader' AND code = '99'))";
+                LEFT JOIN document_types dt ON c.attp_doc_type_id = dt.doc_type_id
+                LEFT JOIN traders t ON c.attp_trader_id = t.trader_id
+                LEFT JOIN system_statuses ss ON c.attp_status_id = ss.status_id
+                LEFT JOIN status_colors sc ON ss.status_color_id = sc.color_id
+                WHERE c.attp_id = :attp_id AND ss.status_code != '99' AND (t.trader_id IS NULL OR t.trader_status_id != (SELECT status_id FROM system_statuses WHERE status_domain = 'trader' AND status_code = '99'))";
         
-        return $this->db->selectOne($sql, ['id' => $id]);
+        return $this->db->selectOne($sql, ['attp_id' => $attp_id]);
     }
 
-    /**
-     * Thêm giấy tờ vệ sinh ATTP mới
-     */
     public function createCertificate($data) {
         $statusModel = new statusModel();
         $validStatusId = $statusModel->getIdByCode('attp', 'valid');
 
-        $sql = "INSERT INTO trader_attp (trader_id, doc_type_id, doc_number, name, description, file, status_id, issuer, issue_date, expiry_date)
-                VALUES (:trader_id, :doc_type_id, :doc_number, :name, :description, :file, :status_id, :issuer, :issue_date, :expiry_date)";
+        $sql = "INSERT INTO trader_attp (attp_trader_id, attp_doc_type_id, attp_doc_number, attp_name, attp_description, attp_file, attp_status_id, attp_issuer, attp_issue_date, attp_expiry_date)
+                VALUES (:attp_trader_id, :attp_doc_type_id, :attp_doc_number, :attp_name, :attp_description, :attp_file, :attp_status_id, :attp_issuer, :attp_issue_date, :attp_expiry_date)";
         
         $params = [
-            'trader_id'   => $data['trader_id'],
-            'doc_type_id' => $data['doc_type_id'],
-            'doc_number'  => $data['doc_number'],
-            'name'        => $data['name'],
-            'description' => $data['description'] ?? null,
-            'file'        => $data['file'] ?? null,
-            'status_id'   => $data['status_id'] ?? $validStatusId,
-            'issuer'      => $data['issuer'] ?? null,
-            'issue_date'  => $data['issue_date'],
-            'expiry_date' => $data['expiry_date']
+            'attp_trader_id'   => $data['attp_trader_id'],
+            'attp_doc_type_id' => $data['attp_doc_type_id'],
+            'attp_doc_number'  => $data['attp_doc_number'],
+            'attp_name'        => $data['attp_name'],
+            'attp_description' => $data['attp_description'] ?? null,
+            'attp_file'        => $data['attp_file'] ?? null,
+            'attp_status_id'   => $data['attp_status_id'] ?? $validStatusId,
+            'attp_issuer'      => $data['attp_issuer'] ?? null,
+            'attp_issue_date'  => $data['attp_issue_date'],
+            'attp_expiry_date' => $data['attp_expiry_date']
         ];
 
         return $this->db->query($sql, $params);
@@ -110,54 +107,54 @@ class foodsafetyModel {
     /**
      * Cập nhật thông tin giấy tờ vệ sinh ATTP
      */
-    public function updateCertificate($id, $data) {
+    public function updateCertificate($attp_id, $data) {
         $sql = "UPDATE trader_attp 
-                SET trader_id = :trader_id,
-                    doc_type_id = :doc_type_id, 
-                    doc_number = :doc_number, 
-                    name = :name, 
-                    description = :description, 
-                    issuer = :issuer, 
-                    issue_date = :issue_date, 
-                    expiry_date = :expiry_date";
+                SET attp_trader_id = :attp_trader_id,
+                    attp_doc_type_id = :attp_doc_type_id, 
+                    attp_doc_number = :attp_doc_number, 
+                    attp_name = :attp_name, 
+                    attp_description = :attp_description, 
+                    attp_issuer = :attp_issuer, 
+                    attp_issue_date = :attp_issue_date, 
+                    attp_expiry_date = :attp_expiry_date";
         
         $params = [
-            'id'          => $id,
-            'trader_id'   => $data['trader_id'],
-            'doc_type_id' => $data['doc_type_id'],
-            'doc_number'  => $data['doc_number'],
-            'name'        => $data['name'],
-            'description' => $data['description'] ?? null,
-            'issuer'      => $data['issuer'] ?? null,
-            'issue_date'  => $data['issue_date'],
-            'expiry_date' => $data['expiry_date']
+            'attp_id'          => $attp_id,
+            'attp_trader_id'   => $data['attp_trader_id'],
+            'attp_doc_type_id' => $data['attp_doc_type_id'],
+            'attp_doc_number'  => $data['attp_doc_number'],
+            'attp_name'        => $data['attp_name'],
+            'attp_description' => $data['attp_description'] ?? null,
+            'attp_issuer'      => $data['attp_issuer'] ?? null,
+            'attp_issue_date'  => $data['attp_issue_date'],
+            'attp_expiry_date' => $data['attp_expiry_date']
         ];
 
-        if (isset($data['file'])) {
-            $sql .= ", file = :file";
-            $params['file'] = $data['file'];
+        if (isset($data['attp_file'])) {
+            $sql .= ", attp_file = :attp_file";
+            $params['attp_file'] = $data['attp_file'];
         }
 
-        if (isset($data['status_id'])) {
-            $sql .= ", status_id = :status_id";
-            $params['status_id'] = $data['status_id'];
+        if (isset($data['attp_status_id'])) {
+            $sql .= ", attp_status_id = :attp_status_id";
+            $params['attp_status_id'] = $data['attp_status_id'];
         }
 
-        $sql .= " WHERE id = :id";
+        $sql .= " WHERE attp_id = :attp_id";
         return $this->db->query($sql, $params);
     }
 
     /**
      * Xóa mềm giấy tờ (99)
      */
-    public function deleteCertificate($id) {
+    public function deleteCertificate($attp_id) {
         $statusModel = new statusModel();
         $deletedStatusId = $statusModel->getIdByCode('attp', '99');
 
-        $sql = "UPDATE trader_attp SET status_id = :status_id WHERE id = :id";
+        $sql = "UPDATE trader_attp SET attp_status_id = :attp_status_id WHERE attp_id = :attp_id";
         return $this->db->query($sql, [
-            'id' => $id,
-            'status_id' => $deletedStatusId
+            'attp_id' => $attp_id,
+            'attp_status_id' => $deletedStatusId
         ]);
     }
 
@@ -165,16 +162,16 @@ class foodsafetyModel {
      * Lấy danh sách trạng thái giấy tờ vệ sinh ATTP (trừ 99)
      */
     public function getAttpStatuses() {
-        $sql = "SELECT * FROM system_statuses WHERE domain = 'attp' AND code != '99' ORDER BY id ASC";
+        $sql = "SELECT * FROM system_statuses WHERE status_domain = 'attp' AND status_code != '99' ORDER BY status_id ASC";
         return $this->db->select($sql);
     }
 
     public function autoUpdateExpiryStatus() {
         $today = date('Y-m-d');
         $sql = "UPDATE trader_attp 
-                SET status_id = (SELECT id FROM system_statuses WHERE domain = 'attp' AND code = 'expired') 
-                WHERE expiry_date < :today 
-                  AND status_id = (SELECT id FROM system_statuses WHERE domain = 'attp' AND code = 'valid')";
+                SET attp_status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'attp' AND status_code = 'expired') 
+                WHERE attp_expiry_date < :today 
+                  AND attp_status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'attp' AND status_code = 'valid')";
         return $this->db->query($sql, ['today' => $today]);
     }
 
@@ -182,10 +179,10 @@ class foodsafetyModel {
      * Kiểm tra xem số chứng nhận đã tồn tại chưa
      */
     public function isDocNumberExists($num, $excludeId = null) {
-        $sql = "SELECT COUNT(*) as count FROM trader_attp WHERE doc_number = :num AND status_id != (SELECT id FROM system_statuses WHERE domain = 'attp' AND code = '99')";
+        $sql = "SELECT COUNT(*) as count FROM trader_attp WHERE attp_doc_number = :num AND attp_status_id != (SELECT status_id FROM system_statuses WHERE status_domain = 'attp' AND status_code = '99')";
         $params = ['num' => $num];
         if ($excludeId !== null) {
-            $sql .= " AND id != :excludeId";
+            $sql .= " AND attp_id != :excludeId";
             $params['excludeId'] = $excludeId;
         }
         $res = $this->db->selectOne($sql, $params);

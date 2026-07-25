@@ -1,159 +1,69 @@
-﻿<?php
+<?php
 /**
  * Controller xử lý các trang quản trị của Ban Quản Lý
  */
 Class adminController extends baseController {
+    public function __construct($registry) {
+        parent::__construct($registry);
+
+        // Bảo vệ toàn bộ các action trong adminController (trừ login)
+        $action = isset($this->registry->router->action) ? $this->registry->router->action : '';
+        if ($action !== 'login') {
+            if (!$this->helper->isLoggedIn() || $this->helper->get('actor_code') !== 'admin') {
+                header('Location: ' . BASE_URL . 'login');
+                exit();
+            }
+        }
+    }
+
     public function index() {
         $this->dashboard();
-        // Nếu người dùng đã đăng nhập, chuyển hướng đến dashboard
-       
     }
     
-   
     public function login()
 	{ 
-		// echo 'ssssss';
-		$this->view->adminmaster("auth/login");
+		// Nếu đã đăng nhập đúng role admin, chuyển hướng thẳng vào dashboard
+		if ($this->helper->isLoggedIn() && $this->helper->get('actor_code') === 'admin') {
+			header('Location: ' . BASE_URL . 'admin/dashboard');
+			exit();
+		}
+		$this->view->app("auth/login");
 	}
 
     public function dashboard() {
-        // if (session_status() === PHP_SESSION_NONE) {
-        //     session_start();
-        // }
-        
-        $actorCode = $this->helper->get('actor_code');
-        
-        // Nếu là super_market hoặc admin_market và chưa chọn chợ cụ thể (active_market_id == 0 hoặc chưa có)
-        // hoặc người dùng click xem trang tổng quan (?type=all)
-        $viewingMainDashboard = isset($_GET['type']) && $_GET['type'] === 'all';
-        $activeMarketId = $this->helper->get('active_market_id');
-        
-        if (($actorCode === 'super_market' || $actorCode === 'admin_market') && (!$activeMarketId || $viewingMainDashboard)) {
-            // Thiết lập active_market_id = 0 biểu thị đang ở Trang tổng
-            $this->helper->set('active_market_id', 0);
-            
-            $db = database::getInstance();
-            $accessibleMarketIds = $this->helper->getAccessibleMarketIds();
-            
-            if (empty($accessibleMarketIds)) {
-                $this->view->adminmaster('dashboard/main_dashboard', [
-                    'title' => 'Trang Tổng Quan Hợp Nhất',
-                    'markets' => [],
-                    'stats' => [
-                        'total_markets' => 0,
-                        'total_stalls' => 0,
-                        'rented_stalls' => 0,
-                        'occupancy_rate' => 0,
-                        'total_traders' => 0,
-                        'total_revenue' => 0
-                    ]
-                ]);
-                return;
-            }
-            
-            $marketIdsStr = implode(',', $accessibleMarketIds);
-            
-            // 1. Tổng số chợ
-            $totalMarkets = count($accessibleMarketIds);
-            
-            // 2. Tổng số sạp & Số sạp đã thuê (Stalls join Areas)
-            $stallStats = $db->selectOne("
-                SELECT COUNT(*) as total_stalls,
-                       SUM(CASE WHEN ss.code = 'rented' THEN 1 ELSE 0 END) as rented_stalls
-                FROM stalls s
-                JOIN areas a ON s.area_id = a.id
-                JOIN system_statuses ss ON s.status_id = ss.id
-                WHERE a.market_id IN ($marketIdsStr) AND ss.code != '99'
-            ");
-            
-            $totalStalls = (int)($stallStats['total_stalls'] ?? 0);
-            $rentedStalls = (int)($stallStats['rented_stalls'] ?? 0);
-            $occupancyRate = $totalStalls > 0 ? round(($rentedStalls / $totalStalls) * 100) : 0;
-            
-            // 3. Tổng số tiểu thương đang hoạt động (Traders join Contracts join Stalls join Areas)
-            $traderStats = $db->selectOne("
-                SELECT COUNT(DISTINCT t.id) as total_traders
-                FROM traders t
-                JOIN contracts c ON c.trader_id = t.id
-                JOIN stalls s ON c.stall_id = s.id
-                JOIN areas a ON s.area_id = a.id
-                JOIN system_statuses cs ON c.status_id = cs.id
-                WHERE a.market_id IN ($marketIdsStr) AND cs.code = 'active'
-            ");
-            $totalTraders = (int)($traderStats['total_traders'] ?? 0);
-            
-            // 4. Doanh thu tổng hợp tháng này (Bills join Contracts join Stalls join Areas)
-            $revenueStats = $db->selectOne("
-                SELECT SUM(b.total_amount) as total_revenue
-                FROM bills b
-                JOIN contracts c ON b.contract_id = c.id
-                JOIN stalls s ON c.stall_id = s.id
-                JOIN areas a ON s.area_id = a.id
-                WHERE a.market_id IN ($marketIdsStr) 
-                  AND b.status = 'paid'
-                  AND DATE_FORMAT(b.invoice_date, '%Y-%m') = DATE_FORMAT(CURRENT_DATE(), '%Y-%m')
-            ");
-            $totalRevenue = (float)($revenueStats['total_revenue'] ?? 0);
-            
-            // 5. Thống kê từng chợ để vẽ danh sách Grid
-            $marketsData = $db->select("
-                SELECT m.id, m.name, m.market_code AS code,
-                       (SELECT COUNT(*) FROM stalls s JOIN areas a ON s.area_id = a.id WHERE a.market_id = m.id) as total_stalls,
-                       (SELECT COUNT(*) FROM stalls s JOIN areas a ON s.area_id = a.id JOIN system_statuses ss ON s.status_id = ss.id WHERE a.market_id = m.id AND ss.code = 'rented') as rented_stalls,
-                       (SELECT SUM(b.total_amount) FROM bills b JOIN contracts c ON b.contract_id = c.id JOIN stalls s ON c.stall_id = s.id JOIN areas a ON s.area_id = a.id WHERE a.market_id = m.id AND b.status = 'paid' AND DATE_FORMAT(b.invoice_date, '%Y-%m') = DATE_FORMAT(CURRENT_DATE(), '%Y-%m')) as monthly_revenue
-                FROM markets m
-                WHERE m.id IN ($marketIdsStr) AND m.status_code = 'active'
-            ");
-            
-            $this->view->adminmaster('dashboard/main_dashboard', [
-                'title' => 'Trang Tổng Quan Hợp Nhất',
-                'markets' => $marketsData,
-                'stats' => [
-                    'total_markets' => $totalMarkets,
-                    'total_stalls' => $totalStalls,
-                    'rented_stalls' => $rentedStalls,
-                    'occupancy_rate' => $occupancyRate,
-                    'total_traders' => $totalTraders,
-                    'total_revenue' => $totalRevenue
-                ]
-            ]);
-            return;
-        }
-        
-        // Nếu đã có active_market_id hoặc là nhân viên thường, hiển thị dashboard chi tiết của chợ đó
         $marketId = $this->helper->currentMarketId();
         $db = database::getInstance();
         
         $stallStats = $db->selectOne("
             SELECT COUNT(*) as total_stalls,
-                   SUM(CASE WHEN ss.code = 'rented' THEN 1 ELSE 0 END) as rented_stalls,
-                   SUM(CASE WHEN ss.code = 'empty' THEN 1 ELSE 0 END) as empty_stalls,
-                   SUM(CASE WHEN ss.code = 'repairing' THEN 1 ELSE 0 END) as repairing_stalls
+                   SUM(CASE WHEN ss.status_code = 'rented' THEN 1 ELSE 0 END) as rented_stalls,
+                   SUM(CASE WHEN ss.status_code = 'empty' THEN 1 ELSE 0 END) as empty_stalls,
+                   SUM(CASE WHEN ss.status_code = 'repairing' THEN 1 ELSE 0 END) as repairing_stalls
             FROM stalls s
-            JOIN areas a ON s.area_id = a.id
-            JOIN system_statuses ss ON s.status_id = ss.id
-            WHERE a.market_id = :market_id AND ss.code != '99'
+            JOIN areas a ON s.stall_area_id = a.area_id
+            JOIN system_statuses ss ON s.stall_status_id = ss.status_id
+            WHERE a.area_market_id = :market_id AND ss.status_code != '99'
         ", ['market_id' => $marketId]);
         
         $traderStats = $db->selectOne("
-            SELECT COUNT(DISTINCT t.id) as total_traders
+            SELECT COUNT(DISTINCT t.trader_id) as total_traders
             FROM traders t
-            JOIN contracts c ON c.trader_id = t.id
-            JOIN stalls s ON c.stall_id = s.id
-            JOIN areas a ON s.area_id = a.id
-            JOIN system_statuses cs ON c.status_id = cs.id
-            WHERE a.market_id = :market_id AND cs.code = 'active'
+            JOIN contracts c ON c.contract_trader_id = t.trader_id
+            JOIN stalls s ON c.contract_stall_id = s.stall_id
+            JOIN areas a ON s.stall_area_id = a.area_id
+            JOIN system_statuses cs ON c.contract_status_id = cs.status_id
+            WHERE a.area_market_id = :market_id AND cs.status_code = 'active'
         ", ['market_id' => $marketId]);
         
         $revenueStats = $db->selectOne("
-            SELECT SUM(b.total_amount) as total_revenue
+            SELECT SUM(b.bill_total_amount) as total_revenue
             FROM bills b
-            JOIN contracts c ON b.contract_id = c.id
-            JOIN stalls s ON c.stall_id = s.id
-            JOIN areas a ON s.area_id = a.id
-            WHERE a.market_id = :market_id 
-              AND b.status = 'paid'
-              AND DATE_FORMAT(b.invoice_date, '%Y-%m') = DATE_FORMAT(CURRENT_DATE(), '%Y-%m')
+            JOIN contracts c ON b.bill_contract_id = c.contract_id
+            JOIN stalls s ON c.contract_stall_id = s.stall_id
+            JOIN areas a ON s.stall_area_id = a.area_id
+            WHERE a.area_market_id = :market_id 
+              AND b.bill_status = 'paid'
+              AND DATE_FORMAT(b.bill_invoice_date, '%Y-%m') = DATE_FORMAT(CURRENT_DATE(), '%Y-%m')
         ", ['market_id' => $marketId]);
 
         $stats = [
@@ -165,7 +75,7 @@ Class adminController extends baseController {
             'revenue_this_month' => (float)($revenueStats['total_revenue'] ?? 0),
         ];
 
-        $this->view->adminmaster('dashboard/index', [
+        $this->view('dashboard/index', [
             'title' => 'Bảng Điều Khiển',
             'stats' => $stats
         ]);
@@ -185,7 +95,7 @@ Class adminController extends baseController {
      * Phân hệ Quản lý Sạp chợ
      */
     public function stalls() {
-        $areaId = $_GET['area_id'] ?? '';
+        $areaId = $_GET['stall_area_id'] ?? '';
         $status = $_GET['status'] ?? '';
         $search = $_GET['q'] ?? '';
 
@@ -268,8 +178,8 @@ Class adminController extends baseController {
      */
     public function utilities() {
         $readings = [
-            ['id' => 1, 'period' => '06/2026', 'stall_code' => 'SẠP-A01', 'old_electric' => 1540, 'new_electric' => 1690, 'old_water' => 240, 'new_water' => 255, 'recorded_date' => '25/06/2026', 'recorder' => 'Lê Thị Bình'],
-            ['id' => 2, 'period' => '06/2026', 'stall_code' => 'SẠP-B01', 'old_electric' => 3200, 'new_electric' => 3450, 'old_water' => 410, 'new_water' => 432, 'recorded_date' => '25/06/2026', 'recorder' => 'Lê Thị Bình'],
+            ['stall_id' => 1, 'period' => '06/2026', 'stall_code' => 'SẠP-A01', 'old_electric' => 1540, 'new_electric' => 1690, 'old_water' => 240, 'new_water' => 255, 'recorded_date' => '25/06/2026', 'recorder' => 'Lê Thị Bình'],
+            ['stall_id' => 2, 'period' => '06/2026', 'stall_code' => 'SẠP-B01', 'old_electric' => 3200, 'new_electric' => 3450, 'old_water' => 410, 'new_water' => 432, 'recorded_date' => '25/06/2026', 'recorder' => 'Lê Thị Bình'],
         ];
 
         $this->view('backend/finance/utilities', [
@@ -283,8 +193,8 @@ Class adminController extends baseController {
      */
     public function bills() {
         $bills = [
-            ['id' => 1, 'bill_code' => 'HĐ-0626-001', 'stall_code' => 'SẠP-A01', 'trader_name' => 'Nguyễn Thị Thu Hà', 'period' => '06/2026', 'total_amount' => 3650000, 'due_date' => '10/07/2026', 'status' => 'unpaid'],
-            ['id' => 2, 'bill_code' => 'HĐ-0626-002', 'stall_code' => 'SẠP-B01', 'trader_name' => 'Trần Văn Hoàng', 'period' => '06/2026', 'total_amount' => 5480000, 'due_date' => '10/07/2026', 'status' => 'paid'],
+            ['stall_id' => 1, 'bill_code' => 'HĐ-0626-001', 'stall_code' => 'SẠP-A01', 'trader_name' => 'Nguyễn Thị Thu Hà', 'period' => '06/2026', 'total_amount' => 3650000, 'due_date' => '10/07/2026', 'status' => 'unpaid'],
+            ['stall_id' => 2, 'bill_code' => 'HĐ-0626-002', 'stall_code' => 'SẠP-B01', 'trader_name' => 'Trần Văn Hoàng', 'period' => '06/2026', 'total_amount' => 5480000, 'due_date' => '10/07/2026', 'status' => 'paid'],
         ];
 
         $this->view('backend/finance/bills', [
@@ -298,8 +208,8 @@ Class adminController extends baseController {
      */
     public function transactions() {
         $transactions = [
-            ['id' => 1, 'transaction_code' => 'PT-0001', 'type' => 'receipt', 'target' => 'Trần Văn Hoàng (SẠP-B01)', 'amount' => 5480000, 'note' => 'Thu tiền hóa đơn tháng 06/2026', 'date' => '28/06/2026', 'creator' => 'Nguyễn Văn An'],
-            ['id' => 2, 'transaction_code' => 'PC-0001', 'type' => 'payment', 'target' => 'Công ty Điện lực Hà Nội', 'amount' => 12500000, 'note' => 'Thanh toán tiền điện tổng của chợ tháng 06/2026', 'date' => '29/06/2026', 'creator' => 'Nguyễn Văn An'],
+            ['stall_id' => 1, 'transaction_code' => 'PT-0001', 'type' => 'receipt', 'target' => 'Trần Văn Hoàng (SẠP-B01)', 'amount' => 5480000, 'note' => 'Thu tiền hóa đơn tháng 06/2026', 'date' => '28/06/2026', 'creator' => 'Nguyễn Văn An'],
+            ['stall_id' => 2, 'transaction_code' => 'PC-0001', 'type' => 'payment', 'target' => 'Công ty Điện lực Hà Nội', 'amount' => 12500000, 'note' => 'Thanh toán tiền điện tổng của chợ tháng 06/2026', 'date' => '29/06/2026', 'creator' => 'Nguyễn Văn An'],
         ];
 
         $this->view('backend/finance/transactions', [
@@ -362,7 +272,7 @@ Class adminController extends baseController {
 
         $this->view('backend/stall/add', [
             'title'      => 'Khai Báo Sạp Chợ Mới',
-            'data'       => ['area_id' => '', 'stall_code' => '', 'stall_type_id' => '', 'area_size' => '', 'base_price' => '', 'status_id' => 3],
+            'data'       => ['stall_area_id' => '', 'stall_code' => '', 'stall_type_id' => '', 'stall_area_size' => '', 'stall_base_price' => '', 'stall_status_id' => 3],
             'areas'      => $areas,
             'statuses'   => $statuses,
             'stallTypes' => $stallTypes
@@ -372,8 +282,8 @@ Class adminController extends baseController {
     /**
      * Chỉnh sửa Sạp chợ (chỉ GET - hiển thị form)
      */
-    public function stall_edit($id) {
-        if (!$id) {
+    public function stall_edit($stall_id) {
+        if (!$stall_id) {
             header('Location: ' . BASE_URL . 'admin/stalls');
             exit();
         }
@@ -387,7 +297,7 @@ Class adminController extends baseController {
 
         $marketId = marketService::currentMarketId();
         try {
-            $stall = $stallModel->getById($id);
+            $stall = $stallModel->getById($stall_id);
             if (!$stall) {
                 throw new Exception('Không tìm thấy sạp chợ yêu cầu.');
             }
@@ -463,8 +373,8 @@ Class adminController extends baseController {
             $contracts = $contractModel->getAll();
         } catch (Exception $e) {
             $contracts = [
-                ['id' => 1, 'contract_code' => 'HĐ-2026-0001', 'trader_name' => 'Nguyễn Thị Thu Hà', 'stall_code' => 'SẠP-A01'],
-                ['id' => 2, 'contract_code' => 'HĐ-2026-0002', 'trader_name' => 'Trần Văn Hoàng', 'stall_code' => 'SẠP-B01'],
+                ['stall_id' => 1, 'contract_code' => 'HĐ-2026-0001', 'trader_name' => 'Nguyễn Thị Thu Hà', 'stall_code' => 'SẠP-A01'],
+                ['stall_id' => 2, 'contract_code' => 'HĐ-2026-0002', 'trader_name' => 'Trần Văn Hoàng', 'stall_code' => 'SẠP-B01'],
             ];
         }
 
@@ -513,8 +423,8 @@ Class adminController extends baseController {
     }
 
     public function foodsafety_edit() {
-        $id = $_GET['id'] ?? null;
-        if (!$id) {
+        $stall_id = $_GET['stall_id'] ?? null;
+        if (!$stall_id) {
             header('Location: ' . BASE_URL . 'admin/foodsafety');
             exit();
         }
@@ -524,7 +434,7 @@ Class adminController extends baseController {
         $documentTypes = [];
         try {
             $foodsafetyModel = new foodsafetyModel();
-            $certificate = $foodsafetyModel->getById($id);
+            $certificate = $foodsafetyModel->getById($stall_id);
             if (!$certificate) {
                 header('Location: ' . BASE_URL . 'admin/foodsafety');
                 exit();
@@ -559,18 +469,18 @@ Class adminController extends baseController {
             $unmappedStalls = $mapModel->getUnmappedStalls();
             
             $db = database::getInstance();
-            $stalls = $db->select("SELECT s.id, s.stall_code, s.stall_type, s.area_size, s.base_price, 
-                                          ss.status_name, ss.code AS status_code, sc.color_class,
-                                          a.area_name, a.block, a.lot,
-                                          t.fullname AS trader_name, t.phone AS trader_phone,
+            $stalls = $db->select("SELECT s.stall_id, s.stall_code, s.stall_type, s.stall_area_size, s.stall_base_price, 
+                                          ss.status_name, ss.status_code AS status_code, sc.color_class,
+                                          a.area_name, a.area_block, a.area_lot,
+                                          t.trader_fullname AS trader_name, t.trader_phone AS trader_phone,
                                           con.contract_number, con.end_date AS contract_end_date
                                    FROM stalls s 
-                                   LEFT JOIN areas a ON s.area_id = a.id
-                                   JOIN system_statuses ss ON s.status_id = ss.id 
-                                   LEFT JOIN status_colors sc ON ss.color_id = sc.id
-                                   LEFT JOIN contracts con ON con.stall_id = s.id AND con.status_id = (SELECT id FROM system_statuses WHERE domain = 'contract' AND code = 'active')
-                                   LEFT JOIN traders t ON con.trader_id = t.id
-                                   WHERE ss.code != '99' 
+                                   LEFT JOIN areas a ON s.stall_area_id = a.area_id
+                                   JOIN system_statuses ss ON s.stall_status_id = ss.status_id 
+                                   LEFT JOIN status_colors sc ON ss.status_color_id = sc.color_id
+                                   LEFT JOIN contracts con ON con.stall_id = s.stall_id AND con.status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'contract' AND status_code = 'active')
+                                   LEFT JOIN traders t ON con.trader_id = t.trader_id
+                                   WHERE ss.status_code != '99' 
                                    ORDER BY s.stall_code ASC");
         } catch (Exception $e) {
             error_log('[map_editor] EXCEPTION: ' . $e->getMessage());
@@ -903,35 +813,33 @@ Class adminController extends baseController {
         exit();
     }
 
-    /**
-     * Hàm render view kèm theo Layout của Admin Dashboard
-     */
     protected function view($templatePath, $data = []) {
         // Giải nén mảng thành các biến độc lập
         extract($data);
 
         // Nạp layout trên
-        if (file_exists(DIR_TEMPLATE . '/backend/layouts/header.php')) {
-            require_once DIR_TEMPLATE . '/backend/layouts/header.php';
+        if (file_exists(DIR_TEMPLATE . '/layouts/header.php')) {
+            require_once DIR_TEMPLATE . '/layouts/header.php';
         }
-        if (file_exists(DIR_TEMPLATE . '/backend/layouts/sidebar.php')) {
-            require_once DIR_TEMPLATE . '/backend/layouts/sidebar.php';
+        if (file_exists(DIR_TEMPLATE . '/layouts/sidebar.php')) {
+            require_once DIR_TEMPLATE . '/layouts/sidebar.php';
         }
-        if (file_exists(DIR_TEMPLATE . '/backend/layouts/navbar.php')) {
-            require_once DIR_TEMPLATE . '/backend/layouts/navbar.php';
+        if (file_exists(DIR_TEMPLATE . '/layouts/navbar.php')) {
+            require_once DIR_TEMPLATE . '/layouts/navbar.php';
         }
 
         // Nạp nội dung trang con
-        $viewFile = DIR_TEMPLATE . '/' . $templatePath . '.php';
+        $templatePathClean = str_replace('backend/', '', $templatePath);
+        $viewFile = DIR_TEMPLATE . '/' . $templatePathClean . '.php';
         if (file_exists($viewFile)) {
             require_once $viewFile;
         } else {
-            echo "<div class='container-fluid'><p class='text-danger'>Không tìm thấy giao diện: {$templatePath}</p></div>";
+            echo "<div class='container-fluid'><p class='text-danger'>Không tìm thấy giao diện: {$templatePathClean} (gốc: {$templatePath})</p></div>";
         }
 
         // Nạp layout dưới
-        if (file_exists(DIR_TEMPLATE . '/backend/layouts/footer.php')) {
-            require_once DIR_TEMPLATE . '/backend/layouts/footer.php';
+        if (file_exists(DIR_TEMPLATE . '/layouts/footer.php')) {
+            require_once DIR_TEMPLATE . '/layouts/footer.php';
         }
     }
 }

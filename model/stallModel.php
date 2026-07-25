@@ -17,16 +17,16 @@ class stallModel {
         $sql = "SELECT * FROM areas";
         $params = [];
         if ($marketId) {
-            $sql .= " WHERE market_id = :market_id";
+            $sql .= " WHERE area_market_id = :market_id";
             $params['market_id'] = $marketId;
         }
         $sql .= " ORDER BY area_name ASC";
         return $this->db->select($sql, $params);
     }
 
-    public function createArea($name, $desc = '') {
-        $sql = "INSERT INTO areas (area_name, description) VALUES (:name, :desc)";
-        $this->db->query($sql, ['name' => $name, 'desc' => $desc]);
+    public function createArea($contract_name, $desc = '') {
+        $sql = "INSERT INTO areas (area_name, area_description) VALUES (:contract_name, :desc)";
+        $this->db->query($sql, ['contract_name' => $contract_name, 'desc' => $desc]);
         return $this->db->lastInsertId();
     }
 
@@ -38,36 +38,36 @@ class stallModel {
      * Lấy toàn bộ danh sách sạp kèm thông tin khu vực và bộ lọc tìm kiếm
      */
     public function getAll($areaId = null, $status = null, $search = null, $marketId = null) {
-        $sql = "SELECT s.*, st.type_name AS stall_type, ss.code AS status, ss.status_name, sc.color_class, a.area_name, a.block, a.lot, t.fullname AS trader_name, bl.line_name AS business_line_name 
+        $sql = "SELECT s.*, st.stall_type_name AS stall_type, ss.status_code AS status, ss.status_name, sc.color_class, a.area_name, a.area_block, a.area_lot, t.trader_fullname AS trader_name, bl.line_name AS business_line_name 
                 FROM stalls s
-                LEFT JOIN stall_types st ON s.stall_type_id = st.id
-                LEFT JOIN system_statuses ss ON s.status_id = ss.id
-                LEFT JOIN status_colors sc ON ss.color_id = sc.id
-                LEFT JOIN areas a ON s.area_id = a.id
-                LEFT JOIN contracts c ON c.stall_id = s.id AND c.status_id = (SELECT id FROM system_statuses WHERE domain = 'contract' AND code = 'active')
-                LEFT JOIN traders t ON c.trader_id = t.id
-                LEFT JOIN business_lines bl ON t.business_line_id = bl.id";
+                LEFT JOIN stall_types st ON s.stall_type_id = st.stall_type_id
+                LEFT JOIN system_statuses ss ON s.stall_status_id = ss.status_id
+                LEFT JOIN status_colors sc ON ss.status_color_id = sc.color_id
+                LEFT JOIN areas a ON s.stall_area_id = a.area_id
+                LEFT JOIN contracts c ON c.contract_stall_id = s.stall_id AND c.contract_status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'contract' AND status_code = 'active')
+                LEFT JOIN traders t ON c.contract_trader_id = t.trader_id
+                LEFT JOIN business_lines bl ON t.trader_business_line_id = bl.line_id";
         
         $where = [];
         $params = [];
 
         if ($marketId) {
-            $where[] = "a.market_id = :market_id";
+            $where[] = "a.area_market_id = :market_id";
             $params['market_id'] = $marketId;
         }
 
         if ($areaId) {
-            $where[] = "s.area_id = :area_id";
-            $params['area_id'] = $areaId;
+            $where[] = "s.stall_area_id = :stall_area_id";
+            $params['stall_area_id'] = $areaId;
         }
 
         if ($status) {
-            $where[] = "ss.code = :status";
+            $where[] = "ss.status_code = :status";
             $params['status'] = $status;
         }
 
         if (!empty($search)) {
-            $where[] = "(s.stall_code LIKE :search1 OR a.block LIKE :search2 OR a.lot LIKE :search3)";
+            $where[] = "(s.stall_code LIKE :search1 OR a.area_block LIKE :search2 OR a.area_lot LIKE :search3)";
             $params['search1'] = "%$search%";
             $params['search2'] = "%$search%";
             $params['search3'] = "%$search%";
@@ -81,84 +81,84 @@ class stallModel {
         return $this->db->select($sql, $params);
     }
 
-    public function getById($id) {
-        $sql = "SELECT s.*, st.type_name AS stall_type, ss.code AS status, ss.status_name, sc.color_class, a.area_name, a.block, a.lot, t.fullname AS trader_name, bl.line_name AS business_line_name 
+    public function getById($stall_id) {
+        $sql = "SELECT s.*, st.stall_type_name AS stall_type, ss.status_code AS status, ss.status_name, sc.color_class, a.area_name, a.area_block, a.area_lot, t.trader_fullname AS trader_name, bl.line_name AS business_line_name 
                 FROM stalls s 
-                LEFT JOIN stall_types st ON s.stall_type_id = st.id
-                LEFT JOIN system_statuses ss ON s.status_id = ss.id
-                LEFT JOIN status_colors sc ON ss.color_id = sc.id
-                LEFT JOIN areas a ON s.area_id = a.id 
-                LEFT JOIN contracts c ON c.stall_id = s.id AND c.status_id = (SELECT id FROM system_statuses WHERE domain = 'contract' AND code = 'active')
-                LEFT JOIN traders t ON c.trader_id = t.id
-                LEFT JOIN business_lines bl ON t.business_line_id = bl.id
-                WHERE s.id = :id";
-        return $this->db->selectOne($sql, ['id' => $id]);
+                LEFT JOIN stall_types st ON s.stall_type_id = st.stall_type_id
+                LEFT JOIN system_statuses ss ON s.stall_status_id = ss.status_id
+                LEFT JOIN status_colors sc ON ss.status_color_id = sc.color_id
+                LEFT JOIN areas a ON s.stall_area_id = a.area_id 
+                LEFT JOIN contracts c ON c.contract_stall_id = s.stall_id AND c.contract_status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'contract' AND status_code = 'active')
+                LEFT JOIN traders t ON c.contract_trader_id = t.trader_id
+                LEFT JOIN business_lines bl ON t.trader_business_line_id = bl.line_id
+                WHERE s.stall_id = :stall_id";
+        return $this->db->selectOne($sql, ['stall_id' => $stall_id]);
     }
 
     public function create($data) {
         $statusModel = new statusModel();
         $emptyStatusId = $statusModel->getIdByCode('stall', 'empty');
 
-        $sql = "INSERT INTO stalls (area_id, stall_code, stall_type_id, area_size, base_price, status_id) 
-                VALUES (:area_id, :stall_code, :stall_type_id, :area_size, :base_price, :status_id)";
+        $sql = "INSERT INTO stalls (stall_area_id, stall_code, stall_type_id, stall_area_size, stall_base_price, stall_status_id) 
+                VALUES (:stall_area_id, :stall_code, :stall_type_id, :stall_area_size, :stall_base_price, :stall_status_id)";
         
         $params = [
-            'area_id'       => $data['area_id'],
+            'stall_area_id'       => $data['stall_area_id'],
             'stall_code'    => $data['stall_code'],
             'stall_type_id' => $data['stall_type_id'],
-            'area_size'     => $data['area_size'],
-            'base_price'    => $data['base_price'],
-            'status_id'     => $data['status_id'] ?: $emptyStatusId
+            'stall_area_size'     => $data['stall_area_size'],
+            'stall_base_price'    => $data['stall_base_price'],
+            'stall_status_id'     => $data['stall_status_id'] ?: $emptyStatusId
         ];
 
         $this->db->query($sql, $params);
         return $this->db->lastInsertId();
     }
 
-    public function update($id, $data) {
+    public function update($stall_id, $data) {
         $statusModel = new statusModel();
         $emptyStatusId = $statusModel->getIdByCode('stall', 'empty');
 
         $sql = "UPDATE stalls 
-                SET area_id = :area_id, stall_code = :stall_code, 
-                    stall_type_id = :stall_type_id, area_size = :area_size, base_price = :base_price, status_id = :status_id 
-                WHERE id = :id";
+                SET stall_area_id = :stall_area_id, stall_code = :stall_code, 
+                    stall_type_id = :stall_type_id, stall_area_size = :stall_area_size, stall_base_price = :stall_base_price, stall_status_id = :stall_status_id 
+                WHERE stall_id = :stall_id";
         
         $params = [
-            'id'            => $id,
-            'area_id'       => $data['area_id'],
+            'stall_id'            => $stall_id,
+            'stall_area_id'       => $data['stall_area_id'],
             'stall_code'    => $data['stall_code'],
             'stall_type_id' => $data['stall_type_id'],
-            'area_size'     => $data['area_size'],
-            'base_price'    => $data['base_price'],
-            'status_id'     => $data['status_id'] ?: $emptyStatusId
+            'stall_area_size'     => $data['stall_area_size'],
+            'stall_base_price'    => $data['stall_base_price'],
+            'stall_status_id'     => $data['stall_status_id'] ?: $emptyStatusId
         ];
 
         return $this->db->query($sql, $params);
     }
 
-    public function updateStatus($id, $status) {
+    public function updateStatus($stall_id, $status) {
         if (is_numeric($status)) {
             $statusId = $status;
         } else {
             $statusModel = new statusModel();
             $statusId = $statusModel->getIdByCode('stall', $status);
         }
-        $sql = "UPDATE stalls SET status_id = :status_id WHERE id = :id";
-        return $this->db->query($sql, ['id' => $id, 'status_id' => $statusId]);
+        $sql = "UPDATE stalls SET stall_status_id = :stall_status_id WHERE stall_id = :stall_id";
+        return $this->db->query($sql, ['stall_id' => $stall_id, 'stall_status_id' => $statusId]);
     }
 
-    public function delete($id) {
-        $sql = "DELETE FROM stalls WHERE id = :id";
-        return $this->db->query($sql, ['id' => $id]);
+    public function delete($stall_id) {
+        $sql = "DELETE FROM stalls WHERE stall_id = :stall_id";
+        return $this->db->query($sql, ['stall_id' => $stall_id]);
     }
 
     /**
      * Kiểm tra xem sạp có hợp đồng nào đang hoạt động không
      */
     public function hasActiveContract($stallId) {
-        $sql = "SELECT COUNT(*) as count FROM contracts WHERE stall_id = :stall_id AND status_id = (SELECT id FROM system_statuses WHERE domain = 'contract' AND code = 'active')";
-        $res = $this->db->selectOne($sql, ['stall_id' => $stallId]);
+        $sql = "SELECT COUNT(*) as count FROM contracts WHERE contract_stall_id = :contract_stall_id AND contract_status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'contract' AND status_code = 'active')";
+        $res = $this->db->selectOne($sql, ['contract_stall_id' => $stallId]);
         return ($res['count'] ?? 0) > 0;
     }
 
@@ -169,7 +169,7 @@ class stallModel {
         $sql = "SELECT COUNT(*) as count FROM stalls WHERE stall_code = :code";
         $params = ['code' => $code];
         if ($excludeId !== null) {
-            $sql .= " AND id != :excludeId";
+            $sql .= " AND stall_id != :excludeId";
             $params['excludeId'] = $excludeId;
         }
         $res = $this->db->selectOne($sql, $params);
@@ -180,7 +180,7 @@ class stallModel {
      * Lấy danh sách các trạng thái của sạp
      */
     public function getStallStatuses() {
-        $sql = "SELECT * FROM system_statuses WHERE domain = 'stall'";
+        $sql = "SELECT * FROM system_statuses WHERE status_domain = 'stall'";
         return $this->db->select($sql);
     }
 
@@ -188,17 +188,17 @@ class stallModel {
      * Lấy danh sách sạp khả dụng để chuyển đổi
      */
     public function getAvailableStallsForTransfer($excludeId = null) {
-        $sql = "SELECT s.id, s.stall_code, a.area_name, ss.status_name, ss.code AS status_code,
-                       t.fullname AS trader_name
+        $sql = "SELECT s.stall_id, s.stall_code, a.area_name, ss.status_name, ss.status_code AS status_code,
+                       t.trader_fullname AS trader_name
                 FROM stalls s
-                LEFT JOIN areas a ON s.area_id = a.id
-                LEFT JOIN system_statuses ss ON s.status_id = ss.id
-                LEFT JOIN contracts c ON c.stall_id = s.id AND c.status_id = (SELECT id FROM system_statuses WHERE domain = 'contract' AND code = 'active')
-                LEFT JOIN traders t ON c.trader_id = t.id";
+                LEFT JOIN areas a ON s.stall_area_id = a.area_id
+                LEFT JOIN system_statuses ss ON s.stall_status_id = ss.status_id
+                LEFT JOIN contracts c ON c.contract_stall_id = s.stall_id AND c.contract_status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'contract' AND status_code = 'active')
+                LEFT JOIN traders t ON c.contract_trader_id = t.trader_id";
         
         $params = [];
         if ($excludeId !== null) {
-            $sql .= " WHERE s.id != :exclude_id";
+            $sql .= " WHERE s.stall_id != :exclude_id";
             $params['exclude_id'] = $excludeId;
         }
 
@@ -218,16 +218,16 @@ class stallModel {
             $emptyStatusId = $statusModel->getIdByCode('stall', 'empty');
             $rentedStatusId = $statusModel->getIdByCode('stall', 'rented');
 
-            $currentStallId = $currentStall['id'];
-            $newStallId = $newStall['id'];
+            $currentStallId = $currentStall['contract_id'];
+            $newStallId = $newStall['contract_id'];
 
             // Kiểm tra trạng thái của sạp mới
             if ($newStall['status'] === 'empty') {
                 // Trường hợp 1: Chuyển sang sạp trống (Đơn phương)
-                $sqlUpdateContract = "UPDATE contracts SET stall_id = :new_stall_id WHERE id = :contract_id";
+                $sqlUpdateContract = "UPDATE contracts SET contract_stall_id = :new_stall_id WHERE contract_id = :contract_id";
                 $this->db->query($sqlUpdateContract, [
                     'new_stall_id' => $newStallId,
-                    'contract_id'  => $contract1['id']
+                    'contract_id'  => $contract1['contract_id']
                 ]);
 
                 $this->updateStatus($currentStallId, $emptyStatusId);
@@ -235,12 +235,12 @@ class stallModel {
                 $message = 'Chuyển đổi sạp thành công!';
             } else {
                 // Trường hợp 2: Đổi sạp giữa 2 tiểu thương (Cả hai sạp đều đang hoạt động)
-                $sqlContract2 = "SELECT * FROM contracts WHERE stall_id = :stall_id AND status_id = (SELECT id FROM system_statuses WHERE domain = 'contract' AND code = 'active') LIMIT 1";
+                $sqlContract2 = "SELECT * FROM contracts WHERE stall_id = :stall_id AND status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'contract' AND status_code = 'active') LIMIT 1";
                 $contract2 = $this->db->selectOne($sqlContract2, ['stall_id' => $newStallId]);
                 
                 if (!$contract2) {
                     // Nếu sạp mới không có hợp đồng hoạt động nhưng trạng thái khác empty, vẫn cho phép chuyển đơn phương
-                    $sqlUpdateContract = "UPDATE contracts SET stall_id = :new_stall_id WHERE id = :contract_id";
+                    $sqlUpdateContract = "UPDATE contracts SET contract_stall_id = :new_stall_id WHERE id = :contract_id";
                     $this->db->query($sqlUpdateContract, [
                         'new_stall_id' => $newStallId,
                         'contract_id'  => $contract1['id']
@@ -250,13 +250,13 @@ class stallModel {
                     $message = 'Chuyển đổi sạp sang sạp mới thành công!';
                 } else {
                     // Thực hiện tráo đổi (swap) stall_id của 2 hợp đồng hoạt động
-                    $sqlUpdateContract1 = "UPDATE contracts SET stall_id = :new_stall_id WHERE id = :contract_id";
+                    $sqlUpdateContract1 = "UPDATE contracts SET contract_stall_id = :new_stall_id WHERE id = :contract_id";
                     $this->db->query($sqlUpdateContract1, [
                         'new_stall_id' => $newStallId,
                         'contract_id'  => $contract1['id']
                     ]);
 
-                    $sqlUpdateContract2 = "UPDATE contracts SET stall_id = :new_stall_id WHERE id = :contract_id";
+                    $sqlUpdateContract2 = "UPDATE contracts SET contract_stall_id = :new_stall_id WHERE id = :contract_id";
                     $this->db->query($sqlUpdateContract2, [
                         'new_stall_id' => $currentStallId,
                         'contract_id'  => $contract2['id']

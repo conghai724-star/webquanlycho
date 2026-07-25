@@ -14,7 +14,7 @@ class financeModel {
        ========================================================================== */
 
     public function createUtilityReading($data) {
-        $sql = "INSERT INTO utility_readings (stall_id, reading_date, electric_old, electric_new, water_old, water_new, created_by)
+        $sql = "INSERT INTO utility_readings (reading_stall_id, reading_date, reading_electric_old, reading_electric_new, reading_water_old, reading_water_new, reading_created_by)
                 VALUES (:stall_id, :reading_date, :electric_old, :electric_new, :water_old, :water_new, :created_by)";
         
         $params = [
@@ -35,24 +35,24 @@ class financeModel {
        ========================================================================== */
 
     public function getBills($status = null) {
-        $sql = "SELECT b.*, c.contract_number, t.fullname AS trader_name, s.stall_code
+        $sql = "SELECT b.*, c.contract_number, t.trader_fullname AS trader_name, s.stall_code
                 FROM bills b
-                LEFT JOIN contracts c ON b.contract_id = c.id
-                LEFT JOIN traders t ON c.trader_id = t.id
-                LEFT JOIN stalls s ON c.stall_id = s.id";
+                LEFT JOIN contracts c ON b.bill_contract_id = c.contract_id
+                LEFT JOIN traders t ON c.contract_trader_id = t.trader_id
+                LEFT JOIN stalls s ON c.contract_stall_id = s.stall_id";
         
         $params = [];
         if ($status) {
-            $sql .= " WHERE b.status = :status";
+            $sql .= " WHERE b.bill_status = :status";
             $params['status'] = $status;
         }
 
-        $sql .= " ORDER BY b.id DESC";
+        $sql .= " ORDER BY b.bill_id DESC";
         return $this->db->select($sql, $params);
     }
 
     public function createBill($data) {
-        $sql = "INSERT INTO bills (contract_id, bill_code, invoice_date, rent_amount, electric_amount, water_amount, service_amount, total_amount, paid_amount, status)
+        $sql = "INSERT INTO bills (bill_contract_id, bill_code, bill_invoice_date, bill_rent_amount, bill_electric_amount, bill_water_amount, service_amount, bill_total_amount, bill_paid_amount, bill_status)
                 VALUES (:contract_id, :bill_code, :invoice_date, :rent_amount, :electric_amount, :water_amount, :service_amount, :total_amount, :paid_amount, :status)";
         
         $params = [
@@ -76,10 +76,10 @@ class financeModel {
        3. Phiếu Thu - Phiếu Chi (Receipts & Payments)
        ========================================================================== */
 
-    public function getTransactions($type = null) {
+    public function getTransactions($transaction_type = null) {
         $sql = "SELECT r.*, u.fullname AS creator_name 
                 FROM receipts_payments r
-                LEFT JOIN users u ON r.created_by = u.id";
+                LEFT JOIN users u ON r.created_by = u.user_id";
         
         $params = [];
         if ($type) {
@@ -87,12 +87,12 @@ class financeModel {
             $params['type'] = $type;
         }
 
-        $sql .= " ORDER BY r.transaction_date DESC, r.id DESC";
+        $sql .= " ORDER BY r.transaction_date DESC, r.bill_id DESC";
         return $this->db->select($sql, $params);
     }
 
     public function createTransaction($data) {
-        $sql = "INSERT INTO receipts_payments (transaction_code, type, amount, transaction_date, category, note, reference_id, created_by)
+        $sql = "INSERT INTO receipts_payments (transaction_code, transaction_type, transaction_amount, transaction_date, transaction_category, transaction_note, transaction_reference_id, transaction_created_by)
                 VALUES (:transaction_code, :type, :amount, :transaction_date, :category, :note, :reference_id, :created_by)";
         
         $params = [
@@ -120,18 +120,18 @@ class financeModel {
 
                 // Cập nhật số tiền thanh toán của hóa đơn
                 $updateBillSql = "UPDATE bills 
-                                  SET paid_amount = paid_amount + :amount 
-                                  WHERE id = :bill_id";
+                                  SET bill_paid_amount = bill_paid_amount + :amount 
+                                  WHERE bill_id = :bill_id";
                 $this->db->query($updateBillSql, ['amount' => $amount, 'bill_id' => $billId]);
 
                 // Kiểm tra trạng thái hóa đơn để cập nhật (đã trả hết hay trả một phần)
-                $bill = $this->db->selectOne("SELECT total_amount, paid_amount FROM bills WHERE id = :id", ['id' => $billId]);
+                $bill = $this->db->selectOne("SELECT bill_total_amount, bill_paid_amount FROM bills WHERE id = :id", ['id' => $billId]);
                 if ($bill) {
                     $newStatus = 'partially_paid';
-                    if ($bill['paid_amount'] >= $bill['total_amount']) {
+                    if ($bill['bill_paid_amount'] >= $bill['bill_total_amount']) {
                         $newStatus = 'paid';
                     }
-                    $updateStatusSql = "UPDATE bills SET status = :status WHERE id = :id";
+                    $updateStatusSql = "UPDATE bills SET bill_status = :status WHERE id = :id";
                     $this->db->query($updateStatusSql, ['status' => $newStatus, 'id' => $billId]);
                 }
             }

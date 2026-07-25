@@ -15,69 +15,69 @@ class traderModel {
     public function getAllTraders($search = '', $business_line_id = '', $status = '', $marketId = null) {
         $sql = "SELECT t.*, 
                        (
-                           SELECT COALESCE(SUM(b.total_amount - b.paid_amount), 0)
+                           SELECT COALESCE(SUM(b.bill_total_amount - b.bill_paid_amount), 0)
                            FROM bills b
-                           JOIN contracts c ON b.contract_id = c.id
-                           WHERE c.trader_id = t.id AND b.status IN ('unpaid', 'partially_paid')
+                           JOIN contracts c ON b.bill_contract_id = c.contract_id
+                           WHERE c.contract_trader_id = t.trader_id AND b.bill_status IN ('unpaid', 'partially_paid')
                        ) AS total_debt,
-                        ss.code AS status_code,
+                        ss.status_code AS status_code,
                         ss.status_name,
                         sc.color_class,
                         bl.line_name AS business_line_name,
                         bl.line_code AS business_line_code
                 FROM traders t
-                LEFT JOIN system_statuses ss ON ss.id = t.status_id
-                LEFT JOIN status_colors sc ON ss.color_id = sc.id
-                LEFT JOIN business_lines bl ON bl.id = t.business_line_id
-                WHERE ss.code != '99'";
+                LEFT JOIN system_statuses ss ON ss.status_id = t.trader_status_id
+                LEFT JOIN status_colors sc ON ss.status_color_id = sc.color_id
+                LEFT JOIN business_lines bl ON bl.line_id = t.trader_business_line_id
+                WHERE ss.status_code != '99'";
         $params = [];
 
         if ($marketId) {
-            $sql .= " AND t.id IN (
-                SELECT DISTINCT c.trader_id 
+            $sql .= " AND t.trader_id IN (
+                SELECT DISTINCT c.contract_trader_id 
                 FROM contracts c
-                JOIN stalls s ON c.stall_id = s.id
-                JOIN areas a ON s.area_id = a.id
-                WHERE a.market_id = :market_id
+                JOIN stalls s ON c.contract_stall_id = s.stall_id
+                JOIN areas a ON s.stall_area_id = a.area_id
+                WHERE a.area_market_id = :market_id
             )";
             $params['market_id'] = $marketId;
         }
 
         if (!empty($search)) {
-            $sql .= " AND (t.fullname LIKE :search1 OR t.phone LIKE :search2 OR t.cccd LIKE :search3 OR t.trader_code LIKE :search4)";
+            $sql .= " AND (t.trader_fullname LIKE :search1 OR t.trader_phone LIKE :search2 OR t.trader_cccd LIKE :search3 OR t.trader_code LIKE :search4)";
             $params['search1'] = "%$search%";
             $params['search2'] = "%$search%";
             $params['search3'] = "%$search%";
             $params['search4'] = "%$search%";
         }
 
-        if (!empty($business_line_id)) {
-            $sql .= " AND t.business_line_id = :business_line_id";
-            $params['business_line_id'] = $business_line_id;
+        if (!empty($trader_business_line_id)) {
+            $sql .= " AND t.trader_business_line_id = :trader_business_line_id";
+            $params['trader_business_line_id'] = $trader_business_line_id;
         }
 
         if (!empty($status)) {
-            $sql .= " AND ss.code = :status";
+            $sql .= " AND ss.status_code = :status";
             $params['status'] = $status;
         }
 
-        $sql .= " ORDER BY t.id DESC";
+        $sql .= " ORDER BY t.trader_id DESC";
         return $this->db->select($sql, $params);
     }
 
     /**
      * Lấy thông tin chi tiết một tiểu thương
      */
-    public function getTraderById($id) {
-        $sql = "SELECT t.*, ss.code AS status_code, ss.status_name, sc.color_class,
+    public function getTraderById($trader_id) {
+        $sql = "SELECT t.*, ss.status_code AS status_code, ss.status_name, sc.color_class,
                        bl.line_name AS business_line_name,
                        bl.line_code AS business_line_code
                 FROM traders t
-                LEFT JOIN system_statuses ss ON ss.id = t.status_id
-                LEFT JOIN status_colors sc ON ss.color_id = sc.id
-                LEFT JOIN business_lines bl ON bl.id = t.business_line_id
-                WHERE t.id = :id AND (ss.code IS NULL OR ss.code != '99')";
-        return $this->db->selectOne($sql, ['id' => $id]);
+                LEFT JOIN system_statuses ss ON ss.status_id = t.trader_status_id
+                LEFT JOIN status_colors sc ON ss.status_color_id = sc.color_id
+                LEFT JOIN business_lines bl ON bl.line_id = t.trader_business_line_id
+                WHERE t.trader_id = :trader_id AND (ss.status_code IS NULL OR ss.status_code != '99')";
+        return $this->db->selectOne($sql, ['trader_id' => $trader_id]);
     }
 
     /**
@@ -87,19 +87,19 @@ class traderModel {
         $statusModel = new statusModel();
         $activeStatusId = $statusModel->getIdByCode('trader', 'active');
 
-        $sql = "INSERT INTO traders (trader_code, fullname, phone, cccd, address, business_line_id, description, license_file, status_id) 
-                VALUES (:trader_code, :fullname, :phone, :cccd, :address, :business_line_id, :description, :license_file, :status_id)";
+        $sql = "INSERT INTO traders (trader_code, trader_fullname, trader_phone, trader_cccd, trader_address, trader_business_line_id, trader_description, trader_license_file, trader_status_id) 
+                VALUES (:trader_code, :fullname, :phone, :cccd, :address, :business_line_id, :line_description, :license_file, :trader_status_id)";
         
         $params = [
             'trader_code'      => $data['trader_code'],
-            'fullname'         => $data['fullname'],
-            'phone'            => $data['phone'],
-            'cccd'             => $data['cccd'],
-            'address'          => $data['address'] ?? null,
-            'business_line_id' => $data['business_line_id'] ?: null,
-            'description'      => $data['description'] ?? null,
-            'license_file'     => $data['license_file'] ?? null,
-            'status_id'        => $data['status_id'] ?: $activeStatusId
+            'fullname'         => $data['trader_fullname'],
+            'phone'            => $data['trader_phone'],
+            'cccd'             => $data['trader_cccd'],
+            'address'          => $data['trader_address'] ?? null,
+            'business_line_id' => $data['trader_business_line_id'] ?: null,
+            'line_description'      => $data['trader_description'] ?? null,
+            'license_file'     => $data['trader_license_file'] ?? null,
+            'trader_status_id'        => $data['trader_status_id'] ?: $activeStatusId
         ];
 
         $this->db->query($sql, $params);
@@ -109,36 +109,36 @@ class traderModel {
     /**
      * Cập nhật thông tin tiểu thương
      */
-    public function updateTrader($id, $data) {
+    public function updateTrader($trader_id, $data) {
         $statusModel = new statusModel();
         $activeStatusId = $statusModel->getIdByCode('trader', 'active');
 
         $sql = "UPDATE traders 
-                SET fullname = :fullname, phone = :phone, cccd = :cccd, 
-                    address = :address, business_line_id = :business_line_id, 
-                    description = :description, license_file = :license_file, status_id = :status_id 
-                WHERE id = :id";
+                SET trader_fullname = :fullname, trader_phone = :phone, trader_cccd = :cccd, 
+                    trader_address = :address, trader_business_line_id = :business_line_id, 
+                    trader_description = :line_description, trader_license_file = :license_file, trader_status_id = :trader_status_id 
+                WHERE trader_id = :trader_id";
         
         $params = [
-            'id'               => $id,
-            'fullname'         => $data['fullname'],
-            'phone'            => $data['phone'],
-            'cccd'             => $data['cccd'],
-            'address'          => $data['address'] ?? null,
-            'business_line_id' => $data['business_line_id'] ?: null,
-            'description'      => $data['description'] ?? null,
-            'license_file'     => $data['license_file'] ?? null,
-            'status_id'        => $data['status_id'] ?: $activeStatusId
+            'trader_id'               => $trader_id,
+            'fullname'         => $data['trader_fullname'],
+            'phone'            => $data['trader_phone'],
+            'cccd'             => $data['trader_cccd'],
+            'address'          => $data['trader_address'] ?? null,
+            'business_line_id' => $data['trader_business_line_id'] ?: null,
+            'line_description'      => $data['trader_description'] ?? null,
+            'license_file'     => $data['trader_license_file'] ?? null,
+            'trader_status_id'        => $data['trader_status_id'] ?: $activeStatusId
         ];
 
         return $this->db->query($sql, $params);
     }
 
-    public function deleteTrader($id) {
+    public function deleteTrader($trader_id) {
         $sql = "UPDATE traders 
-                SET status_id = (SELECT id FROM system_statuses WHERE domain = 'trader' AND code = '99') 
-                WHERE id = :id";
-        return $this->db->query($sql, ['id' => $id]);
+                SET trader_status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'trader' AND status_code = '99') 
+                WHERE trader_id = :trader_id";
+        return $this->db->query($sql, ['trader_id' => $trader_id]);
     }
 
     /**
@@ -148,7 +148,7 @@ class traderModel {
         $sql = "SELECT COUNT(*) as count FROM traders WHERE trader_code = :code";
         $params = ['code' => $code];
         if ($excludeId !== null) {
-            $sql .= " AND id != :excludeId";
+            $sql .= " AND trader_id != :excludeId";
             $params['excludeId'] = $excludeId;
         }
         $res = $this->db->selectOne($sql, $params);
@@ -159,10 +159,10 @@ class traderModel {
      * Kiểm tra xem Số CCCD đã tồn tại chưa
      */
     public function isCccdExists($cccd, $excludeId = null) {
-        $sql = "SELECT COUNT(*) as count FROM traders WHERE cccd = :cccd";
+        $sql = "SELECT COUNT(*) as count FROM traders WHERE trader_cccd = :cccd";
         $params = ['cccd' => $cccd];
         if ($excludeId !== null) {
-            $sql .= " AND id != :excludeId";
+            $sql .= " AND trader_id != :excludeId";
             $params['excludeId'] = $excludeId;
         }
         $res = $this->db->selectOne($sql, $params);
@@ -173,7 +173,7 @@ class traderModel {
      * Lấy danh sách các trạng thái hợp lệ của tiểu thương (loại trừ đã xóa)
      */
     public function getTraderStatuses() {
-        $sql = "SELECT * FROM system_statuses WHERE domain = 'trader' AND code != '99'";
+        $sql = "SELECT * FROM system_statuses WHERE status_domain = 'trader' AND status_code != '99'";
         return $this->db->select($sql);
     }
 
@@ -189,9 +189,9 @@ class traderModel {
      * Lấy danh sách tiểu thương chưa thuê sạp (khả dụng để gán sạp)
      */
     public function getAvailableTraders() {
-        $sql = "SELECT id, fullname, trader_code FROM traders 
-                WHERE status_id = (SELECT id FROM system_statuses WHERE domain = 'trader' AND code = 'active')
-                  AND id NOT IN (SELECT trader_id FROM contracts WHERE status_id = (SELECT id FROM system_statuses WHERE domain = 'contract' AND code = 'active'))
+        $sql = "SELECT contract_id, trader_fullname, trader_code FROM traders 
+                WHERE contract_status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'trader' AND status_code = 'active')
+                  AND contract_id NOT IN (SELECT contract_trader_id FROM contracts WHERE status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'contract' AND status_code = 'active'))
                 ORDER BY fullname ASC";
         return $this->db->select($sql);
     }
