@@ -12,7 +12,7 @@ function __construct($registry) {
 	$this->registry = $registry;
 	$this->model = baseModel::getInstance();
 	$this->view  = baseView::getInstance();
-	$this->func  = general::getInstance();
+	// $this->func  = general::getInstance();
 	$this->helper  = general::getInstance();
 	$this->home  = home::getInstance();
 	$this->shop  = shop::getInstance();
@@ -20,6 +20,7 @@ function __construct($registry) {
 	$this->member = member::getInstance();
 	$this->pdf = pdf::getInstance();
 	$this->mail = baseMailler::getInstance();
+	$this->render = render::getInstance();
 }
 
 

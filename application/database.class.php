@@ -1,143 +1,194 @@
-<?php 
-class Database{ 
-    private $connection; 
-    private $result = null; //Thuộc tính result trả về kết quả của query. 
-    private $magic_quotes_active; 
-    private $real_escape_string_exists; 
+<?php
+
+/**
+ * Database adapter shared by the legacy frontend and the adminmaster module.
+ *
+ * Legacy code uses query()/fetch_*(), while the adminmaster models use named
+ * parameters, select(), selectOne() and transactions.  Keeping both APIs in
+ * one adapter prevents the new module from bypassing the existing connection.
+ */
+class Database {
+    private $connection;
+    private $result = null;
     private static $instance;
-    public function __construct(){  
-        // $this->magic_quotes_active = get_magic_quotes_gpc(); 
-        $this->real_escape_string_exists = function_exists( "mysqli_real_escape_string" ); 
-    } 
+
+    public function __construct() {
+    }
+
     public static function getInstance() {
-		if (!self::$instance)
-		{	
-			$db_con = new Database();
-			$db_con->connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
-			self::$instance = $db_con;
-		}
-		return self::$instance;
-	}
-    //Mở kết nối CSDL 
-    function connect($address, $account, $pwd, $name) {
-        $this->connection = mysqli_connect($address, $account, $pwd,$name);
-        if ($this->connection){
-            $this->connection->set_charset("utf8mb4");
-            mysqli_query($this->connection, "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
+        if (!self::$instance) {
+            $database = new self();
+            $database->connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+            self::$instance = $database;
         }
-        if (!$this->connection){
-            die("Database connection failed: " . mysqli_error()); 
-        } 
-        else{ 
-			/*
-            $db_select = mysqli_select_db($name, $this->connection); 
-			if(!$db_select){ 
-			echo "ssssssssss222ss";
-                die("Database selection failed: " . mysqli_error()); 
-            } 
-			*/
-        } 
-    } 
-     
-    //Đóng kết nối CSDL 
-    public function closeConnect(){ 
-        if ($this->connection) 
-        { 
-            mysqli_close($this->connection); 
-            unset($this->connection); 
-        } 
-    } 
-     
-    //Phương thức chống SQL Injection 
-    public function sqlQuote( $value ){ 
-        //Kiểm tra xem version PHP bạn sử dụng có hiểu hàm mysqli_real_escape_string() hay ko 
-         
-        if ($this->real_escape_string_exists) { 
-            //Trường hợp sử dụng PHP v4.3.0 trở lên 
-            //PHP hiểu hàm mysqli_real_escape_string() 
-             
-            if( $this->magic_quotes_active ) {  
-                //Trong trường hợp PHP đã hỗ trợ hàm get_magic_quotes_gpc() 
-                //Ta sử dụng hàm stripslashes để bỏ qua các dấu slashes 
-                $value = stripslashes( $value );  
-            } 
-            $value = mysqli_real_escape_string( $value ); 
-        }  
-        else { 
-            //Trường hợp dùng cho các version PHP dưới 4.3.0 
-            //PHP không hiểu hàm mysqli_real_escape_string() 
-             
-            if( !$this->magic_quotes_active ){  
-                //Trong trường hợp PHP không hỗ trợ hàm get_magic_quotes_gpc() 
-                //Ta sử dụng hàm addslashes để thêm các dấu slashes vào giá trị 
-                $value = addslashes( $value );  
-            } 
-            // Nếu hàm get_magic_quotes_gpc() đã active có nghĩa là các dấu slashes đã tồn tại rồi 
-        } 
-        return $value; 
-    } 
-     
-    //Chạy câu truy vấn query 
-    public function query($sql){ 
-        $this->result = mysqli_query($this->connection,$sql ); 
-        if (!$this->result){ 
-            $output = "Database query failed: " . mysqli_error($this->connection) . "<br /><br />";
-            $output .= "SQL: " . htmlspecialchars($sql, ENT_QUOTES, 'UTF-8') . "<br /><br />";
-            die($output); 
-        } 
-        return $this->result; 
-    } 
-     
-    //Lấy số record dữ liệu mảng trong CSDL thông qua câu truy vấn query 
-    public function fetch_array($first_row = FALSE){ 
-       if ($this->result){ 
-			if(!$first_row)
-			{
-				$rows = array(); 
-				while( $row = mysqli_fetch_array($this->result))
-				{
-					$rows[] = $row;
-				}
-			}
-			else
-			{
-				$rows = mysqli_fetch_array($this->result);
-			}
-        } 
-        return $rows; 
-    } 
-     
-    //Đếm số record trong CSDL thông qua câu truy vấn query 
-    public function num_row(){ 
-        if($this->result){ 
-            $num = null; 
-            $num = mysqli_num_rows($this->result); 
-        } 
-        return $num;  
-    } 
-	 public function fetch_object($first_row = FALSE){ 
-        if ($this->result){ 
-			if(!$first_row)
-			{
-				$rows = array(); 
-				while( $row = mysqli_fetch_object($this->result))
-				{
-					$rows[] = $row;
-				}
-			}
-			else
-			{
-				$rows = mysqli_fetch_object($this->result);
-			}
-        } 
-        return $rows; 
-    } 
-	public function escapestring($string){
-		$result = mysqli_real_escape_string($this->connection, $string);
-		return $result;
-	}
-	
-	public function insert_id(){
-		return mysqli_insert_id($this->connection);
-	}
-} 
+
+        return self::$instance;
+    }
+
+    public function connect($address, $account, $password, $name) {
+        $this->connection = mysqli_connect($address, $account, $password, $name);
+        if (!$this->connection) {
+            throw new RuntimeException('Database connection failed: ' . mysqli_connect_error());
+        }
+
+        mysqli_set_charset($this->connection, 'utf8mb4');
+    }
+
+    public function closeConnect() {
+        if ($this->connection) {
+            mysqli_close($this->connection);
+            $this->connection = null;
+        }
+    }
+
+    public function sqlQuote($value) {
+        return $this->escapestring($value);
+    }
+
+    public function escapestring($string) {
+        return mysqli_real_escape_string($this->connection, (string) $string);
+    }
+
+    /**
+     * Execute a legacy SQL string or a parameterized adminmaster statement.
+     * Named placeholders are converted to mysqli positional placeholders.
+     */
+    public function query($sql, array $params = []) {
+        if (!$params) {
+            $this->result = mysqli_query($this->connection, $sql);
+            if ($this->result === false) {
+                throw new RuntimeException('Database query failed: ' . mysqli_error($this->connection));
+            }
+            return $this->result;
+        }
+
+        $values = [];
+        $statementSql = preg_replace_callback('/(?<!:):([A-Za-z_][A-Za-z0-9_]*)/', function ($matches) use (&$values, $params) {
+            $key = $matches[1];
+            if (!array_key_exists($key, $params)) {
+                throw new InvalidArgumentException("Missing database parameter: {$key}");
+            }
+            $values[] = $params[$key];
+            return '?';
+        }, $sql);
+
+        $statement = mysqli_prepare($this->connection, $statementSql);
+        if ($statement === false) {
+            throw new RuntimeException('Database prepare failed: ' . mysqli_error($this->connection));
+        }
+
+        $this->bindParams($statement, $values);
+        if (!mysqli_stmt_execute($statement)) {
+            $error = mysqli_stmt_error($statement);
+            mysqli_stmt_close($statement);
+            throw new RuntimeException('Database query failed: ' . $error);
+        }
+
+        $result = mysqli_stmt_get_result($statement);
+        $this->result = $result === false ? true : $result;
+        mysqli_stmt_close($statement);
+        return $this->result;
+    }
+
+    public function select($sql, array $params = []) {
+        $result = $this->query($sql, $params);
+        if (!$result instanceof mysqli_result) {
+            return [];
+        }
+
+        return mysqli_fetch_all($result, MYSQLI_ASSOC);
+    }
+
+    public function selectOne($sql, array $params = []) {
+        $rows = $this->select($sql, $params);
+        return $rows[0] ?? null;
+    }
+
+    public function beginTransaction() {
+        if (!mysqli_begin_transaction($this->connection)) {
+            throw new RuntimeException('Could not start database transaction: ' . mysqli_error($this->connection));
+        }
+    }
+
+    public function commit() {
+        if (!mysqli_commit($this->connection)) {
+            throw new RuntimeException('Could not commit database transaction: ' . mysqli_error($this->connection));
+        }
+    }
+
+    public function rollback() {
+        if (!mysqli_rollback($this->connection)) {
+            throw new RuntimeException('Could not roll back database transaction: ' . mysqli_error($this->connection));
+        }
+    }
+
+    public function inTransaction() {
+        // mysqli does not expose this state.  The adminmaster module only uses
+        // this as a guard before rolling back, and rollback is safe here.
+        return true;
+    }
+
+    public function fetch_array($first_row = false) {
+        if (!$this->result instanceof mysqli_result) {
+            return $first_row ? null : [];
+        }
+
+        if ($first_row) {
+            return mysqli_fetch_array($this->result);
+        }
+
+        $rows = [];
+        while ($row = mysqli_fetch_array($this->result)) {
+            $rows[] = $row;
+        }
+        return $rows;
+    }
+
+    public function fetch_object($first_row = false) {
+        if (!$this->result instanceof mysqli_result) {
+            return $first_row ? null : [];
+        }
+
+        if ($first_row) {
+            return mysqli_fetch_object($this->result);
+        }
+
+        $rows = [];
+        while ($row = mysqli_fetch_object($this->result)) {
+            $rows[] = $row;
+        }
+        return $rows;
+    }
+
+    public function num_row() {
+        return $this->result instanceof mysqli_result ? mysqli_num_rows($this->result) : 0;
+    }
+
+    public function insert_id() {
+        return mysqli_insert_id($this->connection);
+    }
+
+    public function lastInsertId() {
+        return $this->insert_id();
+    }
+
+    private function bindParams($statement, array &$values) {
+        if (!$values) {
+            return;
+        }
+
+        $types = '';
+        foreach ($values as $value) {
+            $types .= is_int($value) ? 'i' : (is_float($value) ? 'd' : 's');
+        }
+
+        $bindValues = [$types];
+        foreach ($values as $index => &$value) {
+            $bindValues[] = &$value;
+        }
+
+        if (!call_user_func_array('mysqli_stmt_bind_param', array_merge([$statement], $bindValues))) {
+            throw new RuntimeException('Could not bind database parameters: ' . mysqli_stmt_error($statement));
+        }
+    }
+}

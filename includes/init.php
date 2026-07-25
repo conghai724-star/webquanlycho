@@ -11,7 +11,8 @@
 
  /*** include the registry class ***/
  include __SITE_PATH . '/application/' . 'registry.class.php';
- include __SITE_PATH . '/application/' . 'general.class.php';
+include __SITE_PATH . '/application/' . 'general.class.php';
+include __SITE_PATH . '/application/' . 'session.class.php';
  include __SITE_PATH . '/application/' . 'member.class.php';
  include __SITE_PATH . '/application/' . 'book.class.php';
  include __SITE_PATH . '/application/' . 'captcha.class.php';
@@ -25,12 +26,14 @@
  include __SITE_PATH . '/application/' . 'shop.class.php';
  include __SITE_PATH . '/application/' . 'erp.class.php';
  include __SITE_PATH . '/application/' . 'pdf.class.php';
+ include __SITE_PATH . '/application/' . 'render.class.php';
 
  /*** include the router class ***/
  include __SITE_PATH . '/application/' . 'router.class.php';
  
  /*** include the template class ***/
- include __SITE_PATH . '/application/' . 'database.class.php';
+include __SITE_PATH . '/application/' . 'database.class.php';
+include_once __SITE_PATH . '/includes/functions.php';
 
 
  /*** a new registry object ***/

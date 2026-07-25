@@ -1,6 +1,7 @@
 <?php
 /**
- * Project: xvn.
+ * Project: quanlycho.
+ * author: cuongvx.ktm
  * File: config.php.
 
  */
@@ -19,7 +20,7 @@ if (!defined('XVN_CONFIG_LOADED')) {
 	date_default_timezone_set('Asia/Ho_Chi_Minh');
 
 	//=============== Custom configuration ==================//
-	define('DB_NAME', 'vieclam.vn'); //database name
+	define('DB_NAME', 'quanlycho.vn'); //database name
 	define('DB_USER', 'root'); //database user
 	define('DB_PASSWORD', ''); //database password
 	define('DB_HOST', 'localhost'); //sql server
@@ -39,19 +40,25 @@ if (!defined('XVN_CONFIG_LOADED')) {
 
 	/*** define Theme ***/
 	define('ThemeMaster', 'frontend'); //Replace xpanel by your theme's name
-	define('AdminThemeMaster', 'backend'); //Replace xpanel by your admin theme's name
+	define('AdminTheme', 'app'); //Replace xpanel by your admin theme's name
+	define('AdminThemeMaster', 'adminmaster'); //Replace xpanel by your admin theme's name
 
 	/*** define site path ***/
-	define('XC_URL','http://localhost/vieclam.vn'); //Replace by your site url
+	define('XC_URL','http://localhost/quanlycho.vn'); //Replace by your site url
+	define('DIR_ROOT', __DIR__);
+	define('DIR_TEMPLATE', __DIR__ . '/template/' . AdminThemeMaster);
+	define('ADMINMASTER_URL','http://localhost/quanlycho.vn/admin'); //Replace by your site url
+	define('APP_URL','http://localhost/quanlycho.vn/app'); //Replace by your site url
 }
 
 $siteurl = XC_URL;
 /*** template path ***/
 $template_path = XC_URL.'/template/'.ThemeMaster; //Warning: Don't change here
-$admintemplate_path = XC_URL.'/template/'.AdminThemeMaster; //Warning: Don't change here
+$admintemplate_path = XC_URL.'/template/'.AdminTheme; //Warning: Don't change here
+$adminmastertemplate_path = XC_URL.'/template/'.AdminThemeMaster; //Warning: Don't change here
 $upload_path = XC_URL.'/uploads';
 $image_path = XC_URL.'/uploads/images';
 
 /*** Set Application Name ***/
-$app_name = 'Cong thong tin viec lam';
+$app_name = 'Hệ thống phần mềm quản lý chợ tỉnh Quảng Ngãi';
 ?>

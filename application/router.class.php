@@ -107,7 +107,26 @@ class router {
 private function getController() {
 
 	/*** get the route from the url ***/
-	$route = (empty($_GET['rt'])) ? '' : $_GET['rt'];
+	$route = '';
+	if (!empty($_GET['rt'])) {
+		$route = $_GET['rt'];
+	} else {
+		$requestUri = $_SERVER['REQUEST_URI'] ?? '';
+		$scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+		$requestPath = parse_url($requestUri, PHP_URL_PATH);
+
+		if (!empty($requestPath)) {
+			$baseDir = rtrim(dirname($scriptName), '/');
+			if (!empty($baseDir) && $baseDir !== '.' && strpos($requestPath, $baseDir . '/') === 0) {
+				$requestPath = substr($requestPath, strlen($baseDir));
+			}
+
+			$requestPath = trim($requestPath, '/');
+			if ($requestPath !== '' && $requestPath !== 'index.php') {
+				$route = $requestPath;
+			}
+		}
+	}
 
 	if (empty($route))
 	{
@@ -120,7 +139,7 @@ private function getController() {
 		if($parts[0] == "login")
 		{
 			// var_dump(222);
-			$this->controller = "member";
+			$this->controller = "admin";
 			$this->action = "login";
 			if(isset( $parts[1]))
 			{
