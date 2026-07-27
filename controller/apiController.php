@@ -1102,6 +1102,7 @@ class apiController extends baseController {
 
         try {
             $foodsafetyModel = new foodsafetyModel();
+            $foodsafetyModel->autoUpdateExpiryStatus();
             $marketId = marketService::currentMarketId();
             $certificates = $foodsafetyModel->getCertificates(null, $docType ?: null, $status ?: null, $search ?: null, $marketId);
 

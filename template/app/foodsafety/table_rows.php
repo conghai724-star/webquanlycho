@@ -4,43 +4,30 @@
             $warningBadge = '';
             $rowStyle = 'border-bottom: 1px solid var(--border-color);';
             
-            // Phân loại badge cho doc_type
-            $docTypeLabel = '';
-            $docTypeClass = '';
-            switch ($cert['doc_type_code']) {
-                case 'attp':
-                    $docTypeLabel = 'GCN ATTP';
-                    $docTypeClass = 'status-blue';
-                    break;
-                case 'suc_khoe':
-                    $docTypeLabel = 'Khám sức khỏe';
-                    $docTypeClass = 'status-green';
-                    break;
-                case 'tap_huan':
-                    $docTypeLabel = 'Tập huấn ATTP';
-                    $docTypeClass = 'status-orange';
-                    break;
-                default:
-                    $docTypeLabel = htmlspecialchars($cert['doc_type']);
-                    $docTypeClass = 'status-gray';
-            }
+            $rowStyle = 'border-bottom: 1px solid var(--border-color);';
+            $warningBadge = '';
 
             // Logic cảnh báo hết hạn (3 tháng = 90 ngày, 2 tháng = 60 ngày, 1 tháng = 30 ngày)
-            if ($cert['status_code'] === 'valid') {
+            if ($cert['status_code'] === 'expired') {
+                $daysOverdue = abs((int)$cert['days_remaining']);
+                $warningBadge = '<span style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--red); white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background-color: var(--red); display: inline-block; flex-shrink: 0;"></span>Quá hạn ' . $daysOverdue . ' ngày</span>';
+                $rowStyle = 'border-bottom: 1px solid var(--border-color); background-color: rgba(211, 47, 47, 0.05); border-left: 3px solid var(--red);';
+            } elseif ($cert['status_code'] === 'valid') {
                 $days = (int)$cert['days_remaining'];
                 if ($days <= 0) {
-                    $warningBadge = '<span class="status status-red" style="font-weight: 600;">Hết hạn</span>';
+                    $daysOverdue = abs($days);
+                    $warningBadge = '<span style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--red); white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background-color: var(--red); display: inline-block; flex-shrink: 0;"></span>Quá hạn ' . $daysOverdue . ' ngày</span>';
                     $rowStyle = 'border-bottom: 1px solid var(--border-color); background-color: rgba(211, 47, 47, 0.05); border-left: 3px solid var(--red);';
                 } elseif ($days <= 30) {
-                    $warningBadge = '<span class="status status-red" style="font-weight: 600;">1 Tháng</span>';
+                    $warningBadge = '<span style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--red); white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background-color: var(--red); display: inline-block; flex-shrink: 0;"></span>Còn ' . $days . ' ngày</span>';
                     $rowStyle = 'border-bottom: 1px solid var(--border-color); background-color: rgba(211, 47, 47, 0.05); border-left: 3px solid var(--red);';
                 } elseif ($days <= 60) {
-                    $warningBadge = '<span class="status status-orange" style="font-weight: 600; color: #e65100; background-color: #ffe0b2;">2 Tháng</span>';
+                    $warningBadge = '<span style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: #e65100; white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background-color: #e65100; display: inline-block; flex-shrink: 0;"></span>Còn ' . $days . ' ngày</span>';
                 } elseif ($days <= 90) {
-                    $warningBadge = '<span class="status status-yellow" style="font-weight: 600; color: #f57f17; background-color: #fffde7;">3 Tháng</span>';
+                    $warningBadge = '<span style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: #c69100; white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background-color: #c69100; display: inline-block; flex-shrink: 0;"></span>Còn ' . $days . ' ngày</span>';
+                } else {
+                    $warningBadge = '<span style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background-color: #4caf50; display: inline-block; flex-shrink: 0;"></span>Còn ' . $days . ' ngày</span>';
                 }
-            } elseif ($cert['status_code'] === 'expired') {
-                $rowStyle = 'border-bottom: 1px solid var(--border-color); background-color: rgba(211, 47, 47, 0.05); border-left: 3px solid var(--red);';
             }
         ?>
         <tr style="<?php echo $rowStyle; ?>">
@@ -53,10 +40,8 @@
                 <?php echo htmlspecialchars($cert['shop_name'] ?: 'Chưa cập nhật'); ?>
             </td>
             <!-- Loại giấy tờ -->
-            <td style="padding: 14px 16px;">
-                <span class="status <?php echo $docTypeClass; ?>" style="font-weight: 600;">
-                    <?php echo $docTypeLabel; ?>
-                </span>
+            <td style="padding: 14px 16px; color: var(--text-heading); font-weight: 500;">
+                <?php echo htmlspecialchars($cert['doc_type']); ?>
             </td>
             <!-- Thông tin giấy tờ -->
             <td style="padding: 14px 16px;">

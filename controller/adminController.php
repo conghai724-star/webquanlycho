@@ -224,9 +224,11 @@ Class adminController extends baseController {
         $status = $_GET['status'] ?? '';
         
         $foodsafetyModel = new foodsafetyModel();
+        $categoryModel = new categoryModel();
         
         $certificates = [];
         $statuses = [];
+        $documentTypes = [];
 
         $marketId = marketService::currentMarketId();
 
@@ -236,6 +238,7 @@ Class adminController extends baseController {
             
             $certificates = $foodsafetyModel->getCertificates(null, $docType ?: null, $status ?: null, $search ?: null, $marketId);
             $statuses = $foodsafetyModel->getAttpStatuses();
+            $documentTypes = $categoryModel->getItems('document_type');
         } catch (Exception $e) {
             error_log('[foodsafety] EXCEPTION: ' . $e->getMessage());
         }
@@ -244,6 +247,7 @@ Class adminController extends baseController {
             'title' => 'An Toàn Thực Phẩm',
             'certificates' => $certificates,
             'statuses' => $statuses,
+            'documentTypes' => $documentTypes,
             'search' => $search,
             'doc_type_filter' => $docType,
             'status_filter' => $status

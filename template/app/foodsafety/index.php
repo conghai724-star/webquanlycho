@@ -64,9 +64,13 @@ if (!empty($certificates)) {
                 
                 <select name="doc_type" class="form-control" style="width: 180px; height: 36px; font-size: 13px;">
                     <option value="">Tất cả loại giấy tờ</option>
-                    <option value="attp" <?php echo ($doc_type_filter ?? '') === 'attp' ? 'selected' : ''; ?>>Giấy chứng nhận ATTP</option>
-                    <option value="suc_khoe" <?php echo ($doc_type_filter ?? '') === 'suc_khoe' ? 'selected' : ''; ?>>Giấy khám sức khỏe</option>
-                    <option value="tap_huan" <?php echo ($doc_type_filter ?? '') === 'tap_huan' ? 'selected' : ''; ?>>Giấy xác nhận tập huấn</option>
+                    <?php if (!empty($documentTypes)): ?>
+                        <?php foreach ($documentTypes as $dt): ?>
+                            <option value="<?php echo htmlspecialchars($dt['doc_type_code']); ?>" <?php echo ($doc_type_filter ?? '') === $dt['doc_type_code'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($dt['doc_type_name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </select>
                 
                 <select name="status" class="form-control" style="width: 160px; height: 36px; font-size: 13px;">
