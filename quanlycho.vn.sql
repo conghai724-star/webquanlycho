@@ -124,6 +124,7 @@ CREATE TABLE `contracts` (
   `contract_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `contract_description` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `contract_file` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `contract_sign_date` date DEFAULT NULL,
   `contract_start_date` date NOT NULL,
   `contract_end_date` date NOT NULL,
   `contract_deposit` decimal(15,2) NOT NULL DEFAULT 0.00,

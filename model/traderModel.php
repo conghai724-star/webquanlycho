@@ -186,11 +186,15 @@ class traderModel {
     /**
      * Lấy danh sách tiểu thương chưa thuê sạp (khả dụng để gán sạp)
      */
-    public function getAvailableTraders() {
+    public function getAvailableTraders($marketId = null) {
         $sql = "SELECT trader_id, trader_fullname, trader_code FROM traders 
-                WHERE trader_status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'trader' AND status_code = 'active')
-                  AND trader_id NOT IN (SELECT contract_trader_id FROM contracts WHERE contract_status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'contract' AND status_code = 'active'))
-                ORDER BY trader_fullname ASC";
-        return $this->db->select($sql);
+                WHERE trader_status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'trader' AND status_code = 'active')";
+        $params = [];
+        if ($marketId) {
+            $sql .= " AND trader_market_id = :market_id";
+            $params['market_id'] = $marketId;
+        }
+        $sql .= " ORDER BY trader_fullname ASC";
+        return $this->db->select($sql, $params);
     }
 }

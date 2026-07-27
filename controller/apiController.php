@@ -485,7 +485,8 @@ class apiController extends baseController {
     public function getAvailableTraders() {
         try {
             $traderModel = new traderModel();
-            $traders = $traderModel->getAvailableTraders();
+            $marketId = $_SESSION['active_market_id'] ?? null;
+            $traders = $traderModel->getAvailableTraders($marketId);
             $this->response($traders);
         } catch (Exception $e) {
             $this->response(['error' => $e->getMessage()], 500);
@@ -662,14 +663,15 @@ class apiController extends baseController {
         $this->render->abort405('POST', 'create', 'contract');
 
         $data = [
-            'contract_trader_id'     => $_POST['trader_id'] ?? '',
-            'contract_stall_id'      => $_POST['stall_id'] ?? '',
+            'contract_trader_id'     => $_POST['trader_id'] ?? $_POST['contract_trader_id'] ?? '',
+            'contract_stall_id'      => $_POST['stall_id'] ?? $_POST['contract_stall_id'] ?? '',
             'contract_number'        => $_POST['contract_number'] ?? '',
-            'contract_name'          => $_POST['contract_name'] ?? ($_POST['market_name'] ?? ''),
-            'contract_description'   => $_POST['contract_description'] ?? ($_POST['actor_description'] ?? ''),
-            'contract_start_date'    => $_POST['start_date'] ?? '',
-            'contract_end_date'      => $_POST['end_date'] ?? '',
-            'contract_deposit'       => $_POST['deposit'] ?? 0,
+            'contract_name'          => $_POST['contract_name'] ?? $_POST['name'] ?? $_POST['market_name'] ?? '',
+            'contract_description'   => $_POST['contract_description'] ?? $_POST['description'] ?? $_POST['actor_description'] ?? '',
+            'contract_sign_date'     => $_POST['contract_sign_date'] ?? $_POST['sign_date'] ?? '',
+            'contract_start_date'    => $_POST['start_date'] ?? $_POST['contract_start_date'] ?? '',
+            'contract_end_date'      => $_POST['end_date'] ?? $_POST['contract_end_date'] ?? '',
+            'contract_deposit'       => $_POST['deposit'] ?? $_POST['contract_deposit'] ?? 0,
         ];
 
         // Xác thực dữ liệu
@@ -678,6 +680,7 @@ class apiController extends baseController {
                   ->required('stall_id', $data['contract_stall_id'], 'Vui lòng chọn sạp chợ.')
                   ->required('contract_number', $data['contract_number'], 'Số hợp đồng không được để trống.')
                   ->required('contract_name', $data['contract_name'], 'Tên hợp đồng không được để trống.')
+                  ->required('contract_sign_date', $data['contract_sign_date'], 'Vui lòng nhập ngày lập hợp đồng.')
                   ->required('start_date', $data['contract_start_date'], 'Vui lòng nhập ngày bắt đầu.')
                   ->required('end_date', $data['contract_end_date'], 'Vui lòng nhập ngày hết hạn.')
                   ->required('deposit', $data['contract_deposit'], 'Vui lòng nhập tiền đặt cọc.');
@@ -736,11 +739,12 @@ class apiController extends baseController {
 
     public function activateContract() {
         $this->render->abort405('POST', 'update', 'contract');
-        $this->render->abort400(['contract_id', 'contract_number', 'contract_start_date', 'contract_end_date', 'contract_deposit'], 'update', 'contract');
+        $this->render->abort400(['contract_id', 'contract_number', 'contract_sign_date', 'contract_start_date', 'contract_end_date', 'contract_deposit'], 'update', 'contract');
 
         $contractId = $_POST['contract_id'];
         $data = [
             'contract_number'     => $_POST['contract_number'],
+            'contract_sign_date'  => $_POST['contract_sign_date'],
             'contract_start_date' => $_POST['contract_start_date'],
             'contract_end_date'   => $_POST['contract_end_date'],
             'contract_deposit'    => $_POST['contract_deposit']
@@ -867,6 +871,26 @@ class apiController extends baseController {
     }
 
     /**
+     * API tái kích hoạt hợp đồng (AJAX POST)
+     */
+    public function reactivateContract() {
+        $this->render->abort405('POST', 'update', 'contract');
+        $this->render->abort400('contract_id', 'update', 'contract');
+
+        $contractId = $_POST['contract_id'];
+
+        try {
+            $contractModel = new contractModel();
+            $this->render->abort404($contractModel, 'getById', $contractId, 'update', 'contract');
+
+            $contractModel->reactivate($contractId);
+            $this->render->apiResponse('update', 'contract', true, 'Tái kích hoạt hợp đồng thành công!');
+        } catch (Exception $e) {
+            $this->render->abort500($e, 'update', 'contract');
+        }
+    }
+
+    /**
      * API lấy lịch sử chỉnh sửa hợp đồng (AJAX GET)
      */
     public function getContractHistory() {
@@ -900,16 +924,18 @@ class apiController extends baseController {
         $contractId = $_POST['contract_id'];
         $data = [
             'contract_number'     => $_POST['contract_number'] ?? '',
-            'contract_name'       => $_POST['contract_name'] ?? '',
-            'contract_start_date' => $_POST['contract_start_date'] ?? '',
-            'contract_end_date'   => $_POST['contract_end_date'] ?? '',
-            'contract_deposit'    => $_POST['contract_deposit'] ?? 0,
-            'contract_description'=> $_POST['contract_description'] ?? '',
+            'contract_name'       => $_POST['contract_name'] ?? $_POST['name'] ?? '',
+            'contract_sign_date'  => $_POST['contract_sign_date'] ?? $_POST['sign_date'] ?? '',
+            'contract_start_date' => $_POST['contract_start_date'] ?? $_POST['start_date'] ?? '',
+            'contract_end_date'   => $_POST['contract_end_date'] ?? $_POST['end_date'] ?? '',
+            'contract_deposit'    => $_POST['contract_deposit'] ?? $_POST['deposit'] ?? 0,
+            'contract_description'=> $_POST['contract_description'] ?? $_POST['description'] ?? '',
         ];
 
         $validator = new validator();
         $validator->required('contract_number', $data['contract_number'], 'Số hợp đồng không được để trống.')
                   ->required('contract_name', $data['contract_name'], 'Tên hợp đồng không được để trống.')
+                  ->required('contract_sign_date', $data['contract_sign_date'], 'Vui lòng nhập ngày lập hợp đồng.')
                   ->required('contract_start_date', $data['contract_start_date'], 'Vui lòng chọn ngày bắt đầu.')
                   ->required('contract_end_date', $data['contract_end_date'], 'Vui lòng chọn ngày kết thúc.');
 

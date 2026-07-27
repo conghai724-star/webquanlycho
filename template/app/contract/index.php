@@ -164,7 +164,7 @@ $(document).ready(function() {
     window.App = window.App || {};
     window.App.contract = {
         // 0. Kích hoạt hợp đồng
-        activateContract: async function(contractId, contractNumber, startDate, endDate, deposit, contractFile) {
+        activateContract: async function(contractId, contractNumber, signDate, startDate, endDate, deposit, contractFile) {
             if (!contractId) return;
 
             const result = await Swal.fire({
@@ -173,6 +173,10 @@ $(document).ready(function() {
                          <div>
                              <label style="font-weight: 500; font-size: 13px;">Số hợp đồng:</label>
                              <input type="text" id="swal-contract-number" class="form-control" value="${contractNumber}" style="margin-top: 4px;">
+                         </div>
+                         <div>
+                             <label style="font-weight: 500; font-size: 13px;">Ngày lập hợp đồng:</label>
+                             <input type="date" id="swal-contract-sign-date" class="form-control" value="${signDate || new Date().toISOString().split('T')[0]}" style="margin-top: 4px;">
                          </div>
                          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                              <div>
@@ -251,6 +255,7 @@ $(document).ready(function() {
                 },
                 preConfirm: () => {
                     const number = document.getElementById('swal-contract-number').value.trim();
+                    const sigDate = document.getElementById('swal-contract-sign-date').value;
                     const sDate = document.getElementById('swal-start-date').value;
                     const eDate = document.getElementById('swal-end-date').value;
                     const dep = document.getElementById('swal-deposit').value;
@@ -259,6 +264,10 @@ $(document).ready(function() {
 
                     if (!number) {
                         Swal.showValidationMessage('Vui lòng nhập số hợp đồng!');
+                        return false;
+                    }
+                    if (!sigDate) {
+                        Swal.showValidationMessage('Vui lòng nhập ngày lập hợp đồng!');
                         return false;
                     }
                     if (!sDate) {
@@ -278,7 +287,7 @@ $(document).ready(function() {
                         return false;
                     }
 
-                    return { number, sDate, eDate, dep, fileInput, remaining };
+                    return { number, sigDate, sDate, eDate, dep, fileInput, remaining };
                 }
             });
 
@@ -287,6 +296,7 @@ $(document).ready(function() {
                 const fd = new FormData();
                 fd.append('contract_id', contractId);
                 fd.append('contract_number', result.value.number);
+                fd.append('contract_sign_date', result.value.sigDate);
                 fd.append('contract_start_date', result.value.sDate);
                 fd.append('contract_end_date', result.value.eDate);
                 fd.append('contract_deposit', result.value.dep);
@@ -576,6 +586,63 @@ $(document).ready(function() {
             }
         },
 
+        // 4b. Tái kích hoạt hợp đồng
+        reactivateContract: async function(contractId, contractNumber) {
+            if (!contractId) return;
+
+            const result = await Swal.fire({
+                title: 'Tái kích hoạt hợp đồng ' + contractNumber + '?',
+                text: "Xác nhận đưa hợp đồng này quay trở lại trạng thái 'Khởi tạo'? Sạp chợ liên quan sẽ chuyển về trạng thái 'Đã thuê'.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#1ABB9C',
+                cancelButtonColor: '#a0aec0',
+                confirmButtonText: 'Đồng ý',
+                cancelButtonText: 'Hủy bỏ',
+                background: swalBg,
+                color: swalColor
+            });
+
+            if (result.isConfirmed) {
+                App.alert.loading('Đang xử lý tái kích hoạt...');
+                const fd = new FormData();
+                fd.append('contract_id', contractId);
+                fd.append('csrf_token', csrfToken);
+
+                $.ajax({
+                    type: "POST",
+                    url: '<?php echo BASE_URL; ?>api/reactivateContract',
+                    data: fd,
+                    processData: false,
+                    contentType: false,
+                    dataType: 'json',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    success: function(data) {
+                        Swal.close();
+                        if (data.status === 200) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Thành công',
+                                text: data.message || 'Tái kích hoạt hợp đồng thành công!',
+                                timer: 1500,
+                                showConfirmButton: false,
+                                background: swalBg,
+                                color: swalColor
+                            }).then(function() {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire({ icon: 'error', title: 'Thất bại', text: data.message, background: swalBg, color: swalColor });
+                        }
+                    },
+                    error: function() {
+                        Swal.close();
+                        Swal.fire({ icon: 'error', title: 'Lỗi', text: 'Có lỗi xảy ra trong quá trình xử lý.', background: swalBg, color: swalColor });
+                    }
+                });
+            }
+        },
+
         // 5. Hiển thị modal quản lý phụ lục hợp đồng
         viewAppendices: function(contractId, contractNumber) {
             if (!contractId) return;
@@ -718,7 +785,7 @@ $(document).ready(function() {
             }
         },
         // 8. Chỉnh sửa thông tin hợp đồng
-        editContract: async function(contractId, contractNumber, contractName, startDate, endDate, deposit, description, contractFile) {
+        editContract: async function(contractId, contractNumber, contractName, signDate, startDate, endDate, deposit, description, contractFile) {
             if (!contractId) return;
 
             const result = await Swal.fire({
@@ -731,6 +798,10 @@ $(document).ready(function() {
                          <div>
                              <label style="font-weight: 500; font-size: 13px;">Tên hợp đồng *:</label>
                              <input type="text" id="swal-edit-name" class="form-control" value="${contractName}" style="margin-top: 4px;">
+                         </div>
+                         <div>
+                             <label style="font-weight: 500; font-size: 13px;">Ngày lập hợp đồng *:</label>
+                             <input type="date" id="swal-edit-sign-date" class="form-control" value="${signDate || new Date().toISOString().split('T')[0]}" style="margin-top: 4px;">
                          </div>
                          <div>
                              <label style="font-weight: 500; font-size: 13px;">Ngày bắt đầu *:</label>
@@ -810,6 +881,7 @@ $(document).ready(function() {
                 preConfirm: () => {
                     const number = document.getElementById('swal-edit-number').value.trim();
                     const name = document.getElementById('swal-edit-name').value.trim();
+                    const sign = document.getElementById('swal-edit-sign-date').value;
                     const start = document.getElementById('swal-edit-start-date').value;
                     const end = document.getElementById('swal-edit-end-date').value;
                     const dep = document.getElementById('swal-edit-deposit').value;
@@ -825,6 +897,10 @@ $(document).ready(function() {
                         Swal.showValidationMessage('Tên hợp đồng không được để trống!');
                         return false;
                     }
+                    if (!sign) {
+                        Swal.showValidationMessage('Vui lòng chọn ngày lập hợp đồng!');
+                        return false;
+                    }
                     if (!start) {
                         Swal.showValidationMessage('Vui lòng chọn ngày bắt đầu!');
                         return false;
@@ -838,6 +914,7 @@ $(document).ready(function() {
                     fd.append('contract_id', contractId);
                     fd.append('contract_number', number);
                     fd.append('contract_name', name);
+                    fd.append('contract_sign_date', sign);
                     fd.append('contract_start_date', start);
                     fd.append('contract_end_date', end);
                     fd.append('contract_deposit', dep);

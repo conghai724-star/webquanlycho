@@ -75,8 +75,14 @@
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px;">
-                <!-- Ngày ký -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 20px;">
+                <!-- Ngày lập hợp đồng -->
+                <div class="form-group">
+                    <label class="form-label" for="contract_sign_date" style="font-weight: 500;">Ngày lập hợp đồng <span style="color: var(--red)">*</span></label>
+                    <input type="date" id="contract_sign_date" name="contract_sign_date" class="form-control" value="<?php echo date('Y-m-d'); ?>" required>
+                </div>
+
+                <!-- Ngày bắt đầu hiệu lực -->
                 <div class="form-group">
                     <label class="form-label" for="start_date" style="font-weight: 500;">Ngày bắt đầu hiệu lực <span style="color: var(--red)">*</span></label>
                     <input type="date" id="start_date" name="start_date" class="form-control" required>

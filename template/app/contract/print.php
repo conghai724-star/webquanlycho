@@ -129,6 +129,7 @@ function calculateMonths($startDate, $endDate) {
 
 $start_ts = strtotime($contract['contract_start_date']);
 $end_ts = strtotime($contract['contract_end_date']);
+$sign_ts = !empty($contract['contract_sign_date']) ? strtotime($contract['contract_sign_date']) : $start_ts;
 $months = calculateMonths($contract['contract_start_date'], $contract['contract_end_date']);
 
 $price_per_m2 = $contract['stall_area_size'] > 0 ? round($contract['price'] / $contract['stall_area_size']) : 0;
@@ -327,7 +328,7 @@ $total_amount_words = ucfirst(trim(translateNumberToWords($total_amount))) . ' �
                     <span class="national-subtitle">Độc lập - Tự do - Hạnh phúc</span>
                     <div class="line-dec-long"></div>
                     <div style="margin-top: 5px; font-style: italic; font-size: 10pt;">
-                        Kon Tum, ngày <?php echo date('d', $start_ts); ?> tháng <?php echo date('m', $start_ts); ?> năm <?php echo date('Y', $start_ts); ?>
+                        Kon Tum, ngày <?php echo date('d', $sign_ts); ?> tháng <?php echo date('m', $sign_ts); ?> năm <?php echo date('Y', $sign_ts); ?>
                     </div>
                 </td>
             </tr>
@@ -348,7 +349,7 @@ $total_amount_words = ucfirst(trim(translateNumberToWords($total_amount))) . ' �
         </div>
 
         <div>
-            Hôm nay, ngày <?php echo date('d', $start_ts); ?> tháng <?php echo date('m', $start_ts); ?> năm <?php echo date('Y', $start_ts); ?> chúng tôi gồm có:
+            Hôm nay, ngày <?php echo date('d', $sign_ts); ?> tháng <?php echo date('m', $sign_ts); ?> năm <?php echo date('Y', $sign_ts); ?> chúng tôi gồm có:
         </div>
 
         <div class="section-title">Bên A: Đại diện Tổ quản lý các chợ hạng 3 trên địa bàn phường Kon Tum (Bên cho thuê)</div>

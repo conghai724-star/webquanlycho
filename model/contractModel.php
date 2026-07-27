@@ -77,8 +77,8 @@ class contractModel {
         $statusModel = new statusModel();
         $activeStatusId = $statusModel->getIdByCode('contract', 'active');
 
-        $sql = "INSERT INTO contracts (contract_trader_id, contract_stall_id, contract_number, contract_name, contract_description, contract_file, contract_start_date, contract_end_date, contract_deposit, contract_status_id) 
-                VALUES (:contract_trader_id, :contract_stall_id, :contract_number, :contract_name, :contract_description, :contract_file, :contract_start_date, :contract_end_date, :contract_deposit, :contract_status_id)";
+        $sql = "INSERT INTO contracts (contract_trader_id, contract_stall_id, contract_number, contract_name, contract_description, contract_file, contract_sign_date, contract_start_date, contract_end_date, contract_deposit, contract_status_id) 
+                VALUES (:contract_trader_id, :contract_stall_id, :contract_number, :contract_name, :contract_description, :contract_file, :contract_sign_date, :contract_start_date, :contract_end_date, :contract_deposit, :contract_status_id)";
         
         $params = [
             'contract_trader_id'       => $data['contract_trader_id'],
@@ -87,6 +87,7 @@ class contractModel {
             'contract_name'            => $data['contract_name'],
             'contract_description'     => $data['contract_description'] ?? null,
             'contract_file'   => $data['contract_file'] ?? null,
+            'contract_sign_date'       => $data['contract_sign_date'] ?? null,
             'contract_start_date'      => $data['contract_start_date'],
             'contract_end_date'        => $data['contract_end_date'],
             'contract_deposit'         => $data['contract_deposit'],
@@ -152,7 +153,7 @@ class contractModel {
      */
     public function liquidate($contract_id) {
         $statusModel = new statusModel();
-        $draftStatusId = $statusModel->getIdByCode('contract', 'draft');
+        $liquidatedStatusId = $statusModel->getIdByCode('contract', 'liquidated') ?: 13;
 
         // Lấy thông tin hợp đồng trước khi thay đổi trạng thái
         $contract = $this->getById($contract_id);
@@ -163,15 +164,15 @@ class contractModel {
         try {
             $this->db->beginTransaction();
 
-            // 1. Cập nhật trạng thái hợp đồng thành Khởi tạo (draft)
+            // 1. Cập nhật trạng thái hợp đồng thành Thanh lý (liquidated)
             $sql = "UPDATE contracts SET contract_status_id = :contract_status_id WHERE contract_id = :contract_id";
-            $this->db->query($sql, ['contract_id' => $contract_id, 'contract_status_id' => $draftStatusId]);
+            $this->db->query($sql, ['contract_id' => $contract_id, 'contract_status_id' => $liquidatedStatusId]);
 
-            // 2. Cập nhật sạp về trạng thái rented (đã thuê) vì hợp đồng ở dạng khởi tạo
+            // 2. Cập nhật sạp về trạng thái empty (trống)
             $stallModel = new stallModel();
-            $stallModel->updateStatus($contract['contract_stall_id'], 'rented');
+            $stallModel->updateStatus($contract['contract_stall_id'], 'empty');
 
-            $this->logHistory($contract_id, 'liquidate', null, 'Thanh lý hợp đồng, đưa hợp đồng về trạng thái Khởi tạo');
+            $this->logHistory($contract_id, 'liquidate', null, 'Thanh lý hợp đồng. Trạng thái sạp chuyển về Trống.');
 
             $this->db->commit();
             return true;
@@ -186,7 +187,7 @@ class contractModel {
      */
     public function terminate($contract_id) {
         $statusModel = new statusModel();
-        $draftStatusId = $statusModel->getIdByCode('contract', 'draft');
+        $terminatedStatusId = $statusModel->getIdByCode('contract', 'terminated') ?: 14;
 
         // Lấy thông tin hợp đồng trước khi thay đổi trạng thái
         $contract = $this->getById($contract_id);
@@ -197,15 +198,15 @@ class contractModel {
         try {
             $this->db->beginTransaction();
 
-            // 1. Cập nhật trạng thái hợp đồng thành Khởi tạo (draft)
+            // 1. Cập nhật trạng thái hợp đồng thành Chấm dứt trước hạn (terminated)
             $sql = "UPDATE contracts SET contract_status_id = :contract_status_id WHERE contract_id = :contract_id";
-            $this->db->query($sql, ['contract_id' => $contract_id, 'contract_status_id' => $draftStatusId]);
+            $this->db->query($sql, ['contract_id' => $contract_id, 'contract_status_id' => $terminatedStatusId]);
 
-            // 2. Cập nhật sạp về trạng thái rented (đã thuê) vì hợp đồng ở dạng khởi tạo
+            // 2. Cập nhật sạp về trạng thái empty (trống)
             $stallModel = new stallModel();
-            $stallModel->updateStatus($contract['contract_stall_id'], 'rented');
+            $stallModel->updateStatus($contract['contract_stall_id'], 'empty');
 
-            $this->logHistory($contract_id, 'terminate', null, 'Chấm dứt hợp đồng trước hạn, đưa hợp đồng về trạng thái Khởi tạo');
+            $this->logHistory($contract_id, 'terminate', null, 'Chấm dứt hợp đồng trước hạn. Trạng thái sạp chuyển về Trống.');
 
             $this->db->commit();
             return true;
@@ -287,6 +288,7 @@ class contractModel {
         $sql = "UPDATE contracts SET 
                     contract_number = :contract_number,
                     contract_name = :contract_name,
+                    contract_sign_date = :contract_sign_date,
                     contract_start_date = :contract_start_date,
                     contract_end_date = :contract_end_date,
                     contract_deposit = :contract_deposit,
@@ -295,6 +297,7 @@ class contractModel {
         $params = [
             'contract_number'     => $data['contract_number'],
             'contract_name'       => $data['contract_name'],
+            'contract_sign_date'  => $data['contract_sign_date'] ?? null,
             'contract_start_date' => $data['contract_start_date'],
             'contract_end_date'   => $data['contract_end_date'],
             'contract_deposit'    => $data['contract_deposit'],
@@ -315,6 +318,7 @@ class contractModel {
             $fieldsToCompare = [
                 'contract_number'      => 'Số hợp đồng',
                 'contract_name'        => 'Tên hợp đồng',
+                'contract_sign_date'   => 'Ngày lập hợp đồng',
                 'contract_start_date'  => 'Ngày bắt đầu',
                 'contract_end_date'    => 'Ngày kết thúc',
                 'contract_deposit'     => 'Tiền đặt cọc',
@@ -429,6 +433,7 @@ class contractModel {
         // Cập nhật thông tin hợp đồng
         $sql = "UPDATE contracts 
                 SET contract_number = :contract_number, 
+                    contract_sign_date = :contract_sign_date,
                     contract_start_date = :contract_start_date, 
                     contract_end_date = :contract_end_date, 
                     contract_deposit = :contract_deposit, 
@@ -437,6 +442,7 @@ class contractModel {
         $params = [
             'contract_id'         => $contractId,
             'contract_number'     => $data['contract_number'],
+            'contract_sign_date'  => $data['contract_sign_date'] ?? null,
             'contract_start_date' => $data['contract_start_date'],
             'contract_end_date'   => $data['contract_end_date'],
             'contract_deposit'    => $data['contract_deposit'],
@@ -487,19 +493,19 @@ class contractModel {
             
             if (!empty($expiredContracts)) {
                 $statusModel = new statusModel();
-                $draftStatusId = $statusModel->getIdByCode('contract', 'draft');
-                $rentedStallStatusId = $statusModel->getIdByCode('stall', 'rented');
+                $expiredStatusId = $statusModel->getIdByCode('contract', 'expired') ?: 12;
+                $emptyStallStatusId = $statusModel->getIdByCode('stall', 'empty') ?: 3;
                 
                 $this->db->beginTransaction();
                 foreach ($expiredContracts as $c) {
-                    // Cập nhật trạng thái hợp đồng thành draft (Khởi tạo)
+                    // Cập nhật trạng thái hợp đồng thành expired (Hết hạn)
                     $this->db->query("UPDATE contracts SET contract_status_id = :status_id WHERE contract_id = :contract_id", [
-                        'status_id' => $draftStatusId,
+                        'status_id' => $expiredStatusId,
                         'contract_id' => $c['contract_id']
                     ]);
-                    // Cập nhật trạng thái sạp thành rented (Đã thuê)
+                    // Cập nhật trạng thái sạp thành empty (Trống)
                     $this->db->query("UPDATE stalls SET stall_status_id = :status_id WHERE stall_id = :stall_id", [
-                        'status_id' => $rentedStallStatusId,
+                        'status_id' => $emptyStallStatusId,
                         'stall_id' => $c['contract_stall_id']
                     ]);
                 }
@@ -539,5 +545,43 @@ class contractModel {
                 WHERE h.history_contract_id = :contract_id
                 ORDER BY h.history_id DESC";
         return $this->db->select($sql, ['contract_id' => $contractId]);
+    }
+    /**
+     * Tái kích hoạt hợp đồng (Chuyển sang Khởi tạo - draft)
+     */
+    public function reactivate($contract_id) {
+        $statusModel = new statusModel();
+        $draftStatusId = $statusModel->getIdByCode('contract', 'draft') ?: 27;
+
+        $contract = $this->getById($contract_id);
+        if (!$contract) {
+            return false;
+        }
+
+        // Kiểm tra xem sạp hiện tại có sạp nào đang thuê/sử dụng không để tránh chồng lấn
+        $stallModel = new stallModel();
+        $stall = $stallModel->getById($contract['contract_stall_id']);
+        if ($stall && $stall['status'] !== 'empty') {
+            throw new Exception("Sạp này hiện tại đã có hợp đồng khác hoặc đang sửa chữa/tạm khóa. Không thể tái kích hoạt!");
+        }
+
+        try {
+            $this->db->beginTransaction();
+
+            // 1. Cập nhật trạng thái hợp đồng thành Khởi tạo (draft)
+            $sql = "UPDATE contracts SET contract_status_id = :contract_status_id WHERE contract_id = :contract_id";
+            $this->db->query($sql, ['contract_id' => $contract_id, 'contract_status_id' => $draftStatusId]);
+
+            // 2. Cập nhật sạp về trạng thái rented (đã thuê) vì hợp đồng đã được tái kích hoạt ở dạng khởi tạo
+            $stallModel->updateStatus($contract['contract_stall_id'], 'rented');
+
+            $this->logHistory($contract_id, 'reactivate', null, 'Tái kích hoạt hợp đồng, đưa hợp đồng về trạng thái Khởi tạo');
+
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollback();
+            throw $e;
+        }
     }
 }
