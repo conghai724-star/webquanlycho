@@ -378,7 +378,7 @@ $(document).ready(function() {
 
         $.ajax({
             type: "GET",
-            url: "<?php echo BASE_URL; ?>api/getAvailableStalls?exclude_id=" + currentStallId,
+            url: "<?php echo BASE_URL; ?>api/getAvailableStallsForTransfer?exclude_id=" + currentStallId,
             dataType: 'json',
             success: function(res) {
                 Swal.close();

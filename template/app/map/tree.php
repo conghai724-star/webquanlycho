@@ -5,11 +5,11 @@
 
 $db = database::getInstance();
 if (marketService::isSuperAdmin()) {
-    $accessibleMarkets = $db->select("SELECT user_market_market_id, market_name FROM markets WHERE status_code = 'active' ORDER BY name ASC");
+    $accessibleMarkets = $db->select("SELECT market_id, market_name FROM markets WHERE market_status_code = 'active' ORDER BY market_name ASC");
 } else {
     $userId = session::get('user_market_user_id');
     $accessibleMarkets = $db->select("
-        SELECT m.user_market_market_id, m.market_name 
+        SELECT m.market_id, m.market_name 
         FROM user_markets um
         JOIN markets m ON um.user_market_market_id = m.market_id
         WHERE um.user_market_user_id = :user_id AND m.market_status_code = 'active'

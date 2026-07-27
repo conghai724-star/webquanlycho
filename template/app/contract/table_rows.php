@@ -52,11 +52,39 @@
                 <?php echo number_format($contract['contract_deposit'], 0, ',', '.'); ?> đ
             </td>
             <td style="padding: 14px 16px; text-align: center;">
-                <?php if (!empty($contract['contract_file'])): ?>
-                    <a href="<?php echo BASE_URL . 'uploads/contracts/' . htmlspecialchars($contract['contract_file']); ?>" target="_blank" style="color: var(--red); font-size: 16px;" title="Tải file PDF hợp đồng">
-                        <i class="fa-solid fa-file-pdf"></i>
-                    </a>
-                <?php else: ?>
+                <?php 
+                if (!empty($contract['contract_file'])): 
+                    $files = [];
+                    $fileStr = $contract['contract_file'];
+                    if (substr($fileStr, 0, 1) === '[' && substr($fileStr, -1) === ']') {
+                        $files = json_decode($fileStr, true) ?: [];
+                    } else {
+                        $files = [$fileStr];
+                    }
+                    
+                    if (!empty($files)):
+                        echo '<div style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">';
+                        foreach ($files as $index => $file):
+                            $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+                            $icon = 'fa-file-image';
+                            $color = 'var(--primary)';
+                            if ($ext === 'pdf') {
+                                $icon = 'fa-file-pdf';
+                                $color = 'var(--red)';
+                            } elseif ($ext === 'doc' || $ext === 'docx') {
+                                $icon = 'fa-file-word';
+                                $color = '#2b579a';
+                            }
+                            ?>
+                            <a href="<?php global $upload_path; echo $upload_path . '/contracts/' . htmlspecialchars($file); ?>" target="_blank" style="color: <?php echo $color; ?>; font-size: 15px; display: inline-flex;" title="Tải tệp đính kèm <?php echo $index + 1; ?> (.<?php echo strtoupper($ext); ?>)">
+                                <i class="fa-solid <?php echo $icon; ?>"></i>
+                            </a>
+                            <?php 
+                        endforeach;
+                        echo '</div>';
+                    endif;
+                else: 
+                    ?>
                     <span style="color: var(--text-muted); font-size: 11px;">N/A</span>
                 <?php endif; ?>
             </td>
@@ -72,12 +100,18 @@
             </td>
             <td style="padding: 14px 16px; text-align: right;">
                 <div style="display: flex; justify-content: flex-end; gap: 4px;">
-                    <!-- Gia hạn hợp đồng (Chỉ khi chưa bị xóa/chưa thanh lý) -->
-                    <?php if ($contract['status_code'] !== 'liquidated' && $contract['status_code'] !== 'terminated'): ?>
+                    <!-- Kích hoạt hợp đồng (Chỉ dành cho hợp đồng Khởi tạo) -->
+                    <?php if ($contract['status_code'] === 'draft'): ?>
+                        <button class="btn btn-outline btn-sm" onclick="App.contract.activateContract(<?php echo $contract['contract_id']; ?>, '<?php echo htmlspecialchars($contract['contract_number']); ?>', '<?php echo $contract['contract_start_date']; ?>', '<?php echo $contract['contract_end_date']; ?>', <?php echo (float)$contract['contract_deposit']; ?>, '<?php echo htmlspecialchars($contract['contract_file'] ?? '', ENT_QUOTES, 'UTF-8'); ?>')" style="padding: 4px 6px; color: var(--green); border-color: var(--green);" title="Kích hoạt hợp đồng">
+                            <i class="fa-solid fa-circle-check"></i> Kích hoạt
+                        </button>
+                    <?php endif; ?>
+
+                    <!-- Gia hạn / Thanh lý / Chấm dứt (Dành cho hợp đồng Hoạt động hoặc Hết hạn) -->
+                    <?php if ($contract['status_code'] === 'active' || $contract['status_code'] === 'expired'): ?>
                         <button class="btn btn-outline btn-sm" onclick="App.contract.renewContract(<?php echo $contract['contract_id']; ?>, '<?php echo htmlspecialchars($contract['contract_number']); ?>', '<?php echo $contract['contract_end_date']; ?>')" style="padding: 4px 6px; color: var(--primary);" title="Gia hạn">
                             <i class="fa-solid fa-calendar-plus"></i>
                         </button>
-                        <!-- Thanh lý / Chấm dứt -->
                         <button class="btn btn-outline btn-sm" onclick="App.contract.liquidateContract(<?php echo $contract['contract_id']; ?>, '<?php echo htmlspecialchars($contract['contract_number']); ?>')" style="padding: 4px 6px; color: var(--orange);" title="Thanh lý">
                             <i class="fa-solid fa-file-contract"></i>
                         </button>
@@ -85,7 +119,23 @@
                             <i class="fa-solid fa-ban"></i>
                         </button>
                     <?php endif; ?>
-                    <!-- Xóa mềm -->
+
+                    <!-- Sửa hợp đồng -->
+                    <button class="btn btn-outline btn-sm" onclick="App.contract.editContract(<?php echo $contract['contract_id']; ?>, '<?php echo htmlspecialchars($contract['contract_number'], ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars($contract['contract_name'], ENT_QUOTES, 'UTF-8'); ?>', '<?php echo $contract['contract_start_date']; ?>', '<?php echo $contract['contract_end_date']; ?>', <?php echo (float)$contract['contract_deposit']; ?>, '<?php echo htmlspecialchars($contract['contract_description'] ?? '', ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars($contract['contract_file'] ?? '', ENT_QUOTES, 'UTF-8'); ?>')" style="padding: 4px 6px; color: var(--primary);" title="Sửa hợp đồng">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+
+                    <!-- Lịch sử hợp đồng -->
+                    <button class="btn btn-outline btn-sm" onclick="App.contract.viewHistory(<?php echo $contract['contract_id']; ?>, '<?php echo htmlspecialchars($contract['contract_number']); ?>')" style="padding: 4px 6px; color: var(--primary);" title="Xem lịch sử chỉnh sửa">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                    </button>
+
+                    <!-- In hợp đồng -->
+                    <a href="<?php echo BASE_URL; ?>admin/contract_print/<?php echo $contract['contract_id']; ?>" target="_blank" class="btn btn-outline btn-sm" style="padding: 4px 6px; color: var(--primary); display: inline-flex; align-items: center;" title="In hợp đồng theo mẫu">
+                        <i class="fa-solid fa-print"></i>
+                    </a>
+
+                    <!-- Xóa mềm (Mọi trạng thái đều có thể xóa/ẩn đi) -->
                     <button class="btn btn-outline btn-sm" onclick="App.contract.deleteContract(<?php echo $contract['contract_id']; ?>, '<?php echo htmlspecialchars($contract['contract_number']); ?>')" style="padding: 4px 6px; color: var(--text-muted);" title="Xóa mềm">
                         <i class="fa-solid fa-trash"></i>
                     </button>

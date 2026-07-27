@@ -39,8 +39,8 @@
                                 <option value="<?php echo $a['area_id']; ?>" <?php echo ($data['stall_area_id'] ?? '') == $a['area_id'] ? 'selected' : ''; ?>>
                                     <?php 
                                     $displayText = $a['area_name'];
-                                    if (!empty($a['block'])) $displayText .= ' - ' . $a['block'];
-                                    if (!empty($a['lot'])) $displayText .= ' - ' . $a['lot'];
+                                    if (!empty($a['area_block'])) $displayText .= ' - ' . $a['area_block'];
+                                    if (!empty($a['area_lot'])) $displayText .= ' - ' . $a['area_lot'];
                                     echo htmlspecialchars($displayText); 
                                     ?>
                                 </option>

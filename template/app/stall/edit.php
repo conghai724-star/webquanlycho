@@ -37,11 +37,11 @@
                         <option value="">-- Chọn khu vực --</option>
                         <?php if (!empty($areas)): ?>
                             <?php foreach ($areas as $a): ?>
-                                <option value="<?php echo $a['id']; ?>" <?php echo $stall['stall_area_id'] == $a['id'] ? 'selected' : ''; ?>>
+                                <option value="<?php echo $a['area_id']; ?>" <?php echo $stall['stall_area_id'] == $a['area_id'] ? 'selected' : ''; ?>>
                                     <?php 
                                     $displayText = $a['area_name'];
-                                    if (!empty($a['block'])) $displayText .= ' - ' . $a['block'];
-                                    if (!empty($a['lot'])) $displayText .= ' - ' . $a['lot'];
+                                    if (!empty($a['area_block'])) $displayText .= ' - ' . $a['area_block'];
+                                    if (!empty($a['area_lot'])) $displayText .= ' - ' . $a['area_lot'];
                                     echo htmlspecialchars($displayText); 
                                     ?>
                                 </option>
@@ -107,6 +107,52 @@
                 </button>
             </div>
         </form>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 24px;">
+    <div class="card-header" style="border-bottom: 1px solid var(--border-color); padding: 16px 20px; display: flex; align-items: center; gap: 8px;">
+        <i class="fa-solid fa-clock-rotate-left" style="color: var(--primary);"></i>
+        <div class="card-title" style="font-size: 15px; font-weight: 600;">Lịch sử thuê sạp</div>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <table class="table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background-color: var(--bg-surface-secondary); border-bottom: 1px solid var(--border-color); text-align: left;">
+                    <th style="padding: 12px 20px; font-weight: 600; font-size: 13px; color: var(--text-muted);">Số Hợp đồng</th>
+                    <th style="padding: 12px 20px; font-weight: 600; font-size: 13px; color: var(--text-muted);">Tên hợp đồng</th>
+                    <th style="padding: 12px 20px; font-weight: 600; font-size: 13px; color: var(--text-muted);">Tiểu thương</th>
+                    <th style="padding: 12px 20px; font-weight: 600; font-size: 13px; color: var(--text-muted);">Ngày bắt đầu</th>
+                    <th style="padding: 12px 20px; font-weight: 600; font-size: 13px; color: var(--text-muted);">Ngày kết thúc</th>
+                    <th style="padding: 12px 20px; font-weight: 600; font-size: 13px; color: var(--text-muted);">Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (!empty($rentalHistory)): ?>
+                    <?php foreach ($rentalHistory as $h): ?>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td class="cell-mono" style="padding: 14px 20px; font-weight: 600; color: var(--text-heading);"><?php echo htmlspecialchars($h['contract_number']); ?></td>
+                            <td style="padding: 14px 20px;"><?php echo htmlspecialchars($h['contract_name']); ?></td>
+                            <td style="padding: 14px 20px;">
+                                <div style="font-weight: 500; color: var(--text-heading);"><?php echo htmlspecialchars($h['trader_fullname']); ?></div>
+                                <small style="color: var(--text-muted); font-size: 11px;"><?php echo htmlspecialchars($h['trader_phone']); ?></small>
+                            </td>
+                            <td style="padding: 14px 20px; color: var(--text-muted);"><?php echo date('d/m/Y', strtotime($h['contract_start_date'])); ?></td>
+                            <td style="padding: 14px 20px; color: var(--text-muted);"><?php echo date('d/m/Y', strtotime($h['contract_end_date'])); ?></td>
+                            <td style="padding: 14px 20px;">
+                                <span class="status <?php echo htmlspecialchars($h['color_class'] ?: 'status-gray'); ?>">
+                                    <?php echo htmlspecialchars($h['status_name']); ?>
+                                </span>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <tr>
+                        <td colspan="6" style="padding: 30px; text-align: center; color: var(--text-muted); font-style: italic;">Sạp này chưa từng phát sinh lịch sử hợp đồng thuê.</td>
+                    </tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
     </div>
 </div>
 

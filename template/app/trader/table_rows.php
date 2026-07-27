@@ -53,7 +53,7 @@ if (!empty($traders)):
             </td>
             <td style="padding: 14px 16px; text-align: right;">
                 <div style="display: flex; justify-content: flex-end; gap: 6px;">
-                    <a href="<?php echo BASE_URL; ?>admin/trader_edit/<?php echo $trader['trader_id']; ?>" class="btn btn-outline btn-sm" style="padding: 4px 8px; font-size: 11px; text-decoration: none;" title="Sửa">
+                    <a href="<?php echo ADMINMASTER_URL; ?>/trader_edit/<?php echo $trader['trader_id']; ?>" class="btn btn-outline btn-sm" style="padding: 4px 8px; font-size: 11px; text-decoration: none;" title="Sửa">
                         <i class="fa-solid fa-pen-to-square"></i>
                     </a>
                     <button class="btn btn-ghost btn-sm btn-open-delete-trader" data-trader-id="<?php echo $trader['trader_id']; ?>" data-trader-name="<?php echo htmlspecialchars($trader['trader_fullname']); ?>" data-url="<?php echo BASE_URL; ?>api/deleteTrader" style="padding: 4px 8px; font-size: 11px; color: #EA4335;" title="Xóa">

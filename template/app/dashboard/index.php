@@ -48,6 +48,10 @@
                 <div class="bar" style="height:90%; background-color: #34A853;"></div>
             </div>
         </div>
+        <div style="padding:0 16px 12px">
+            <?php $occupancy = $stats['total_stalls'] > 0 ? round(($stats['rented_stalls'] / $stats['total_stalls']) * 100) : 0; ?>
+            <div class="progress-thin"><div class="bar" style="width:<?php echo $occupancy; ?>%; background-color: #34A853;"></div></div>
+        </div>
     </div>
 
     <!-- Card 3: Sạp trống -->

@@ -30,11 +30,15 @@ if (!empty($stalls)):
             </td>
             <!-- Tiểu thương -->
             <td style="padding: 14px 16px;">
-                <?php if ($stall['status'] === 'rented' && !empty($stall['trader_name'])): ?>
-                    <div style="font-weight: 600; color: var(--text-heading);">
+                <?php if (!empty($stall['trader_name'])): ?>
+                    <div style="font-weight: 600; color: var(--text-heading); display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap;">
                         <?php echo htmlspecialchars($stall['trader_name']); ?>
+                        <?php if ($stall['contract_status_code'] === 'draft'): ?>
+                            <span class="status status-yellow" style="font-size: 10px; padding: 2px 6px; font-weight: normal; line-height: 1;">Khởi tạo</span>
+                        <?php endif; ?>
                     </div>
                     <?php if (!empty($stall['business_line_name'])): ?>
+                        <br>
                         <small style="color: var(--text-muted); font-size: 11px;">
                             (<?php echo htmlspecialchars($stall['business_line_name']); ?>)
                         </small>
@@ -53,7 +57,7 @@ if (!empty($stalls)):
             <td style="padding: 14px 16px; text-align: right;">
                 <div style="display: flex; justify-content: flex-end; gap: 6px; align-items: center;">
                     <!-- Nút Gán / Chuyển sạp nhanh -->
-                    <?php if ($stall['status'] === 'empty'): ?>
+                    <?php if (empty($stall['contract_status_code'])): ?>
                         <button class="btn btn-ghost btn-sm btn-assign-stall-quick" 
                                 data-stall-id="<?php echo $stall['stall_id']; ?>" 
                                 data-stall-code="<?php echo htmlspecialchars($stall['stall_code']); ?>" 
@@ -61,7 +65,7 @@ if (!empty($stalls)):
                                 title="Gán sạp cho tiểu thương">
                             <i class="fa-solid fa-user-plus" style="font-size: 13px;"></i>
                         </button>
-                    <?php elseif ($stall['status'] === 'rented'): ?>
+                    <?php elseif ($stall['contract_status_code'] === 'draft'): ?>
                         <button class="btn btn-ghost btn-sm btn-transfer-stall-quick" 
                                 data-stall-id="<?php echo $stall['stall_id']; ?>" 
                                 data-stall-code="<?php echo htmlspecialchars($stall['stall_code']); ?>" 
@@ -72,23 +76,26 @@ if (!empty($stalls)):
                         </button>
                     <?php endif; ?>
 
-                    <!-- Nút Sửa -->
+                    <?php if ($stall['contract_status_code'] !== 'active'): ?>
                     <a href="<?php echo BASE_URL; ?>admin/stall_edit/<?php echo $stall['stall_id']; ?>" 
                        class="btn btn-outline btn-sm" 
                        style="padding: 4px 8px; font-size: 11px; text-decoration: none;" 
                        title="Chỉnh sửa">
                         <i class="fa-solid fa-pen-to-square"></i>
                     </a>
+                    <?php endif; ?>
 
                     <!-- Nút Xóa -->
-                    <button class="btn btn-ghost btn-sm btn-open-delete-stall" 
-                            data-stall-id="<?php echo $stall['stall_id']; ?>" 
-                            data-stall-code="<?php echo htmlspecialchars($stall['stall_code']); ?>" 
-                            data-url="<?php echo BASE_URL; ?>api/deleteStall" 
-                            style="padding: 4px 8px; font-size: 11px; color: #EA4335;" 
-                            title="Xóa">
-                        <i class="fa-solid fa-trash-can"></i>
-                    </button>
+                    <?php if ($stall['contract_status_code'] !== 'active'): ?>
+                        <button class="btn btn-ghost btn-sm btn-open-delete-stall" 
+                                data-stall-id="<?php echo $stall['stall_id']; ?>" 
+                                data-stall-code="<?php echo htmlspecialchars($stall['stall_code']); ?>" 
+                                data-url="<?php echo BASE_URL; ?>api/deleteStall" 
+                                style="padding: 4px 8px; font-size: 11px; color: #EA4335;" 
+                                title="Xóa">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    <?php endif; ?>
                 </div>
             </td>
         </tr>

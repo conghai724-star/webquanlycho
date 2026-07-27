@@ -98,8 +98,8 @@
             <!-- Đính kèm PDF -->
             <div class="form-group" style="margin-bottom: 24px; max-width: 450px;">
                 <label class="form-label" for="contract_file" style="font-weight: 500;">File đính kèm Hợp đồng (PDF)</label>
-                <input type="file" id="contract_file" name="contract_file" class="form-control" accept=".pdf" style="font-size: 13px; padding: 6px 12px;">
-                <small style="color: var(--text-muted); font-size: 11px; margin-top: 4px; display: block;">Chỉ chấp nhận file định dạng PDF. Dung lượng tối đa: 15MB.</small>
+                <input type="file" id="contract_file" name="contract_file" class="form-control" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="font-size: 13px; padding: 6px 12px;">
+                <small style="color: var(--text-muted); font-size: 11px; margin-top: 4px; display: block;">Hỗ trợ định dạng: Word, PDF, JPG, JPEG, PNG. Dung lượng tối đa: 15MB.</small>
             </div>
 
             <hr style="border: 0; border-top: 1px solid var(--border-color-light); margin: 24px 0;">

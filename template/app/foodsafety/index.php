@@ -1,3 +1,46 @@
+<?php
+// Tính toán số lượng giấy tờ hết hạn và sắp hết hạn
+$expiredCount = 0;
+$expiringCount = 0;
+if (!empty($certificates)) {
+    foreach ($certificates as $cert) {
+        if ($cert['status_code'] === 'expired') {
+            $expiredCount++;
+        } elseif ($cert['status_code'] === 'valid') {
+            $days = (int)$cert['days_remaining'];
+            if ($days <= 0) {
+                $expiredCount++;
+            } elseif ($days <= 30) {
+                $expiringCount++;
+            }
+        }
+    }
+}
+?>
+
+<?php if ($expiredCount > 0 || $expiringCount > 0): ?>
+    <div style="background-color: var(--bg-surface-secondary); border-left: 4px solid var(--red); padding: 16px 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; align-items: flex-start; gap: 16px;">
+        <div style="background-color: rgba(234, 67, 53, 0.1); color: var(--red); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 18px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01"/></svg>
+        </div>
+        <div>
+            <h4 style="margin: 0 0 6px 0; font-size: 15px; font-weight: 600; color: var(--text-heading);">Cảnh báo ngày hết hạn giấy tờ ATTP</h4>
+            <p style="margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.5;">
+                Hệ thống phát hiện có <strong><?php echo $expiredCount; ?></strong> giấy tờ đã hết hạn và <strong><?php echo $expiringCount; ?></strong> giấy tờ sắp hết hạn trong vòng 30 ngày tới. Vui lòng thông báo tiểu thương cập nhật hồ sơ.
+                <br>
+                <span style="display: inline-flex; gap: 12px; margin-top: 8px;">
+                    <?php if ($expiredCount > 0): ?>
+                        <a href="<?php echo BASE_URL; ?>admin/foodsafety?status=expired" style="color: var(--red); font-weight: 600; text-decoration: none;">Xem các giấy tờ đã hết hạn &rarr;</a>
+                    <?php endif; ?>
+                    <?php if ($expiringCount > 0): ?>
+                        <a href="<?php echo BASE_URL; ?>admin/foodsafety?status=valid" style="color: #e65100; font-weight: 600; text-decoration: none;">Xem các giấy tờ sắp hết hạn &rarr;</a>
+                    <?php endif; ?>
+                </span>
+            </p>
+        </div>
+    </div>
+<?php endif; ?>
+
 <!-- Phân loại Tab & Nút thêm mới -->
 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
     <!-- Nút chuyển đổi Tab -->
@@ -17,27 +60,27 @@
     <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
         <div style="display: flex; gap: 8px; align-items: center; width: 100%;">
             <form id="form-filter-certificates" action="<?php echo BASE_URL; ?>admin/foodsafety" method="GET" style="display: flex; gap: 8px; margin: 0; flex-wrap: wrap; width: 100%;">
-                <input type="text" name="q" class="form-control" placeholder="Tìm số GCN, tên giấy tờ, tiểu thương..." style="width: 250px; height: 36px; font-size: 13px;">
+                <input type="text" name="q" class="form-control" placeholder="Tìm số GCN, tên giấy tờ, tiểu thương..." style="width: 250px; height: 36px; font-size: 13px;" value="<?php echo htmlspecialchars($search ?? ''); ?>">
                 
                 <select name="doc_type" class="form-control" style="width: 180px; height: 36px; font-size: 13px;">
                     <option value="">Tất cả loại giấy tờ</option>
-                    <option value="ATTP">Giấy chứng nhận ATTP</option>
-                    <option value="Health">Giấy khám sức khỏe</option>
-                    <option value="Training">Giấy xác nhận tập huấn</option>
+                    <option value="attp" <?php echo ($doc_type_filter ?? '') === 'attp' ? 'selected' : ''; ?>>Giấy chứng nhận ATTP</option>
+                    <option value="suc_khoe" <?php echo ($doc_type_filter ?? '') === 'suc_khoe' ? 'selected' : ''; ?>>Giấy khám sức khỏe</option>
+                    <option value="tap_huan" <?php echo ($doc_type_filter ?? '') === 'tap_huan' ? 'selected' : ''; ?>>Giấy xác nhận tập huấn</option>
                 </select>
                 
                 <select name="status" class="form-control" style="width: 160px; height: 36px; font-size: 13px;">
                     <option value="">Tất cả trạng thái</option>
                     <?php if (!empty($statuses)): ?>
                         <?php foreach ($statuses as $st): ?>
-                            <option value="<?php echo htmlspecialchars($st['status_code']); ?>">
+                            <option value="<?php echo htmlspecialchars($st['status_code']); ?>" <?php echo ($status_filter ?? '') === $st['status_code'] ? 'selected' : ''; ?>>
                                 <?php echo htmlspecialchars($st['status_name']); ?>
                             </option>
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </select>
                 
-                <button type="button" id="btn-filter-certificates" class="btn btn-outline" style="height: 36px; padding: 0 16px;">Lọc</button>
+                <button type="submit" id="btn-filter-certificates" class="btn btn-outline" style="height: 36px; padding: 0 16px;">Lọc</button>
                 <a href="<?php echo BASE_URL; ?>admin/foodsafety" class="btn btn-ghost" style="height: 36px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; padding: 0 12px; color: var(--text-muted);">Xóa bộ lọc</a>
             </form>
         </div>
@@ -196,6 +239,7 @@ $(document).ready(function() {
             const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
             const swalBg = isDark ? '#1a2332' : '#ffffff';
             const swalColor = isDark ? '#ffffff' : '#0f1623';
+            const csrfToken = $('input[name="csrf_token"]').val() || '';
 
             Swal.fire({
                 title: 'Xóa giấy chứng nhận?',
@@ -210,7 +254,48 @@ $(document).ready(function() {
                 color: swalColor
             }).then((result) => {
                 if (result.isConfirmed) {
-                    window.location.href = '<?php echo BASE_URL; ?>admin/foodsafety_delete/' + id;
+                    Swal.fire({
+                        title: 'Đang xử lý xóa...',
+                        allowOutsideClick: false,
+                        background: swalBg,
+                        color: swalColor,
+                        didOpen: function() { Swal.showLoading(); }
+                    });
+                    const fd = new FormData();
+                    fd.append('id', id);
+                    fd.append('csrf_token', csrfToken);
+
+                    $.ajax({
+                        type: "POST",
+                        url: '<?php echo BASE_URL; ?>api/deleteCertificate',
+                        data: fd,
+                        processData: false,
+                        contentType: false,
+                        dataType: 'json',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        success: function(data) {
+                            Swal.close();
+                            if (data.status === 200) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Thành công',
+                                    text: data.message,
+                                    timer: 1500,
+                                    showConfirmButton: false,
+                                    background: swalBg,
+                                    color: swalColor
+                                }).then(function() {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire({ icon: 'error', title: 'Thất bại', text: data.message, background: swalBg, color: swalColor });
+                            }
+                        },
+                        error: function() {
+                            Swal.close();
+                            Swal.fire({ icon: 'error', title: 'Lỗi', text: 'Có lỗi xảy ra trong quá trình xử lý.', background: swalBg, color: swalColor });
+                        }
+                    });
                 }
             });
         }

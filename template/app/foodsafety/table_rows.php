@@ -7,16 +7,16 @@
             // Phân loại badge cho doc_type
             $docTypeLabel = '';
             $docTypeClass = '';
-            switch ($cert['doc_type']) {
-                case 'ATTP':
+            switch ($cert['doc_type_code']) {
+                case 'attp':
                     $docTypeLabel = 'GCN ATTP';
                     $docTypeClass = 'status-blue';
                     break;
-                case 'Health':
+                case 'suc_khoe':
                     $docTypeLabel = 'Khám sức khỏe';
                     $docTypeClass = 'status-green';
                     break;
-                case 'Training':
+                case 'tap_huan':
                     $docTypeLabel = 'Tập huấn ATTP';
                     $docTypeClass = 'status-orange';
                     break;

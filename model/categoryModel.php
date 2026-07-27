@@ -118,39 +118,39 @@ class categoryModel {
     /**
      * Xóa danh mục kèm theo kiểm tra ràng buộc khóa ngoại
      */
-    public function deleteItem($categoryKey, $stall_id) {
+    public function deleteItem($categoryKey, $id) {
         $table = $this->getTableName($categoryKey);
         
         if ($categoryKey === 'area') {
-            $oldItem = $this->getItemById('area', $stall_id);
+            $oldItem = $this->getItemById('area', $id);
             if (!$oldItem) {
                 throw new Exception("Khu vực không tồn tại hoặc bạn không có quyền truy cập.");
             }
             marketService::checkWritePermission($oldItem['market_id']);
 
             // Kiểm tra xem có sạp nào đang thuộc khu vực này không
-            $sqlCheck = "SELECT COUNT(*) as count FROM stalls WHERE area_id = :trader_status_id";
-            $res = $this->db->selectOne($sqlCheck, ['trader_status_id' => $trader_status_id]);
+            $sqlCheck = "SELECT COUNT(*) as count FROM stalls WHERE stall_area_id = :id";
+            $res = $this->db->selectOne($sqlCheck, ['id' => $id]);
             if (($res['count'] ?? 0) > 0) {
                 throw new Exception("Không thể xóa khu vực này vì đang có sạp chợ trực thuộc.");
             }
         } elseif ($categoryKey === 'stall_type') {
             // Kiểm tra xem có sạp nào đang dùng loại sạp này không
-            $sqlCheck = "SELECT COUNT(*) as count FROM stalls WHERE stall_type_id = :trader_status_id";
-            $res = $this->db->selectOne($sqlCheck, ['trader_status_id' => $trader_status_id]);
+            $sqlCheck = "SELECT COUNT(*) as count FROM stalls WHERE stall_type_id = :id";
+            $res = $this->db->selectOne($sqlCheck, ['id' => $id]);
             if (($res['count'] ?? 0) > 0) {
                 throw new Exception("Không thể xóa loại sạp này vì đang có sạp chợ sử dụng.");
             }
         } elseif ($categoryKey === 'business_line') {
             // Kiểm tra xem có tiểu thương nào thuộc ngành hàng này không
-            $sqlCheck = "SELECT COUNT(*) as count FROM traders WHERE business_line_id = :attp_status_id AND attp_attp_status_id != (SELECT status_id FROM system_statuses WHERE status_domain = 'trader' AND status_code = '99')";
-            $res = $this->db->selectOne($sqlCheck, ['attp_id' => $attp_id]);
+            $sqlCheck = "SELECT COUNT(*) as count FROM traders WHERE trader_business_line_id = :id AND trader_status_id != 99";
+            $res = $this->db->selectOne($sqlCheck, ['id' => $id]);
             if (($res['count'] ?? 0) > 0) {
                 throw new Exception("Không thể xóa ngành hàng này vì đang có tiểu thương đăng ký kinh doanh.");
             }
         } elseif ($categoryKey === 'document_type') {
             // Kiểm tra xem có giấy tờ nào thuộc loại giấy tờ này không
-            $sqlCheck = "SELECT COUNT(*) as count FROM trader_attp WHERE doc_type_id = :status_id AND attp_status_id != (SELECT status_id FROM system_statuses WHERE status_domain = 'attp' AND status_code = '99')";
+            $sqlCheck = "SELECT COUNT(*) as count FROM trader_attp WHERE attp_doc_type_id = :id AND attp_status_id != 99";
             $res = $this->db->selectOne($sqlCheck, ['id' => $id]);
             if (($res['count'] ?? 0) > 0) {
                 throw new Exception("Không thể xóa loại giấy tờ này vì đang có tiểu thương đăng ký nộp.");

@@ -1,6 +1,6 @@
 <?php
 /**
- * Controller xử lý các yêu cầu AJAX / API trả về dữ liệu JSON
+ * Controller xử lý các yêu cầu AJAX / API trả về dữ liệu JON
  */
 class apiController extends baseController {
 
@@ -154,12 +154,13 @@ class apiController extends baseController {
 
         try {
             $traderModel = new traderModel();
-            $traders = $traderModel->getAllTraders($search, $business_line, $status);
+            $marketId = marketService::currentMarketId();
+            $traders = $traderModel->getAllTraders($search, $business_line, $status, $marketId);
 
             // Nạp template table_rows.php để sinh ra HTML
             ob_start();
             // Nạp biến $traders cho view table_rows.php
-            require DIR_TEMPLATE . '/backend/trader/table_rows.php';
+            require DIR_TEMPLATE . '/trader/table_rows.php';
             $html = ob_get_clean();
 
             // Sinh query string mới phục vụ cập nhật các link export file
@@ -206,6 +207,9 @@ class apiController extends baseController {
     public function addTrader() {
         $this->render->abort405('POST', 'create', 'trader');
 
+        $statusModel = new statusModel();
+        $activeTraderStatusId = $statusModel->getIdByCode('trader', 'active');
+
         $data = [
             'trader_code'             => $_POST['trader_code'] ?? '',
             'trader_fullname'         => $_POST['fullname'] ?? '',
@@ -214,7 +218,8 @@ class apiController extends baseController {
             'trader_address'          => $_POST['address'] ?? '',
             'trader_business_line_id' => $_POST['business_line_id'] ?? null,
             'trader_description'      => $_POST['description'] ?? '',
-            'trader_status_id'        => $_POST['status'] ?? 7
+            'trader_status_id'        => $_POST['status'] ?: $activeTraderStatusId,
+            'trader_market_id'        => marketService::currentMarketId()
         ];
 
         // Xác thực dữ liệu
@@ -251,6 +256,9 @@ class apiController extends baseController {
 
         $trader_id = $_POST['id'];
 
+        $statusModel = new statusModel();
+        $activeTraderStatusId = $statusModel->getIdByCode('trader', 'active');
+
         $data = [
             'trader_fullname'         => $_POST['fullname'] ?? '',
             'trader_phone'            => $_POST['phone'] ?? '',
@@ -258,7 +266,7 @@ class apiController extends baseController {
             'trader_address'          => $_POST['address'] ?? '',
             'trader_business_line_id' => $_POST['business_line_id'] ?? null,
             'trader_description'      => $_POST['description'] ?? '',
-            'trader_status_id'        => $_POST['status'] ?? 7
+            'trader_status_id'        => $_POST['status'] ?: $activeTraderStatusId
         ];
 
         // Xác thực dữ liệu
@@ -273,6 +281,7 @@ class apiController extends baseController {
         try {
             $traderModel = new traderModel();
             $trader = $this->render->abort404($traderModel, 'getTraderById', $trader_id, 'update', 'trader');
+            $data['trader_market_id'] = $trader['trader_market_id'] ?? null;
 
             // Kiểm tra trùng lặp số CCCD (loại trừ bản ghi hiện tại)
             $this->render->abort400(!$traderModel->isCccdExists($data['trader_cccd'], $trader_id), 'update', 'trader', 'Số CCCD đã tồn tại trên hệ thống');
@@ -305,10 +314,11 @@ class apiController extends baseController {
 
         try {
             $stallModel = new stallModel();
-            $stalls = $stallModel->getAll($area_id ?: null, $status ?: null, $search ?: null);
+            $marketId = marketService::currentMarketId();
+            $stalls = $stallModel->getAll($area_id ?: null, $status ?: null, $search ?: null, $marketId);
 
             ob_start();
-            require DIR_TEMPLATE . '/backend/stall/table_rows.php';
+            require DIR_TEMPLATE . '/stall/table_rows.php';
             $html = ob_get_clean();
 
             $queryString = http_build_query([
@@ -337,13 +347,16 @@ class apiController extends baseController {
     public function addStall() {
         $this->render->abort405('POST', 'create', 'stall');
 
+        $statusModel = new statusModel();
+        $emptyStatusId = $statusModel->getIdByCode('stall', 'empty');
+
         $data = [
             'stall_area_id'       => $_POST['area_id'] ?? '',
             'stall_code'          => $_POST['stall_code'] ?? '',
             'stall_type_id'       => $_POST['stall_type_id'] ?? '',
             'stall_area_size'     => $_POST['area_size'] ?? '',
             'stall_base_price'    => $_POST['base_price'] ?? '',
-            'stall_status_id'     => $_POST['status'] ?? 3
+            'stall_status_id'     => $_POST['status'] ?: $emptyStatusId
         ];
 
         $validator = new validator();
@@ -376,13 +389,16 @@ class apiController extends baseController {
 
         $stall_id = $_POST['id'];
 
+        $statusModel = new statusModel();
+        $emptyStatusId = $statusModel->getIdByCode('stall', 'empty');
+
         $data = [
             'stall_area_id'       => $_POST['area_id'] ?? '',
             'stall_code'          => $_POST['stall_code'] ?? '',
             'stall_type_id'       => $_POST['stall_type_id'] ?? '',
             'stall_area_size'     => $_POST['area_size'] ?? '',
             'stall_base_price'    => $_POST['base_price'] ?? '',
-            'stall_status_id'     => $_POST['status'] ?? 3
+            'stall_status_id'     => $_POST['status'] ?: $emptyStatusId
         ];
 
         $validator = new validator();
@@ -419,9 +435,18 @@ class apiController extends baseController {
 
         try {
             $stallModel = new stallModel();
-            $this->render->abort404($stallModel, 'getById', $stall_id, 'delete', 'stall');
+            $stall = $this->render->abort404($stallModel, 'getById', $stall_id, 'delete', 'stall');
 
-            $this->render->abort400(!$stallModel->hasActiveContract($stall_id), 'delete', 'stall', 'Sạp đang có hợp đồng hoạt động, không thể xóa.');
+            // Nếu sạp có hợp đồng Hoạt động, chặn không cho xóa
+            if ($stall['contract_status_code'] === 'active') {
+                $this->render->abort400(false, 'delete', 'stall', 'Sạp đang có hợp đồng hoạt động, không thể xóa.');
+            }
+
+            // Nếu sạp có hợp đồng Khởi tạo, tiến hành xóa hợp đồng đó trước để dọn dẹp
+            if ($stall['contract_status_code'] === 'draft') {
+                $db = database::getInstance();
+                $db->query("DELETE FROM contracts WHERE contract_stall_id = :stall_id AND contract_status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'contract' AND status_code = 'draft')", ['stall_id' => $stall_id]);
+            }
 
             $stallModel->delete($stall_id);
             $this->render->apiResponse('delete', 'stall', true);
@@ -472,6 +497,15 @@ class apiController extends baseController {
      */
     public function assignStall() {
         $this->render->abort405('POST', 'create', 'contract');
+        
+        // Hỗ trợ đồng thời cả key stall_id/trader_id từ AJAX và contract_stall_id/contract_trader_id
+        if (isset($_POST['stall_id'])) {
+            $_POST['contract_stall_id'] = $_POST['stall_id'];
+        }
+        if (isset($_POST['trader_id'])) {
+            $_POST['contract_trader_id'] = $_POST['trader_id'];
+        }
+
         $this->render->abort400(['contract_stall_id', 'contract_trader_id'], 'create', 'contract', 'Vui lòng chọn đầy đủ sạp và tiểu thương.');
 
         $stallId = $_POST['contract_stall_id'];
@@ -482,6 +516,9 @@ class apiController extends baseController {
             $stall = $stallModel->getById($stallId);
             $this->render->abort400($stall && $stall['status'] === 'empty', 'create', 'contract', 'Sạp này không còn trống để cho thuê.');
 
+            $statusModel = new statusModel();
+            $draftStatusId = $statusModel->getIdByCode('contract', 'draft') ?: 27;
+
             $contractModel = new contractModel();
             $contractData = [
                 'contract_trader_id' => $traderId,
@@ -491,14 +528,14 @@ class apiController extends baseController {
                 'contract_start_date' => date('Y-m-d'),
                 'contract_end_date' => date('Y-m-d', strtotime('+1 year')),
                 'contract_deposit' => $stall['stall_base_price'] * 2,
-                'status' => 'active'
+                'contract_status_id' => $draftStatusId
             ];
 
             $contractModel->create($contractData);
             
             $this->response([
                 'status' => 200,
-                'message' => 'Gán sạp cho tiểu thương thành công!'
+                'message' => 'Gán sạp thành công! Hợp đồng thuê sạp đang ở trạng thái Khởi tạo.'
             ]);
         } catch (Exception $e) {
             $this->render->abort500($e, 'create', 'contract');
@@ -522,8 +559,8 @@ class apiController extends baseController {
             $this->render->abort400($currentStall && $newStall, 'update', 'stall', 'Không tìm thấy thông tin sạp.');
 
             $contractModel = new contractModel();
-            $contract1 = $contractModel->getActiveContractByStall($currentStallId);
-            $this->render->abort400($contract1 !== null && $contract1 !== false, 'update', 'stall', 'Không tìm thấy hợp đồng đang hoạt động cho sạp hiện tại.');
+            $contract1 = $contractModel->getActiveOrDraftContractByStall($currentStallId);
+            $this->render->abort400($contract1 !== null && $contract1 !== false, 'update', 'stall', 'Không tìm thấy hợp đồng hợp lệ cho sạp hiện tại.');
 
             $message = $stallModel->transferStall($currentStall, $newStall, $contract1);
 
@@ -567,8 +604,12 @@ class apiController extends baseController {
                     break;
                 case 'contract_number':
                     $db = database::getInstance();
-                    $chk = $db->selectOne("SELECT COUNT(*) as count FROM contracts WHERE contract_number = :num AND status_id != (SELECT user_market_market_id FROM system_statuses WHERE status_domain = 'contract' AND status_code = '99')", ['num' => $value]);
+                    $chk = $db->selectOne("SELECT COUNT(*) as count FROM contracts WHERE contract_number = :num AND contract_status_id != 99", ['num' => $value]);
                     $exists = ($chk['count'] ?? 0) > 0;
+                    break;
+                case 'doc_number':
+                    $foodsafetyModel = new foodsafetyModel();
+                    $exists = $foodsafetyModel->isDocNumberExists($value, $excludeId);
                     break;
             }
             $this->response(['exists' => $exists]);
@@ -588,10 +629,11 @@ class apiController extends baseController {
 
         try {
             $contractModel = new contractModel();
-            $contracts = $contractModel->getAll($status ?: null, $search ?: null);
+            $marketId = marketService::currentMarketId();
+            $contracts = $contractModel->getAll($status ?: null, $search ?: null, $marketId);
 
             ob_start();
-            require DIR_TEMPLATE . '/backend/contract/table_rows.php';
+            require DIR_TEMPLATE . '/contract/table_rows.php';
             $html = ob_get_clean();
 
             $queryString = http_build_query([
@@ -656,9 +698,9 @@ class apiController extends baseController {
 
             // Xử lý upload file PDF đính kèm (nếu có)
             if (isset($_FILES['contract_file']) && $_FILES['contract_file']['error'] !== UPLOAD_ERR_NO_FILE) {
-                $uploader = new upload('contracts', ['pdf'], 15); // Chỉ nhận file PDF
+                $uploader = new upload('contracts', ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'], 15);
                 $savedFile = $uploader->save('contract_file');
-                $this->render->abort400($savedFile !== false, 'create', 'contract', 'Lỗi tải file hợp đồng: ' . reset($uploader->getErrors()));
+                $this->render->abort400($savedFile !== false, 'create', 'contract', 'Lỗi tải file hợp đồng: ' . ($uploader->getErrors()[0] ?? ''));
                 $data['contract_file'] = $savedFile;
             }
 
@@ -687,6 +729,78 @@ class apiController extends baseController {
 
             $contractModel->renew($contractId, $newEndDate);
             $this->render->apiResponse('update', 'contract', true);
+        } catch (Exception $e) {
+            $this->render->abort500($e, 'update', 'contract');
+        }
+    }
+
+    public function activateContract() {
+        $this->render->abort405('POST', 'update', 'contract');
+        $this->render->abort400(['contract_id', 'contract_number', 'contract_start_date', 'contract_end_date', 'contract_deposit'], 'update', 'contract');
+
+        $contractId = $_POST['contract_id'];
+        $data = [
+            'contract_number'     => $_POST['contract_number'],
+            'contract_start_date' => $_POST['contract_start_date'],
+            'contract_end_date'   => $_POST['contract_end_date'],
+            'contract_deposit'    => $_POST['contract_deposit']
+        ];
+
+        try {
+            $contractModel = new contractModel();
+            $this->render->abort404($contractModel, 'getById', $contractId, 'update', 'contract');
+
+            // Kiểm tra trùng lặp số hợp đồng
+            $this->render->abort400(!$contractModel->isContractNumberExists($data['contract_number'], $contractId), 'update', 'contract', 'Số hợp đồng này đã tồn tại trên hệ thống.');
+
+            // Kiểm tra ngày bắt đầu và kết thúc
+            $this->render->abort400(strtotime($data['contract_end_date']) > strtotime($data['contract_start_date']), 'update', 'contract', 'Ngày kết thúc hợp đồng phải sau ngày bắt đầu.');
+
+            // Xử lý upload nhiều file đính kèm (nếu có) và gỡ file
+            $remaining = json_decode($_POST['remaining_files'] ?? '[]', true);
+            if (!is_array($remaining)) {
+                $remaining = [];
+            }
+
+            $newUploadedFiles = [];
+            if (isset($_FILES['contract_files']) && !empty($_FILES['contract_files']['name'][0])) {
+                $filesCount = count($_FILES['contract_files']['name']);
+                for ($i = 0; $i < $filesCount; $i++) {
+                    if ($_FILES['contract_files']['error'][$i] === UPLOAD_ERR_NO_FILE) {
+                        continue;
+                    }
+                    
+                    $tempKey = 'temp_contract_file_' . $i;
+                    $_FILES[$tempKey] = [
+                        'name' => $_FILES['contract_files']['name'][$i],
+                        'type' => $_FILES['contract_files']['type'][$i],
+                        'tmp_name' => $_FILES['contract_files']['tmp_name'][$i],
+                        'error' => $_FILES['contract_files']['error'][$i],
+                        'size' => $_FILES['contract_files']['size'][$i]
+                    ];
+                    
+                    $uploader = new upload('contracts', ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'], 15);
+                    $savedFile = $uploader->save($tempKey);
+                    
+                    unset($_FILES[$tempKey]);
+                    
+                    if ($savedFile === false) {
+                        $this->render->abort400(false, 'update', 'contract', 'Lỗi tải file hợp đồng: ' . ($uploader->getErrors()[0] ?? ''));
+                    }
+                    
+                    $newUploadedFiles[] = $savedFile;
+                }
+            }
+
+            $allFiles = array_merge($remaining, $newUploadedFiles);
+            $data['contract_file'] = !empty($allFiles) ? json_encode($allFiles, JSON_UNESCAPED_UNICODE) : null;
+
+            $contractModel->activateDraftContract($contractId, $data);
+            
+            $this->response([
+                'status' => 200,
+                'message' => 'Kích hoạt hợp đồng thành công và đã chuyển sang trạng thái Hoạt động!'
+            ]);
         } catch (Exception $e) {
             $this->render->abort500($e, 'update', 'contract');
         }
@@ -753,6 +867,114 @@ class apiController extends baseController {
     }
 
     /**
+     * API lấy lịch sử chỉnh sửa hợp đồng (AJAX GET)
+     */
+    public function getContractHistory() {
+        $contractId = $_GET['contract_id'] ?? 0;
+        if (!$contractId) {
+            $this->response(['status' => 400, 'message' => 'Thiếu contract_id'], 400);
+        }
+
+        try {
+            $contractModel = new contractModel();
+            $history = $contractModel->getHistory($contractId);
+            $this->response([
+                'status' => 200,
+                'data' => $history
+            ]);
+        } catch (Exception $e) {
+            $this->response([
+                'status' => 500,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * API chỉnh sửa thông tin hợp đồng (AJAX POST)
+     */
+    public function editContract() {
+        $this->render->abort405('POST', 'update', 'contract');
+        $this->render->abort400('contract_id', 'update', 'contract');
+
+        $contractId = $_POST['contract_id'];
+        $data = [
+            'contract_number'     => $_POST['contract_number'] ?? '',
+            'contract_name'       => $_POST['contract_name'] ?? '',
+            'contract_start_date' => $_POST['contract_start_date'] ?? '',
+            'contract_end_date'   => $_POST['contract_end_date'] ?? '',
+            'contract_deposit'    => $_POST['contract_deposit'] ?? 0,
+            'contract_description'=> $_POST['contract_description'] ?? '',
+        ];
+
+        $validator = new validator();
+        $validator->required('contract_number', $data['contract_number'], 'Số hợp đồng không được để trống.')
+                  ->required('contract_name', $data['contract_name'], 'Tên hợp đồng không được để trống.')
+                  ->required('contract_start_date', $data['contract_start_date'], 'Vui lòng chọn ngày bắt đầu.')
+                  ->required('contract_end_date', $data['contract_end_date'], 'Vui lòng chọn ngày kết thúc.');
+
+        $this->render->abort400($validator, 'update', 'contract');
+
+        try {
+            $contractModel = new contractModel();
+            
+            // Kiểm tra trùng số hợp đồng (loại trừ hợp đồng hiện tại)
+            $this->render->abort400(!$contractModel->isContractNumberExists($data['contract_number'], $contractId), 'update', 'contract', 'Số hợp đồng này đã tồn tại trên hệ thống.');
+            
+            // Kiểm tra ngày
+            $this->render->abort400(strtotime($data['contract_end_date']) > strtotime($data['contract_start_date']), 'update', 'contract', 'Ngày kết thúc hợp đồng phải sau ngày bắt đầu.');
+
+            // Xử lý upload nhiều file đính kèm (nếu có) và gỡ file
+            $remaining = json_decode($_POST['remaining_files'] ?? '[]', true);
+            if (!is_array($remaining)) {
+                $remaining = [];
+            }
+
+            $newUploadedFiles = [];
+            if (isset($_FILES['contract_files']) && !empty($_FILES['contract_files']['name'][0])) {
+                $filesCount = count($_FILES['contract_files']['name']);
+                for ($i = 0; $i < $filesCount; $i++) {
+                    if ($_FILES['contract_files']['error'][$i] === UPLOAD_ERR_NO_FILE) {
+                        continue;
+                    }
+                    
+                    $tempKey = 'temp_contract_file_' . $i;
+                    $_FILES[$tempKey] = [
+                        'name' => $_FILES['contract_files']['name'][$i],
+                        'type' => $_FILES['contract_files']['type'][$i],
+                        'tmp_name' => $_FILES['contract_files']['tmp_name'][$i],
+                        'error' => $_FILES['contract_files']['error'][$i],
+                        'size' => $_FILES['contract_files']['size'][$i]
+                    ];
+                    
+                    $uploader = new upload('contracts', ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'], 15);
+                    $savedFile = $uploader->save($tempKey);
+                    
+                    unset($_FILES[$tempKey]);
+                    
+                    if ($savedFile === false) {
+                        $this->render->abort400(false, 'update', 'contract', 'Lỗi tải file hợp đồng: ' . ($uploader->getErrors()[0] ?? ''));
+                    }
+                    
+                    $newUploadedFiles[] = $savedFile;
+                }
+            }
+
+            $allFiles = array_merge($remaining, $newUploadedFiles);
+            $data['contract_file'] = !empty($allFiles) ? json_encode($allFiles, JSON_UNESCAPED_UNICODE) : null;
+
+            $contractModel->updateContractDetails($contractId, $data);
+            
+            $this->response([
+                'status' => 200,
+                'message' => 'Cập nhật thông tin hợp đồng thành công!'
+            ]);
+        } catch (Exception $e) {
+            $this->render->abort500($e, 'update', 'contract');
+        }
+    }
+
+    /**
      * API thêm phụ lục hợp đồng (AJAX POST)
      */
     public function addContractAppendix() {
@@ -761,14 +983,14 @@ class apiController extends baseController {
         $data = [
             'contract_id'     => $_POST['contract_id'] ?? '',
             'appendix_number' => $_POST['appendix_number'] ?? '',
-            'market_name'            => $_POST['market_name'] ?? '',
+            'market_name'     => $_POST['name'] ?? ($_POST['market_name'] ?? ''),
             'sign_date'       => $_POST['sign_date'] ?? '',
             'effect_date'     => $_POST['effect_date'] ?? '',
             'content'         => $_POST['content'] ?? '',
         ];
 
         $validator = new validator();
-        $validator->required('contract_id', $data['contract_id'], 'Thiếu user_market_market_id hợp đồng.')
+        $validator->required('contract_id', $data['contract_id'], 'Thiếu ID hợp đồng.')
                   ->required('appendix_number', $data['appendix_number'], 'Số phụ lục không được để trống.')
                   ->required('market_name', $data['market_name'], 'Tên phụ lục không được để trống.')
                   ->required('sign_date', $data['sign_date'], 'Vui lòng nhập ngày ký.')
@@ -782,12 +1004,43 @@ class apiController extends baseController {
             // Kiểm tra trùng số phụ lục
             $this->render->abort400(!$contractModel->isAppendixNumberExists($data['appendix_number']), 'create', 'appendix', 'Số phụ lục này đã tồn tại trên hệ thống.');
 
-            // Xử lý upload file phụ lục (nếu có)
-            if (isset($_FILES['appendix_file']) && $_FILES['appendix_file']['error'] !== UPLOAD_ERR_NO_FILE) {
-                $uploader = new upload('contracts/appendices', ['jpg', 'jpeg', 'png', 'pdf'], 15);
-                $savedFile = $uploader->save('appendix_file');
-                $this->render->abort400($savedFile !== false, 'create', 'appendix', 'Lỗi tải file phụ lục: ' . reset($uploader->getErrors()));
-                $data['file'] = $savedFile;
+            // Xử lý upload nhiều file phụ lục (nếu có)
+            $uploadedFiles = [];
+            if (isset($_FILES['appendix_files']) && !empty($_FILES['appendix_files']['name'][0])) {
+                $filesCount = count($_FILES['appendix_files']['name']);
+                for ($i = 0; $i < $filesCount; $i++) {
+                    if ($_FILES['appendix_files']['error'][$i] === UPLOAD_ERR_NO_FILE) {
+                        continue;
+                    }
+                    
+                    // Tạo một mục giả lập trong $_FILES cho từng tệp để tái sử dụng upload helper
+                    $tempKey = 'temp_appendix_file_' . $i;
+                    $_FILES[$tempKey] = [
+                        'name' => $_FILES['appendix_files']['name'][$i],
+                        'type' => $_FILES['appendix_files']['type'][$i],
+                        'tmp_name' => $_FILES['appendix_files']['tmp_name'][$i],
+                        'error' => $_FILES['appendix_files']['error'][$i],
+                        'size' => $_FILES['appendix_files']['size'][$i]
+                    ];
+                    
+                    $uploader = new upload('contracts/appendices', ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'], 15);
+                    $savedFile = $uploader->save($tempKey);
+                    
+                    // Dọn dẹp tệp tạm trong $_FILES
+                    unset($_FILES[$tempKey]);
+                    
+                    if ($savedFile === false) {
+                        $this->render->abort400(false, 'create', 'appendix', 'Lỗi tải file phụ lục: ' . ($uploader->getErrors()[0] ?? ''));
+                    }
+                    
+                    $uploadedFiles[] = $savedFile;
+                }
+            }
+
+            if (!empty($uploadedFiles)) {
+                $data['file'] = json_encode($uploadedFiles, JSON_UNESCAPED_UNICODE);
+            } else {
+                $data['file'] = null;
             }
 
             $contractModel->addAppendix($data);
@@ -803,15 +1056,31 @@ class apiController extends baseController {
     public function getContractAppendices() {
         $contractId = $_GET['contract_id'] ?? null;
         if (!$contractId) {
-            $this->response(['status' => 400, 'message' => 'Thiếu user_market_market_id hợp đồng.'], 400);
+            $this->response(['status' => 400, 'message' => 'Thiếu ID hợp đồng.'], 400);
         }
 
         try {
             $contractModel = new contractModel();
             $appendices = $contractModel->getAppendices($contractId);
+            
+            // Đồng bộ định dạng cột trả về để khớp với UI JS
+            $mapped = array_map(function($app) {
+                return [
+                    'appendix_id'          => $app['appendix_id'],
+                    'appendix_contract_id' => $app['appendix_contract_id'],
+                    'appendix_number'      => $app['appendix_number'],
+                    'name'                 => $app['appendix_name'],
+                    'sign_date'            => $app['appendix_sign_date'],
+                    'effect_date'          => $app['appendix_effect_date'],
+                    'content'              => $app['appendix_content'],
+                    'file'                 => $app['appendix_file'],
+                    'created_at'           => $app['appendix_created_at']
+                ];
+            }, $appendices);
+
             $this->response([
                 'status' => 200,
-                'data' => $appendices
+                'data' => $mapped
             ]);
         } catch (Exception $e) {
             $this->response([
@@ -833,10 +1102,11 @@ class apiController extends baseController {
 
         try {
             $foodsafetyModel = new foodsafetyModel();
-            $certificates = $foodsafetyModel->getCertificates(null, $docType ?: null, $status ?: null, $search ?: null);
+            $marketId = marketService::currentMarketId();
+            $certificates = $foodsafetyModel->getCertificates(null, $docType ?: null, $status ?: null, $search ?: null, $marketId);
 
             ob_start();
-            require DIR_TEMPLATE . '/backend/foodsafety/table_rows.php';
+            require DIR_TEMPLATE . '/foodsafety/table_rows.php';
             $html = ob_get_clean();
 
             $queryString = http_build_query([
@@ -863,9 +1133,9 @@ class apiController extends baseController {
      * API lấy chi tiết một giấy tờ vệ sinh ATTP (AJAX GET)
      */
     public function getCertificateDetail() {
-        $user_market_market_id = $_GET['user_market_market_id'] ?? null;
+        $user_market_market_id = $_GET['id'] ?? $_GET['user_market_market_id'] ?? null;
         if (!$user_market_market_id) {
-            $this->response(['status' => 400, 'message' => 'Thiếu user_market_market_id giấy tờ.'], 400);
+            $this->response(['status' => 400, 'message' => 'Thiếu ID giấy tờ.'], 400);
         }
         try {
             $foodsafetyModel = new foodsafetyModel();
@@ -925,7 +1195,7 @@ class apiController extends baseController {
             if (isset($_FILES['certificate_file']) && $_FILES['certificate_file']['error'] !== UPLOAD_ERR_NO_FILE) {
                 $uploader = new upload('foodsafety', ['jpg', 'jpeg', 'png', 'pdf'], 15);
                 $savedFile = $uploader->save('certificate_file');
-                $this->render->abort400($savedFile !== false, 'create', 'certificate', 'Lỗi tải file đính kèm: ' . reset($uploader->getErrors()));
+                $this->render->abort400($savedFile !== false, 'create', 'certificate', 'Lỗi tải file đính kèm: ' . ($uploader->getErrors()[0] ?? ''));
                 $data['attp_file'] = $savedFile;
             }
 
@@ -976,7 +1246,7 @@ class apiController extends baseController {
             if (isset($_FILES['certificate_file']) && $_FILES['certificate_file']['error'] !== UPLOAD_ERR_NO_FILE) {
                 $uploader = new upload('foodsafety', ['jpg', 'jpeg', 'png', 'pdf'], 15);
                 $savedFile = $uploader->save('certificate_file');
-                $this->render->abort400($savedFile !== false, 'update', 'certificate', 'Lỗi tải file đính kèm: ' . reset($uploader->getErrors()));
+                $this->render->abort400($savedFile !== false, 'update', 'certificate', 'Lỗi tải file đính kèm: ' . ($uploader->getErrors()[0] ?? ''));
                 $data['attp_file'] = $savedFile;
             }
 
@@ -1001,13 +1271,15 @@ class apiController extends baseController {
      */
     public function deleteCertificate() {
         $this->render->abort405('POST', 'delete', 'certificate');
-        $this->render->abort400('user_market_market_id', 'delete', 'certificate');
+        $this->render->abort400('id', 'delete', 'certificate');
 
-        $user_market_market_id = $_POST['user_market_market_id'];
+        $attp_id = $_POST['id'];
 
         try {
             $foodsafetyModel = new foodsafetyModel();
-            $foodsafetyModel->deleteCertificate($user_market_market_id);
+            $this->render->abort404($foodsafetyModel, 'getById', $attp_id, 'delete', 'certificate');
+
+            $foodsafetyModel->deleteCertificate($attp_id);
             $this->render->apiResponse('delete', 'certificate', true);
         } catch (Exception $e) {
             $this->render->abort500($e, 'delete', 'certificate');
@@ -1058,9 +1330,9 @@ class apiController extends baseController {
      * API lấy thông tin chi tiết đầy đủ của sạp, hợp đồng và tiểu thương (AJAX GET)
      */
     public function getStallDetails() {
-        $stallId = $_GET['user_market_market_id'] ?? 0;
+        $stallId = $_GET['id'] ?? $_GET['user_market_market_id'] ?? 0;
         if (!$stallId) {
-            $this->response(['status' => 400, 'message' => 'Thiếu user_market_market_id sạp chợ.'], 400);
+            $this->response(['status' => 400, 'message' => 'Thiếu ID sạp chợ.'], 400);
         }
 
         try {
@@ -1085,7 +1357,7 @@ class apiController extends baseController {
      * API Thay đổi active_market_id trong Session (AJAX GET)
      */
     public function changeMarketScope() {
-        $marketId = isset($_GET['user_market_market_id']) ? (int)$_GET['user_market_market_id'] : 0;
+        $marketId = (int)($_GET['id'] ?? $_GET['user_market_market_id'] ?? 0);
 
         // Nếu chuyển về Trang Tổng (user_market_market_id = 0)
         if ($marketId === 0) {
@@ -1162,10 +1434,10 @@ class apiController extends baseController {
     public function getCategoryDetail() {
         $this->render->abort405('GET', 'view', 'category');
         
-        $user_market_market_id = $_GET['user_market_market_id'] ?? '';
+        $user_market_market_id = $_GET['id'] ?? $_GET['user_market_market_id'] ?? '';
         $type = $_GET['type'] ?? '';
         
-        $this->render->abort400($user_market_market_id && $type, 'view', 'category', 'Thiếu user_market_market_id hoặc Loại danh mục.');
+        $this->render->abort400($user_market_market_id && $type, 'view', 'category', 'Thiếu ID danh mục hoặc Loại danh mục.');
 
         try {
             $categoryModel = new categoryModel();
@@ -1265,10 +1537,10 @@ class apiController extends baseController {
      */
     public function editCategory() {
         $this->render->abort405('POST', 'update', 'category');
-        $this->render->abort400(['user_market_market_id', 'type'], 'update', 'category', 'Thiếu thông tin danh mục.');
-
-        $user_market_market_id = $_POST['user_market_market_id'];
-        $type = $_POST['type'];
+        
+        $user_market_market_id = $_POST['id'] ?? $_POST['user_market_market_id'] ?? '';
+        $type = $_POST['type'] ?? '';
+        $this->render->abort400($user_market_market_id && $type, 'update', 'category', 'Thiếu thông tin danh mục.');
         $categoryModel = new categoryModel();
 
         // Kiểm tra tồn tại
@@ -1347,10 +1619,11 @@ class apiController extends baseController {
      */
     public function deleteCategory() {
         $this->render->abort405('POST', 'delete', 'category');
-        $this->render->abort400(['user_market_market_id', 'type'], 'delete', 'category', 'Thiếu thông tin danh mục cần xóa.');
 
-        $user_market_market_id = $_POST['user_market_market_id'] ?? $_GET['user_market_market_id'] ?? '';
+        $user_market_market_id = $_POST['id'] ?? $_POST['user_market_market_id'] ?? $_GET['id'] ?? $_GET['user_market_market_id'] ?? '';
         $type = $_POST['type'] ?? $_GET['type'] ?? '';
+
+        $this->render->abort400($user_market_market_id && $type, 'delete', 'category', 'Thiếu thông tin danh mục cần xóa.');
         $categoryModel = new categoryModel();
 
         // Kiểm tra tồn tại
@@ -1410,9 +1683,9 @@ class apiController extends baseController {
     public function editMarket() {
         $this->render->abort405('POST', 'update', 'market');
         $this->render->abort403(marketService::isSuperAdmin(), 'update', 'market');
-        $this->render->abort400('user_market_market_id', 'update', 'market');
-
-        $user_market_market_id = $_POST['user_market_market_id'];
+        
+        $user_market_market_id = $_POST['id'] ?? $_POST['user_market_market_id'] ?? '';
+        $this->render->abort400($user_market_market_id, 'update', 'market', 'Thiếu ID chợ.');
 
         $data = [
             'market_code'  => trim($_POST['market_code'] ?? ''),
@@ -1444,9 +1717,9 @@ class apiController extends baseController {
     public function deleteMarket() {
         $this->render->abort405('POST', 'delete', 'market');
         $this->render->abort403(marketService::isSuperAdmin(), 'delete', 'market');
-        $this->render->abort400('user_market_market_id', 'delete', 'market');
-
-        $user_market_market_id = $_POST['user_market_market_id'];
+        
+        $user_market_market_id = $_POST['id'] ?? $_POST['user_market_market_id'] ?? '';
+        $this->render->abort400($user_market_market_id, 'delete', 'market', 'Thiếu ID chợ cần xóa.');
 
         try {
             $marketModel = new marketModel();
@@ -1494,7 +1767,7 @@ class apiController extends baseController {
                 $this->render->abort400(!$userModel->getByEmail($market_email), 'create', 'user', 'market_email này đã được đăng ký cho tài khoản khác.');
             }
 
-            $actor = $db->selectOne("SELECT user_market_market_id FROM system_actors WHERE actor_code = :code", ['code' => $role]);
+            $actor = $db->selectOne("SELECT actor_id FROM system_actors WHERE actor_code = :code", ['code' => $role]);
             $actorId = $actor ? (int)$actor['actor_id'] : 3;
 
             $newUserId = $userModel->create([
@@ -1516,11 +1789,11 @@ class apiController extends baseController {
 
             if ($role !== 'super_market') {
                 if (marketService::isSuperAdmin()) {
-                    $allowedMarkets = array_column($db->select("SELECT user_market_market_id FROM markets WHERE status_code = 'active'"), 'actor_id');
+                    $allowedMarkets = array_column($db->select("SELECT market_id FROM markets WHERE market_status_code = 'active'"), 'market_id');
                 } else {
                     $managerUserId = session::get('user_market_user_id');
                     $allowedMarkets = array_column($db->select("
-                        SELECT m.user_market_market_id 
+                        SELECT m.market_id 
                         FROM user_markets um
                         JOIN markets m ON um.user_market_market_id = m.market_id
                         WHERE um.user_market_user_id = :manager_id AND m.market_status_code = 'active'
@@ -1553,9 +1826,9 @@ class apiController extends baseController {
     public function editUser() {
         $this->render->abort405('POST', 'update', 'user');
         $this->render->abort403(marketService::isSuperAdmin() || marketService::isAdminMarket(), 'update', 'user');
-        $this->render->abort400('market_id', 'update', 'user');
-
-        $market_id = $_POST['market_id'];
+        
+        $id = $_POST['id'] ?? $_POST['market_id'] ?? $_POST['user_market_market_id'] ?? '';
+        $this->render->abort400($id, 'update', 'user', 'Thiếu ID tài khoản cần sửa.');
 
         $db = database::getInstance();
         $userModel = new userModel();
@@ -1563,9 +1836,9 @@ class apiController extends baseController {
         $user = $db->selectOne("
             SELECT u.*, sa.actor_code 
             FROM users u 
-            LEFT JOIN system_actors sa ON u.actor_id = sa.actor_id 
-            WHERE u.user_market_user_id = :user_market_market_id
-        ", ['user_market_market_id' => $user_market_market_id]);
+            LEFT JOIN system_actors sa ON u.user_actor_id = sa.actor_id 
+            WHERE u.user_id = :id
+        ", ['id' => $id]);
 
         $this->render->abort400($user !== null, 'update', 'user', 'Không tìm thấy tài khoản nhân viên.');
 
@@ -1573,19 +1846,19 @@ class apiController extends baseController {
             $managerUserId = session::get('user_market_user_id');
             $isAssociated = $db->selectOne("
                 SELECT 1 FROM user_markets 
-                WHERE user_id = :target_id AND market_id IN (
-                    SELECT user_market_market_id FROM user_markets WHERE user_id = :manager_id
+                WHERE user_market_user_id = :target_id AND user_market_market_id IN (
+                    SELECT user_market_market_id FROM user_markets WHERE user_market_user_id = :manager_id
                 )
-            ", ['target_id' => $market_id, 'manager_id' => $managerUserId]);
+            ", ['target_id' => $id, 'manager_id' => $managerUserId]);
 
             $this->render->abort403($isAssociated || $user['actor_code'] === 'admin', 'update', 'user', 'Bạn không có quyền chỉnh sửa tài khoản này.');
         }
 
         $fullname = trim($_POST['fullname'] ?? '');
-        $market_email = trim($_POST['market_email'] ?? '');
+        $market_email = trim($_POST['email'] ?? $_POST['market_email'] ?? '');
         $password = $_POST['password'] ?? '';
         $role = $_POST['role'] ?? $user['actor_code'];
-        $status = $_POST['status'] ?? ($user['is_active'] ? 'active' : 'inactive');
+        $status = $_POST['status'] ?? ($user['user_is_active'] ? 'active' : 'inactive');
         $checkedMarkets = $_POST['markets'] ?? [];
 
         if (marketService::isAdminMarket()) {
@@ -1596,37 +1869,37 @@ class apiController extends baseController {
 
         $validator = new validator();
         $validator->required('fullname', $fullname, 'Vui lòng nhập họ tên.')
-                  ->market_email('market_email', $market_email, 'market_email không đúng định dạng.');
+                  ->email('market_email', $market_email, 'Email không đúng định dạng.');
 
         $this->render->abort400($validator, 'update', 'user');
 
         try {
             $dupUser = $userModel->getByEmail($market_email);
-            if ($dupUser && $dupUser['market_id'] != $market_id) {
-                $this->render->abort400(false, 'update', 'user', 'market_email này đã được sử dụng bởi một tài khoản khác.');
+            if ($dupUser && $dupUser['user_id'] != $id) {
+                $this->render->abort400(false, 'update', 'user', 'Email này đã được sử dụng bởi một tài khoản khác.');
             }
 
-            $actor = $db->selectOne("SELECT user_market_market_id FROM system_actors WHERE actor_code = :code", ['code' => $role]);
+            $actor = $db->selectOne("SELECT actor_id FROM system_actors WHERE actor_code = :code", ['code' => $role]);
             $actorId = $actor ? (int)$actor['actor_id'] : 3;
 
-            $userModel->update($user_market_market_id, [
+            $userModel->update($id, [
                 'fullname' => $fullname,
-                'market_email' => $market_email,
+                'email' => $market_email,
                 'user_group' => ($role === 'super_market') ? 1 : 2,
                 'actor_id' => $actorId,
                 'is_active' => $isActive
             ]);
 
             if (!empty($password)) {
-                $userModel->updatePassword($user_market_market_id, $password);
+                $userModel->updatePassword($id, $password);
             }
 
             if (marketService::isSuperAdmin()) {
-                $marketsScopeList = $db->select("SELECT user_market_market_id FROM markets WHERE status_code = 'active'");
+                $marketsScopeList = $db->select("SELECT market_id AS id FROM markets WHERE market_status_code = 'active'");
             } else {
                 $managerUserId = session::get('user_market_user_id');
                 $marketsScopeList = $db->select("
-                    SELECT m.user_market_market_id 
+                    SELECT m.market_id AS id 
                     FROM user_markets um
                     JOIN markets m ON um.user_market_market_id = m.market_id
                     WHERE um.user_market_user_id = :manager_id AND m.market_status_code = 'active'
@@ -1640,7 +1913,7 @@ class apiController extends baseController {
                 foreach ($marketsScopeIds as $idx => $mId) {
                     $deleteParams["m{$idx}"] = $mId;
                 }
-                $db->query("DELETE FROM user_markets WHERE user_id = :id AND market_id IN ($placeholders)", $deleteParams);
+                $db->query("DELETE FROM user_markets WHERE user_market_user_id = :id AND user_market_market_id IN ($placeholders)", $deleteParams);
             }
 
             $roleMapping = [

@@ -42,7 +42,7 @@ Class adminController extends baseController {
             FROM stalls s
             JOIN areas a ON s.stall_area_id = a.area_id
             JOIN system_statuses ss ON s.stall_status_id = ss.status_id
-            WHERE a.area_market_id = :market_id AND ss.status_code != '99'
+            WHERE a.area_market_id = :market_id AND s.stall_status_id != 99
         ", ['market_id' => $marketId]);
         
         $traderStats = $db->selectOne("
@@ -95,7 +95,7 @@ Class adminController extends baseController {
      * Phân hệ Quản lý Sạp chợ
      */
     public function stalls() {
-        $areaId = $_GET['stall_area_id'] ?? '';
+        $areaId = $_GET['area_id'] ?? $_GET['stall_area_id'] ?? '';
         $status = $_GET['status'] ?? '';
         $search = $_GET['q'] ?? '';
 
@@ -193,8 +193,8 @@ Class adminController extends baseController {
      */
     public function bills() {
         $bills = [
-            ['stall_id' => 1, 'bill_code' => 'HĐ-0626-001', 'stall_code' => 'SẠP-A01', 'trader_name' => 'Nguyễn Thị Thu Hà', 'period' => '06/2026', 'total_amount' => 3650000, 'due_date' => '10/07/2026', 'status' => 'unpaid'],
-            ['stall_id' => 2, 'bill_code' => 'HĐ-0626-002', 'stall_code' => 'SẠP-B01', 'trader_name' => 'Trần Văn Hoàng', 'period' => '06/2026', 'total_amount' => 5480000, 'due_date' => '10/07/2026', 'status' => 'paid'],
+            ['stall_id' => 1, 'bill_code' => 'HĐ-0626-001', 'stall_code' => 'SẠP-A01', 'trader_name' => 'Nguyễn Thị Thu Hà', 'period' => '06/2026', 'bill_total_amount' => 3650000, 'bill_due_date' => '10/07/2026', 'bill_status' => 'unpaid'],
+            ['stall_id' => 2, 'bill_code' => 'HĐ-0626-002', 'stall_code' => 'SẠP-B01', 'trader_name' => 'Trần Văn Hoàng', 'period' => '06/2026', 'bill_total_amount' => 5480000, 'bill_due_date' => '10/07/2026', 'bill_status' => 'paid'],
         ];
 
         $this->view('backend/finance/bills', [
@@ -219,6 +219,10 @@ Class adminController extends baseController {
     }
 
     public function foodsafety() {
+        $search = $_GET['q'] ?? '';
+        $docType = $_GET['doc_type'] ?? '';
+        $status = $_GET['status'] ?? '';
+        
         $foodsafetyModel = new foodsafetyModel();
         
         $certificates = [];
@@ -230,7 +234,7 @@ Class adminController extends baseController {
             // Tự động cập nhật trạng thái hết hạn trước khi hiển thị
             $foodsafetyModel->autoUpdateExpiryStatus();
             
-            $certificates = $foodsafetyModel->getCertificates(null, null, null, null, $marketId);
+            $certificates = $foodsafetyModel->getCertificates(null, $docType ?: null, $status ?: null, $search ?: null, $marketId);
             $statuses = $foodsafetyModel->getAttpStatuses();
         } catch (Exception $e) {
             error_log('[foodsafety] EXCEPTION: ' . $e->getMessage());
@@ -239,7 +243,10 @@ Class adminController extends baseController {
         $this->view('backend/foodsafety/index', [
             'title' => 'An Toàn Thực Phẩm',
             'certificates' => $certificates,
-            'statuses' => $statuses
+            'statuses' => $statuses,
+            'search' => $search,
+            'doc_type_filter' => $docType,
+            'status_filter' => $status
         ]);
     }
 
@@ -270,9 +277,12 @@ Class adminController extends baseController {
             error_log('[stall_add] EXCEPTION: ' . $e->getMessage());
         }
 
+        $statusModel = new statusModel();
+        $emptyStatusId = $statusModel->getIdByCode('stall', 'empty');
+
         $this->view('backend/stall/add', [
             'title'      => 'Khai Báo Sạp Chợ Mới',
-            'data'       => ['stall_area_id' => '', 'stall_code' => '', 'stall_type_id' => '', 'stall_area_size' => '', 'stall_base_price' => '', 'stall_status_id' => 3],
+            'data'       => ['stall_area_id' => '', 'stall_code' => '', 'stall_type_id' => '', 'stall_area_size' => '', 'stall_base_price' => '', 'stall_status_id' => $emptyStatusId],
             'areas'      => $areas,
             'statuses'   => $statuses,
             'stallTypes' => $stallTypes
@@ -283,6 +293,9 @@ Class adminController extends baseController {
      * Chỉnh sửa Sạp chợ (chỉ GET - hiển thị form)
      */
     public function stall_edit($stall_id) {
+        if (is_array($stall_id)) {
+            $stall_id = reset($stall_id);
+        }
         if (!$stall_id) {
             header('Location: ' . BASE_URL . 'admin/stalls');
             exit();
@@ -294,6 +307,7 @@ Class adminController extends baseController {
         $areas = [];
         $statuses = [];
         $stallTypes = [];
+        $rentalHistory = [];
 
         $marketId = marketService::currentMarketId();
         try {
@@ -304,6 +318,7 @@ Class adminController extends baseController {
             $areas = $stallModel->getAreas($marketId);
             $statuses = $stallModel->getStallStatuses();
             $stallTypes = $categoryModel->getItems('stall_type');
+            $rentalHistory = $stallModel->getRentalHistory($stall_id);
         } catch (Exception $e) {
             session::set('error_message', $e->getMessage());
             header('Location: ' . BASE_URL . 'admin/stalls');
@@ -311,11 +326,12 @@ Class adminController extends baseController {
         }
 
         $this->view('backend/stall/edit', [
-            'title'      => 'Chỉnh Sửa Sạp Chợ',
-            'stall'      => $stall,
-            'areas'      => $areas,
-            'statuses'   => $statuses,
-            'stallTypes' => $stallTypes
+            'title'         => 'Chỉnh Sửa Sạp Chợ',
+            'stall'         => $stall,
+            'areas'         => $areas,
+            'statuses'      => $statuses,
+            'stallTypes'    => $stallTypes,
+            'rentalHistory' => $rentalHistory
         ]);
     }
 
@@ -404,10 +420,11 @@ Class adminController extends baseController {
     public function foodsafety_add() {
         $traders = [];
         $documentTypes = [];
+        $marketId = marketService::currentMarketId();
         try {
             $traderModel = new traderModel();
-            // Lấy danh sách tiểu thương đang hoạt động
-            $traders = $traderModel->getAllTraders(null, null, 'active');
+            // Lấy danh sách tiểu thương đang hoạt động thuộc chợ hiện tại
+            $traders = $traderModel->getAllTraders(null, null, 'active', $marketId);
 
             $categoryModel = new categoryModel();
             $documentTypes = $categoryModel->getItems('document_type');
@@ -423,8 +440,8 @@ Class adminController extends baseController {
     }
 
     public function foodsafety_edit() {
-        $stall_id = $_GET['stall_id'] ?? null;
-        if (!$stall_id) {
+        $id = $_GET['id'] ?? null;
+        if (!$id) {
             header('Location: ' . BASE_URL . 'admin/foodsafety');
             exit();
         }
@@ -432,17 +449,18 @@ Class adminController extends baseController {
         $certificate = null;
         $traders = [];
         $documentTypes = [];
+        $marketId = marketService::currentMarketId();
         try {
             $foodsafetyModel = new foodsafetyModel();
-            $certificate = $foodsafetyModel->getById($stall_id);
+            $certificate = $foodsafetyModel->getById($id);
             if (!$certificate) {
                 header('Location: ' . BASE_URL . 'admin/foodsafety');
                 exit();
             }
 
             $traderModel = new traderModel();
-            // Lấy danh sách tiểu thương đang hoạt động
-            $traders = $traderModel->getAllTraders('', '', 'active');
+            // Lấy danh sách tiểu thương đang hoạt động thuộc chợ hiện tại
+            $traders = $traderModel->getAllTraders('', '', 'active', $marketId);
 
             $categoryModel = new categoryModel();
             $documentTypes = $categoryModel->getItems('document_type');
@@ -480,7 +498,7 @@ Class adminController extends baseController {
                                    LEFT JOIN status_colors sc ON ss.status_color_id = sc.color_id
                                    LEFT JOIN contracts con ON con.stall_id = s.stall_id AND con.status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'contract' AND status_code = 'active')
                                    LEFT JOIN traders t ON con.trader_id = t.trader_id
-                                   WHERE ss.status_code != '99' 
+                                   WHERE s.stall_status_id != 99 
                                    ORDER BY s.stall_code ASC");
         } catch (Exception $e) {
             error_log('[map_editor] EXCEPTION: ' . $e->getMessage());
@@ -574,9 +592,12 @@ Class adminController extends baseController {
             $business_lines = $traderModel->getBusinessLines();
         } catch (Exception $e) {}
 
+        $statusModel = new statusModel();
+        $activeTraderStatusId = $statusModel->getIdByCode('trader', 'active');
+
         $this->view('backend/trader/add', [
             'title'          => 'Thêm Tiểu Thương Mới',
-            'data'           => ['trader_code' => '', 'fullname' => '', 'phone' => '', 'cccd' => '', 'address' => '', 'business_line_id' => '', 'description' => '', 'status_id' => 7],
+            'data'           => ['trader_code' => '', 'fullname' => '', 'phone' => '', 'cccd' => '', 'address' => '', 'business_line_id' => '', 'description' => '', 'status_id' => $activeTraderStatusId],
             'statuses'       => $statuses,
             'business_lines' => $business_lines
         ]);
@@ -586,6 +607,9 @@ Class adminController extends baseController {
      * Sửa thông tin tiểu thương (chỉ GET - hiển thị form)
      */
     public function trader_edit($id) {
+        if (is_array($id)) {
+            $id = reset($id);
+        }
         if (!$id) {
             header('Location: ' . BASE_URL . 'admin/traders');
             exit();
@@ -639,10 +663,10 @@ Class adminController extends baseController {
         foreach ($traders as $t) {
             $rows[] = [
                 $t['trader_code'],
-                $t['fullname'],
-                $t['phone'],
-                $t['cccd'],
-                $t['address'] ?? '',
+                $t['trader_fullname'],
+                $t['trader_phone'],
+                $t['trader_cccd'],
+                $t['trader_address'] ?? '',
                 $t['business_line_name'] ?? 'Chưa cập nhật',
                 $t['status_name'] ?? 'Không rõ',
                 (int)($t['total_debt'] ?? 0)
@@ -679,7 +703,7 @@ Class adminController extends baseController {
         // Sinh nội dung HTML cho PDF
         ob_start();
         $title = 'Báo cáo danh sách tiểu thương';
-        require DIR_TEMPLATE . '/backend/trader/print.php';
+        require DIR_TEMPLATE . '/trader/print.php';
         $html = ob_get_clean();
 
         // Nạp mPDF từ vendor của dự án khác trên cùng máy chủ
@@ -810,6 +834,27 @@ Class adminController extends baseController {
 
     public function market_edit($id) {
         header("Location: " . BASE_URL . "system/market_edit/" . $id);
+        exit();
+    }
+
+    public function contract_print($contract_id) {
+        if (is_array($contract_id)) {
+            $contract_id = reset($contract_id);
+        }
+        if (!$contract_id) {
+            header('Location: ' . BASE_URL . 'admin/contracts');
+            exit();
+        }
+
+        $contractModel = new contractModel();
+        $contract = $contractModel->getById($contract_id);
+        if (!$contract) {
+            header('Location: ' . BASE_URL . 'admin/contracts');
+            exit();
+        }
+
+        // standalone view without theme panels
+        require_once DIR_TEMPLATE . '/contract/print.php';
         exit();
     }
 

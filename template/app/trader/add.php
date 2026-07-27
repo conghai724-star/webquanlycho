@@ -1,6 +1,6 @@
 <!-- Form Thêm mới Tiểu Thương -->
 <div style="margin-bottom: 20px;">
-    <a href="<?php echo BASE_URL; ?>admin/traders" class="btn btn-outline" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+    <a href="<?php echo ADMINMASTER_URL; ?>/traders" class="btn btn-outline" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
         <i class="fa-solid fa-arrow-left"></i> Quay lại danh sách
     </a>
 </div>
@@ -103,7 +103,7 @@
             <hr style="border: 0; border-top: 1px solid var(--border-color-light); margin: 24px 0;">
 
             <div style="display: flex; justify-content: flex-end; gap: 12px;">
-                <a href="<?php echo BASE_URL; ?>admin/traders" class="btn btn-outline" style="text-decoration: none;">Hủy bỏ</a>
+                <a href="<?php echo ADMINMASTER_URL; ?>/traders" class="btn btn-outline" style="text-decoration: none;">Hủy bỏ</a>
                 <button type="submit" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
                     <i class="fa-solid fa-check"></i> Thêm tiểu thương
                 </button>
@@ -119,7 +119,7 @@ $(document).ready(function() {
     var swalColor = isDark ? '#ffffff' : '#0f1623';
 
     // 1. Submit form bằng AJAX
-    // App.utils.handleFormSubmit('form-add-trader', '<?php echo BASE_URL; ?>admin/traders');
+    // App.utils.handleFormSubmit('form-add-trader', '<?php echo ADMINMASTER_URL; ?>/traders');
     $('#form-add-trader').on('submit', function(e) {
         e.preventDefault();
         var form = this;
@@ -160,7 +160,7 @@ $(document).ready(function() {
                         color: swalColor
                     }).then(function() {
                         App.utils.clearFormDraft('form-add-trader');
-                        window.location.href = '<?php echo BASE_URL; ?>admin/traders';
+                        window.location.href = '<?php echo ADMINMASTER_URL; ?>/traders';
                     });
                 } else {
                     Swal.fire({ icon: 'error', title: 'Lỗi', text: data.message, background: swalBg, color: swalColor });

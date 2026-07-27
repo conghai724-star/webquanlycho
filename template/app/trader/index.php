@@ -1,7 +1,7 @@
 <!-- Thanh tìm kiếm, xuất file và nút thêm mới -->
 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
     <!-- Bộ lọc nhanh -->
-    <form action="<?php echo BASE_URL; ?>admin/traders" method="GET" style="display: flex; gap: 8px; flex-wrap: wrap; margin: 0;">
+    <form action="<?php echo ADMINMASTER_URL; ?>/traders" method="GET" style="display: flex; gap: 8px; flex-wrap: wrap; margin: 0;">
         <input type="text" name="q" class="form-control" placeholder="Tìm tên, SĐT, CCCD, Mã..." value="<?php echo htmlspecialchars($search ?? ''); ?>" style="width: 240px; height: 36px; font-size: 13px;">
         <select name="business_line" class="form-control" style="width: 160px; height: 36px; font-size: 13px;">
             <option value="">Tất cả ngành hàng</option>
@@ -25,7 +25,7 @@
         </select>
         <button type="button" id="btn-filter-traders" class="btn btn-outline" style="height: 36px; padding: 0 16px;">Lọc</button>
         <?php if (!empty($search) || !empty($business_line_filter) || !empty($status_filter)): ?>
-            <a href="<?php echo BASE_URL; ?>admin/traders" class="btn btn-ghost" style="height: 36px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; padding: 0 12px; color: var(--text-muted);">Xóa bộ lọc</a>
+            <a href="<?php echo ADMINMASTER_URL; ?>/traders" class="btn btn-ghost" style="height: 36px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; padding: 0 12px; color: var(--text-muted);">Xóa bộ lọc</a>
         <?php endif; ?>
     </form>
     
@@ -38,13 +38,13 @@
     ]);
     ?>
     <div style="display: flex; gap: 8px;">
-        <a href="<?php echo BASE_URL; ?>admin/trader_export_excel?<?php echo $queryString; ?>" id="btn-export-excel-traders" class="btn btn-outline" style="height: 36px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;" title="Xuất dữ liệu ra file Excel">
+        <a href="<?php echo ADMINMASTER_URL; ?>/trader_export_excel?<?php echo $queryString; ?>" id="btn-export-excel-traders" class="btn btn-outline" style="height: 36px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;" title="Xuất dữ liệu ra file Excel">
             <i class="fa-regular fa-file-excel text-success"></i> Xuất Excel
         </a>
-        <a href="<?php echo BASE_URL; ?>admin/trader_export_pdf?<?php echo $queryString; ?>" id="btn-export-pdf-traders" target="_blank" class="btn btn-outline" style="height: 36px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;" title="Xuất dữ liệu ra file PDF">
+        <a href="<?php echo ADMINMASTER_URL; ?>/trader_export_pdf?<?php echo $queryString; ?>" id="btn-export-pdf-traders" target="_blank" class="btn btn-outline" style="height: 36px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;" title="Xuất dữ liệu ra file PDF">
             <i class="fa-regular fa-file-pdf text-danger"></i> Xuất PDF
         </a>
-        <a href="<?php echo BASE_URL; ?>admin/trader_add" class="btn btn-primary" style="height: 36px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: white;">
+        <a href="<?php echo ADMINMASTER_URL; ?>/trader_add" class="btn btn-primary" style="height: 36px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: white;">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 14px; height: 14px;"><path d="M8 2v12M2 8h12"/></svg>
             Thêm Tiểu Thương
         </a>
@@ -189,12 +189,12 @@ $(document).ready(function() {
                         totalEl.text(data.total);
                     }
                     if (exportExcel.length && typeof data.queryString !== 'undefined') {
-                        exportExcel.attr('href', '<?php echo BASE_URL; ?>admin/trader_export_excel?' + data.queryString);
+                        exportExcel.attr('href', '<?php echo ADMINMASTER_URL; ?>/trader_export_excel?' + data.queryString);
                     }
                     if (exportPdf.length && typeof data.queryString !== 'undefined') {
-                        exportPdf.attr('href', '<?php echo BASE_URL; ?>admin/trader_export_pdf?' + data.queryString);
+                        exportPdf.attr('href', '<?php echo ADMINMASTER_URL; ?>/trader_export_pdf?' + data.queryString);
                     }
-                    var newUrl = '<?php echo BASE_URL; ?>admin/traders' + (query ? '?' + query : '');
+                    var newUrl = '<?php echo ADMINMASTER_URL; ?>/traders' + (query ? '?' + query : '');
                     window.history.pushState({ path: newUrl }, '', newUrl);
                 },
                 error: function() {

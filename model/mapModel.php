@@ -116,10 +116,11 @@ class mapModel {
                 LEFT JOIN stall_types st ON s.stall_type_id = st.stall_type_id
                 JOIN system_statuses ss ON s.stall_status_id = ss.status_id
                 LEFT JOIN status_colors sc ON ss.status_color_id = sc.color_id
-                LEFT JOIN contracts c ON c.contract_stall_id = s.stall_id AND c.contract_status_id = (SELECT stall_id FROM system_statuses WHERE status_domain = 'contract' AND status_code = 'active')
+                LEFT JOIN contracts c ON c.contract_stall_id = s.stall_id AND c.contract_status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'contract' AND status_code = 'active')
                 LEFT JOIN traders t ON c.contract_trader_id = t.trader_id";
         
-        $sql = marketService::applyScope($sql, 'a');
+        $marketId = marketService::currentMarketId();
+        $sql .= " WHERE a.area_market_id = " . (int)$marketId;
         $sql .= " ORDER BY a.area_name ASC, a.area_block ASC, a.area_lot ASC, s.stall_code ASC";
         
         $rawStalls = $this->db->select($sql);
@@ -127,8 +128,8 @@ class mapModel {
         $tree = [];
         foreach ($rawStalls as $row) {
             $area = $row['area_name'] ?: 'Khu vực khác';
-            $block = $row['block'] ?: 'Dãy khác';
-            $lot = $row['lot'] ?: 'Lô khác';
+            $block = $row['area_block'] ?: 'Dãy khác';
+            $lot = $row['area_lot'] ?: 'Lô khác';
 
             if (!isset($tree[$area])) {
                 $tree[$area] = [];
@@ -176,7 +177,8 @@ class mapModel {
                 LEFT JOIN business_lines bl ON t.trader_business_line_id = bl.line_id
                 WHERE s.stall_id = :id";
         
-        $sql = marketService::applyScope($sql, 'a');
+        $marketId = marketService::currentMarketId();
+        $sql .= " AND a.area_market_id = " . (int)$marketId;
         return $this->db->selectOne($sql, ['id' => $stallId]);
     }
 }

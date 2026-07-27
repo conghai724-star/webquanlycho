@@ -9,7 +9,7 @@
         <div class="card-title" style="font-size: 16px; font-weight: 600;">Khai báo Giấy tờ & Chứng nhận An toàn thực phẩm mới</div>
     </div>
     <div class="card-body" style="padding: 24px;">
-        <form id="form-add-certificate" action="<?php echo BASE_URL; ?>api/addCertificate" method="POST" enctype="multipart/form-data">
+        <form id="form-add-cert" action="<?php echo BASE_URL; ?>api/addCertificate" method="POST" enctype="multipart/form-data">
             <?php csrf_field(); ?>
             <!-- Chủ hộ kinh doanh -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px;">
@@ -33,8 +33,8 @@
                         <option value="">-- Chọn loại giấy tờ --</option>
                         <?php if (!empty($documentTypes)): ?>
                             <?php foreach ($documentTypes as $dt): ?>
-                                <option value="<?php echo $dt['id']; ?>">
-                                    <?php echo htmlspecialchars($dt['type_name']); ?>
+                                <option value="<?php echo $dt['doc_type_id']; ?>">
+                                    <?php echo htmlspecialchars($dt['doc_type_name']); ?>
                                 </option>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -45,8 +45,8 @@
             <!-- Tên giấy tờ & Số GCN -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px;">
                 <div class="form-group">
-                    <label class="form-label" for="name" style="font-weight: 500;">Tên giấy tờ / chứng nhận <span style="color: var(--red)">*</span></label>
-                    <input type="text" id="name" name="name" class="form-control" placeholder="Ví dụ: Giấy chứng nhận vệ sinh ATTP cửa hàng giò chả" required>
+                    <label class="form-label" for="attp_name" style="font-weight: 500;">Tên giấy tờ / chứng nhận <span style="color: var(--red)">*</span></label>
+                    <input type="text" id="attp_name" name="attp_name" class="form-control" placeholder="Ví dụ: Giấy chứng nhận vệ sinh ATTP cửa hàng giò chả" required>
                 </div>
 
                 <div class="form-group">
@@ -83,8 +83,8 @@
 
             <!-- Mô tả ngắn -->
             <div class="form-group" style="margin-bottom: 24px;">
-                <label class="form-label" for="description" style="font-weight: 500;">Mô tả ngắn / Ghi chú</label>
-                <textarea id="description" name="description" class="form-control" rows="3" placeholder="Nhập thêm chi tiết về phạm vi được cấp phép, điều kiện kèm theo..."></textarea>
+                <label class="form-label" for="attp_description" style="font-weight: 500;">Mô tả ngắn / Ghi chú</label>
+                <textarea id="attp_description" name="attp_description" class="form-control" rows="3" placeholder="Nhập thêm chi tiết về phạm vi được cấp phép, điều kiện kèm theo..."></textarea>
             </div>
 
             <hr style="border: 0; border-top: 1px solid var(--border-color-light); margin: 24px 0;">

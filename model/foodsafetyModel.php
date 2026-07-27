@@ -23,18 +23,12 @@ class foodsafetyModel {
                 LEFT JOIN business_lines bl ON bl.line_id = t.trader_business_line_id
                 LEFT JOIN system_statuses ss ON c.attp_status_id = ss.status_id
                 LEFT JOIN status_colors sc ON ss.status_color_id = sc.color_id
-                WHERE ss.status_code != '99' AND (t.trader_id IS NULL OR t.trader_status_id != (SELECT status_id FROM system_statuses WHERE status_domain = 'trader' AND status_code = '99'))";
+                WHERE c.attp_status_id != 99 AND (t.trader_id IS NULL OR t.trader_status_id != 99)";
         
         $params = [];
 
         if ($marketId) {
-            $sql .= " AND t.trader_id IN (
-                SELECT DISTINCT c2.contract_trader_id 
-                FROM contracts c2
-                JOIN stalls s2 ON c2.contract_stall_id = s2.stall_id
-                JOIN areas a2 ON s2.stall_area_id = a2.area_id
-                WHERE a2.area_market_id = :market_id
-            )";
+            $sql .= " AND t.trader_market_id = :market_id";
             $params['market_id'] = $marketId;
         }
 
@@ -44,7 +38,7 @@ class foodsafetyModel {
         }
 
         if ($docType) {
-            $sql .= " AND c.attp_doc_type_id = :doc_type";
+            $sql .= " AND dt.doc_type_code = :doc_type";
             $params['doc_type'] = $docType;
         }
 
@@ -54,7 +48,7 @@ class foodsafetyModel {
         }
 
         if (!empty($search)) {
-            $sql .= " AND (c.attp_doc_number LIKE :search1 OR c.contract_name LIKE :search2 OR t.trader_fullname LIKE :search3)";
+            $sql .= " AND (c.attp_doc_number LIKE :search1 OR c.attp_name LIKE :search2 OR t.trader_fullname LIKE :search3)";
             $params['search1'] = "%$search%";
             $params['search2'] = "%$search%";
             $params['search3'] = "%$search%";
@@ -76,7 +70,7 @@ class foodsafetyModel {
                 LEFT JOIN traders t ON c.attp_trader_id = t.trader_id
                 LEFT JOIN system_statuses ss ON c.attp_status_id = ss.status_id
                 LEFT JOIN status_colors sc ON ss.status_color_id = sc.color_id
-                WHERE c.attp_id = :attp_id AND ss.status_code != '99' AND (t.trader_id IS NULL OR t.trader_status_id != (SELECT status_id FROM system_statuses WHERE status_domain = 'trader' AND status_code = '99'))";
+                WHERE c.attp_id = :attp_id AND c.attp_status_id != 99 AND (t.trader_id IS NULL OR t.trader_status_id != 99)";
         
         return $this->db->selectOne($sql, ['attp_id' => $attp_id]);
     }
@@ -148,8 +142,7 @@ class foodsafetyModel {
      * Xóa mềm giấy tờ (99)
      */
     public function deleteCertificate($attp_id) {
-        $statusModel = new statusModel();
-        $deletedStatusId = $statusModel->getIdByCode('attp', '99');
+        $deletedStatusId = 99;
 
         $sql = "UPDATE trader_attp SET attp_status_id = :attp_status_id WHERE attp_id = :attp_id";
         return $this->db->query($sql, [
@@ -162,7 +155,7 @@ class foodsafetyModel {
      * Lấy danh sách trạng thái giấy tờ vệ sinh ATTP (trừ 99)
      */
     public function getAttpStatuses() {
-        $sql = "SELECT * FROM system_statuses WHERE status_domain = 'attp' AND status_code != '99' ORDER BY status_id ASC";
+        $sql = "SELECT * FROM system_statuses WHERE status_domain = 'attp' AND status_id != 99 ORDER BY status_id ASC";
         return $this->db->select($sql);
     }
 
@@ -179,7 +172,7 @@ class foodsafetyModel {
      * Kiểm tra xem số chứng nhận đã tồn tại chưa
      */
     public function isDocNumberExists($num, $excludeId = null) {
-        $sql = "SELECT COUNT(*) as count FROM trader_attp WHERE attp_doc_number = :num AND attp_status_id != (SELECT status_id FROM system_statuses WHERE status_domain = 'attp' AND status_code = '99')";
+        $sql = "SELECT COUNT(*) as count FROM trader_attp WHERE attp_doc_number = :num AND attp_status_id != 99";
         $params = ['num' => $num];
         if ($excludeId !== null) {
             $sql .= " AND attp_id != :excludeId";

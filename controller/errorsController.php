@@ -31,11 +31,12 @@ class errorsController {
         extract($data);
 
         // Nạp layout trên
-        if (file_exists(DIR_TEMPLATE . '/backend/layouts/header.php')) {
-            require_once DIR_TEMPLATE . '/backend/layouts/header.php';
+        if (file_exists(DIR_TEMPLATE . '/layouts/header.php')) {
+            require_once DIR_TEMPLATE . '/layouts/header.php';
         }
 
-        $viewFile = DIR_TEMPLATE . '/' . $templatePath . '.php';
+        $templatePathClean = str_replace('backend/', '', $templatePath);
+        $viewFile = DIR_TEMPLATE . '/' . $templatePathClean . '.php';
         if (file_exists($viewFile)) {
             require_once $viewFile;
         } else {
@@ -49,8 +50,8 @@ class errorsController {
         }
 
         // Nạp layout dưới
-        if (file_exists(DIR_TEMPLATE . '/backend/layouts/footer.php')) {
-            require_once DIR_TEMPLATE . '/backend/layouts/footer.php';
+        if (file_exists(DIR_TEMPLATE . '/layouts/footer.php')) {
+            require_once DIR_TEMPLATE . '/layouts/footer.php';
         }
     }
 }

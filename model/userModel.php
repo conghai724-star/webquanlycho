@@ -13,7 +13,10 @@ class userModel {
      * Lấy danh sách tất cả người dùng
      */
     public function getAll() {
-        $sql = "SELECT user_id, username, fullname, email, user_group, is_active, created_at FROM users ORDER BY id DESC";
+        $sql = "SELECT user_id, user_username AS username, user_fullname AS fullname, user_email AS email, user_group, user_is_active AS is_active, user_created_at AS created_at 
+                FROM users 
+                WHERE user_is_active = 1 
+                ORDER BY user_id DESC";
         return $this->db->select($sql);
     }
 
@@ -21,7 +24,9 @@ class userModel {
      * Lấy người dùng theo ID
      */
     public function getById($id) {
-        $sql = "SELECT user_id, username, fullname, email, user_group, is_active FROM users WHERE id = :id";
+        $sql = "SELECT user_id, user_username AS username, user_fullname AS fullname, user_email AS email, user_group, user_is_active AS is_active 
+                FROM users 
+                WHERE user_id = :id";
         return $this->db->selectOne($sql, ['id' => $id]);
     }
 
@@ -29,10 +34,10 @@ class userModel {
      * Lấy người dùng theo tên đăng nhập
      */
     public function getByUsername($username) {
-        $sql = "SELECT u.*, sa.actor_code 
+        $sql = "SELECT u.*, u.user_password AS password, u.user_is_active AS is_active, sa.actor_code 
                 FROM users u 
-                LEFT JOIN system_actors sa ON u.actor_id = sa.actor_id 
-                WHERE u.username = :username";
+                LEFT JOIN system_actors sa ON u.user_actor_id = sa.actor_id 
+                WHERE u.user_username = :username";
         return $this->db->selectOne($sql, ['username' => $username]);
     }
 
@@ -40,7 +45,7 @@ class userModel {
      * Lấy người dùng theo email
      */
     public function getByEmail($email) {
-        $sql = "SELECT * FROM users WHERE email = :email";
+        $sql = "SELECT *, user_id AS id, user_email AS email FROM users WHERE user_email = :email";
         return $this->db->selectOne($sql, ['email' => $email]);
     }
 
@@ -49,8 +54,8 @@ class userModel {
      */
     public function authenticate($username, $password) {
         $user = $this->getByUsername($username);
-        if ($user && password_verify($password, $user['password'])) {
-            if ($user['is_active'] == 1) {
+        if ($user && password_verify($password, $user['user_password'])) {
+            if ($user['user_is_active'] == 1) {
                 return $user;
             }
         }
@@ -61,7 +66,7 @@ class userModel {
      * Thêm tài khoản người dùng mới
      */
     public function create($data) {
-        $sql = "INSERT INTO users (username, password, fullname, email, user_group, actor_id, is_active) 
+        $sql = "INSERT INTO users (user_username, user_password, user_fullname, user_email, user_group, user_actor_id, user_is_active) 
                 VALUES (:username, :password, :fullname, :email, :user_group, :actor_id, :is_active)";
         
         $params = [
@@ -83,8 +88,8 @@ class userModel {
      */
     public function update($id, $data) {
         $sql = "UPDATE users 
-                SET fullname = :fullname, email = :email, user_group = :user_group, actor_id = :actor_id, is_active = :is_active 
-                WHERE id = :id";
+                SET user_fullname = :fullname, user_email = :email, user_group = :user_group, user_actor_id = :actor_id, user_is_active = :is_active 
+                WHERE user_id = :id";
         
         $params = [
             'id'         => $id,
@@ -102,7 +107,7 @@ class userModel {
      * Vô hiệu hóa tài khoản người dùng (Soft delete)
      */
     public function delete($id) {
-        $sql = "UPDATE users SET is_active = 0 WHERE id = :id";
+        $sql = "UPDATE users SET user_is_active = 0 WHERE user_id = :id";
         return $this->db->query($sql, ['id' => $id]);
     }
 
@@ -110,7 +115,7 @@ class userModel {
      * Cập nhật mật khẩu tài khoản
      */
     public function updatePassword($id, $newPassword) {
-        $sql = "UPDATE users SET password = :password WHERE id = :id";
+        $sql = "UPDATE users SET user_password = :password WHERE user_id = :id";
         return $this->db->query($sql, [
             'id'       => $id,
             'password' => password_hash($newPassword, PASSWORD_DEFAULT)
@@ -121,7 +126,7 @@ class userModel {
      * Gán token khôi phục mật khẩu
      */
     public function setResetToken($email, $token, $expires) {
-        $sql = "UPDATE users SET reset_token = :token, reset_expires_at = :expires WHERE email = :email AND is_active = 1";
+        $sql = "UPDATE users SET user_reset_token = :token, user_reset_expires_at = :expires WHERE user_email = :email AND user_is_active = 1";
         return $this->db->query($sql, [
             'email'   => $email,
             'token'   => $token,
@@ -133,7 +138,7 @@ class userModel {
      * Lấy user theo reset token hợp lệ
      */
     public function getByResetToken($token) {
-        $sql = "SELECT * FROM users WHERE reset_token = :token AND reset_expires_at > NOW() AND is_active = 1";
+        $sql = "SELECT *, user_id AS id FROM users WHERE user_reset_token = :token AND user_reset_expires_at > NOW() AND user_is_active = 1";
         return $this->db->selectOne($sql, ['token' => $token]);
     }
 
@@ -141,7 +146,7 @@ class userModel {
      * Xóa token khôi phục mật khẩu
      */
     public function clearResetToken($id) {
-        $sql = "UPDATE users SET reset_token = NULL, reset_expires_at = NULL WHERE id = :id";
+        $sql = "UPDATE users SET user_reset_token = NULL, user_reset_expires_at = NULL WHERE user_id = :id";
         return $this->db->query($sql, ['id' => $id]);
     }
 }
