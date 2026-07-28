@@ -286,7 +286,7 @@ Class adminController extends baseController {
 
         $this->view('backend/stall/add', [
             'title'      => 'Khai Báo Sạp Chợ Mới',
-            'data'       => ['stall_area_id' => '', 'stall_code' => '', 'stall_type_id' => '', 'stall_area_size' => '', 'stall_base_price' => '', 'stall_status_id' => $emptyStatusId],
+            'data'       => ['stall_area_id' => '', 'stall_code' => '', 'stall_type_id' => '', 'stall_area_size' => '', 'stall_base_price' => '', 'stall_status_id' => $emptyStatusId, 'stall_map_coordinate_x' => '', 'stall_map_coordinate_y' => ''],
             'areas'      => $areas,
             'statuses'   => $statuses,
             'stallTypes' => $stallTypes

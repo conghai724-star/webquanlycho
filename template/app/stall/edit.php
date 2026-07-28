@@ -69,10 +69,20 @@
                     </select>
                 </div>
 
-                <!-- Diện tích -->
-                <div class="form-group">
-                    <label class="form-label" for="area_size" style="font-weight: 500;">Diện tích (m²) <span style="color: var(--red)">*</span></label>
-                    <input type="number" step="0.01" min="0.01" id="area_size" name="area_size" class="form-control" placeholder="Nhập diện tích" value="<?php echo htmlspecialchars($stall['stall_area_size']); ?>" required>
+                <!-- Kích thước & Diện tích -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 10px;">
+                    <div class="form-group">
+                        <label class="form-label" for="x" style="font-weight: 500;">Chiều dài (m) <span style="color: var(--red)">*</span></label>
+                        <input type="number" step="0.01" min="0.01" id="x" name="x" class="form-control" placeholder="Dài" value="<?php echo htmlspecialchars($stall['stall_map_coordinate_x'] ?? ''); ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="y" style="font-weight: 500;">Chiều rộng (m) <span style="color: var(--red)">*</span></label>
+                        <input type="number" step="0.01" min="0.01" id="y" name="y" class="form-control" placeholder="Rộng" value="<?php echo htmlspecialchars($stall['stall_map_coordinate_y'] ?? ''); ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="area_size" style="font-weight: 500;">Diện tích (m²)</label>
+                        <input type="text" id="area_size" class="form-control" style="background-color: var(--bg-card); cursor: not-allowed;" placeholder="Tự tính" readonly value="<?php echo htmlspecialchars($stall['stall_area_size']); ?>">
+                    </div>
                 </div>
             </div>
 
@@ -264,9 +274,21 @@ $(document).ready(function() {
     }
 
     // 2. Kiểm tra trùng mã sạp thời gian thực (loại trừ ID hiện tại)
-    // App.utils.initRealtimeUniqueCheck('stall_code', 'api/checkExists', { ... });
     var currentId = $('input[name="id"]').val() || '';
     setupUniqueCheck('stall_code', 'stall_code', 'Mã sạp này đã tồn tại trên hệ thống.', currentId);
+
+    // 3. Tự động tính diện tích sạp khi nhập dài/rộng
+    function calculateArea() {
+        var x = parseFloat($('#x').val());
+        var y = parseFloat($('#y').val());
+        if (!isNaN(x) && !isNaN(y)) {
+            var area = (x * y).toFixed(2);
+            $('#area_size').val(area);
+        } else {
+            $('#area_size').val('');
+        }
+    }
+    $('#x, #y').on('input', calculateArea);
 });
 </script>
 

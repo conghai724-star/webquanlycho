@@ -350,22 +350,34 @@ class apiController extends baseController {
         $statusModel = new statusModel();
         $emptyStatusId = $statusModel->getIdByCode('stall', 'empty');
 
+        $x = $_POST['x'] ?? '';
+        $y = $_POST['y'] ?? '';
+        $area_size = '';
+        if (is_numeric($x) && is_numeric($y)) {
+            $area_size = (float)$x * (float)$y;
+        }
+
         $data = [
             'stall_area_id'       => $_POST['area_id'] ?? '',
             'stall_code'          => $_POST['stall_code'] ?? '',
             'stall_type_id'       => $_POST['stall_type_id'] ?? '',
-            'stall_area_size'     => $_POST['area_size'] ?? '',
+            'stall_area_size'     => $area_size,
             'stall_base_price'    => $_POST['base_price'] ?? '',
-            'stall_status_id'     => $_POST['status'] ?: $emptyStatusId
+            'stall_status_id'     => $_POST['status'] ?: $emptyStatusId,
+            'stall_map_coordinate_x' => is_numeric($x) ? (float)$x : null,
+            'stall_map_coordinate_y' => is_numeric($y) ? (float)$y : null
         ];
 
         $validator = new validator();
         $validator->required('area_id', $data['stall_area_id'], 'Khu vực không được để trống.')
                   ->required('stall_code', $data['stall_code'], 'Mã sạp không được để trống.')
                   ->required('stall_type_id', $data['stall_type_id'], 'Vui lòng chọn loại sạp.')
-                  ->required('area_size', $data['stall_area_size'], 'Diện tích không được để trống.')
-                  ->numeric('area_size', $data['stall_area_size'], 'Diện tích phải là dạng số.')
-                  ->min('area_size', $data['stall_area_size'], 0.01, 'Diện tích phải lớn hơn 0.')
+                  ->required('x', $x, 'Chiều dài không được để trống.')
+                  ->numeric('x', $x, 'Chiều dài phải là dạng số.')
+                  ->min('x', $x, 0.01, 'Chiều dài phải lớn hơn 0.')
+                  ->required('y', $y, 'Chiều rộng không được để trống.')
+                  ->numeric('y', $y, 'Chiều rộng phải là dạng số.')
+                  ->min('y', $y, 0.01, 'Chiều rộng phải lớn hơn 0.')
                   ->required('base_price', $data['stall_base_price'], 'Đơn giá thuê không được để trống.')
                   ->numeric('base_price', $data['stall_base_price'], 'Đơn giá thuê phải là dạng số.')
                   ->min('base_price', $data['stall_base_price'], 0, 'Đơn giá thuê không được âm.');
@@ -392,22 +404,34 @@ class apiController extends baseController {
         $statusModel = new statusModel();
         $emptyStatusId = $statusModel->getIdByCode('stall', 'empty');
 
+        $x = $_POST['x'] ?? '';
+        $y = $_POST['y'] ?? '';
+        $area_size = '';
+        if (is_numeric($x) && is_numeric($y)) {
+            $area_size = (float)$x * (float)$y;
+        }
+
         $data = [
             'stall_area_id'       => $_POST['area_id'] ?? '',
             'stall_code'          => $_POST['stall_code'] ?? '',
             'stall_type_id'       => $_POST['stall_type_id'] ?? '',
-            'stall_area_size'     => $_POST['area_size'] ?? '',
+            'stall_area_size'     => $area_size,
             'stall_base_price'    => $_POST['base_price'] ?? '',
-            'stall_status_id'     => $_POST['status'] ?: $emptyStatusId
+            'stall_status_id'     => $_POST['status'] ?: $emptyStatusId,
+            'stall_map_coordinate_x' => is_numeric($x) ? (float)$x : null,
+            'stall_map_coordinate_y' => is_numeric($y) ? (float)$y : null
         ];
 
         $validator = new validator();
         $validator->required('area_id', $data['stall_area_id'], 'Khu vực không được để trống.')
                   ->required('stall_code', $data['stall_code'], 'Mã sạp không được để trống.')
                   ->required('stall_type_id', $data['stall_type_id'], 'Vui lòng chọn loại sạp.')
-                  ->required('area_size', $data['stall_area_size'], 'Diện tích không được để trống.')
-                  ->numeric('area_size', $data['stall_area_size'], 'Diện tích phải là dạng số.')
-                  ->min('area_size', $data['stall_area_size'], 0.01, 'Diện tích phải lớn hơn 0.')
+                  ->required('x', $x, 'Chiều dài không được để trống.')
+                  ->numeric('x', $x, 'Chiều dài phải là dạng số.')
+                  ->min('x', $x, 0.01, 'Chiều dài phải lớn hơn 0.')
+                  ->required('y', $y, 'Chiều rộng không được để trống.')
+                  ->numeric('y', $y, 'Chiều rộng phải là dạng số.')
+                  ->min('y', $y, 0.01, 'Chiều rộng phải lớn hơn 0.')
                   ->required('base_price', $data['stall_base_price'], 'Đơn giá thuê không được để trống.')
                   ->numeric('base_price', $data['stall_base_price'], 'Đơn giá thuê phải là dạng số.')
                   ->min('base_price', $data['stall_base_price'], 0, 'Đơn giá thuê không được âm.');

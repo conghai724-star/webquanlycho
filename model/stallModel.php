@@ -109,8 +109,8 @@ class stallModel {
         $statusModel = new statusModel();
         $emptyStatusId = $statusModel->getIdByCode('stall', 'empty');
 
-        $sql = "INSERT INTO stalls (stall_area_id, stall_code, stall_type_id, stall_area_size, stall_base_price, stall_status_id) 
-                VALUES (:stall_area_id, :stall_code, :stall_type_id, :stall_area_size, :stall_base_price, :stall_status_id)";
+        $sql = "INSERT INTO stalls (stall_area_id, stall_code, stall_type_id, stall_area_size, stall_base_price, stall_status_id, stall_map_coordinate_x, stall_map_coordinate_y) 
+                VALUES (:stall_area_id, :stall_code, :stall_type_id, :stall_area_size, :stall_base_price, :stall_status_id, :stall_map_coordinate_x, :stall_map_coordinate_y)";
         
         $params = [
             'stall_area_id'       => $data['stall_area_id'],
@@ -118,7 +118,9 @@ class stallModel {
             'stall_type_id' => $data['stall_type_id'],
             'stall_area_size'     => $data['stall_area_size'],
             'stall_base_price'    => $data['stall_base_price'],
-            'stall_status_id'     => $data['stall_status_id'] ?: $emptyStatusId
+            'stall_status_id'     => $data['stall_status_id'] ?: $emptyStatusId,
+            'stall_map_coordinate_x' => $data['stall_map_coordinate_x'] ?? null,
+            'stall_map_coordinate_y' => $data['stall_map_coordinate_y'] ?? null
         ];
 
         $this->db->query($sql, $params);
@@ -131,7 +133,8 @@ class stallModel {
 
         $sql = "UPDATE stalls 
                 SET stall_area_id = :stall_area_id, stall_code = :stall_code, 
-                    stall_type_id = :stall_type_id, stall_area_size = :stall_area_size, stall_base_price = :stall_base_price, stall_status_id = :stall_status_id 
+                    stall_type_id = :stall_type_id, stall_area_size = :stall_area_size, stall_base_price = :stall_base_price, stall_status_id = :stall_status_id,
+                    stall_map_coordinate_x = :stall_map_coordinate_x, stall_map_coordinate_y = :stall_map_coordinate_y
                 WHERE stall_id = :stall_id";
         
         $params = [
@@ -141,7 +144,9 @@ class stallModel {
             'stall_type_id' => $data['stall_type_id'],
             'stall_area_size'     => $data['stall_area_size'],
             'stall_base_price'    => $data['stall_base_price'],
-            'stall_status_id'     => $data['stall_status_id'] ?: $emptyStatusId
+            'stall_status_id'     => $data['stall_status_id'] ?: $emptyStatusId,
+            'stall_map_coordinate_x' => $data['stall_map_coordinate_x'] ?? null,
+            'stall_map_coordinate_y' => $data['stall_map_coordinate_y'] ?? null
         ];
 
         return $this->db->query($sql, $params);
