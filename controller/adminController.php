@@ -891,4 +891,72 @@ Class adminController extends baseController {
             require_once DIR_TEMPLATE . '/layouts/footer.php';
         }
     }
+     /**
+     * Sổ thu: tải dữ liệu thật, có lọc và phân trang 20 phiếu/trang.
+     */
+    public function income() {
+        $this->incomeLedger('income');
+    }
+
+    /** Sổ chi được tách trang với sổ thu để dễ nghiệp vụ và phân quyền sau này. */
+    public function expense() {
+        $this->incomeLedger('expense');
+    }
+
+    private function incomeLedger($type) {
+        $marketId = marketService::currentMarketId();
+        $filters = [
+            'q' => trim($_GET['q'] ?? ''), 'category_id' => (int)($_GET['category_id'] ?? 0),
+            'from_date' => $_GET['from_date'] ?? '', 'to_date' => $_GET['to_date'] ?? ''
+        ];
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $model = new incomeModel(); // ensureSchema() makes a fresh database ready automatically.
+        $result = $model->vouchers($marketId, $type, $filters, $page, 20);
+        $this->view('backend/income/ledger', [
+            'title' => $type === 'income' ? 'Quản Lý Thu' : 'Quản Lý Chi',
+            'ledgerType' => $type, 'categories' => $model->categories($marketId, $type),
+            'vouchers' => $result['rows'], 'total' => $result['total'], 'pages' => $result['pages'],
+            'page' => $page, 'filters' => $filters
+        ]);
+    }
+
+    /** Danh mục thu và chi có chung một giao diện, tách bằng hai tab. */
+    public function income_categories() {
+        $marketId = marketService::currentMarketId();
+        $model = new incomeModel();
+        $this->view('backend/income/categories', [
+            'title' => 'Danh Mục Thu Chi',
+            'incomeCategories' => $model->categories($marketId, 'income'),
+            'expenseCategories' => $model->categories($marketId, 'expense')
+        ]);
+    }
+
+    /** Form xuất S07-X. Header đơn vị luôn được đọc từ market đang chọn. */
+    public function income_report() {
+        $marketId = marketService::currentMarketId();
+        $service = new incomeReportService();
+        $this->view('backend/income/report', [
+            'title' => 'Báo Cáo Thu Chi',
+            'unit' => $service->getUnitConfig($marketId),
+            'year' => (int)($_GET['year'] ?? date('Y'))
+        ]);
+    }
+
+    /** Streams the .xlsx response; calculations/rendering stay in incomeReportService. */
+    public function export_s07x() {
+        $marketId = marketService::currentMarketId();
+        $year = (int)($_GET['year'] ?? date('Y'));
+        try {
+            (new incomeReportService())->downloadS07X($marketId, [
+                'year' => $year,
+                'fund_name' => trim($_GET['fund_name'] ?? ''),
+                'opening_balance' => (float)str_replace([',',' '], '', $_GET['opening_balance'] ?? 0),
+                'from_date' => $_GET['from_date'] ?? $year.'-01-01',
+                'to_date' => $_GET['to_date'] ?? $year.'-12-31'
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo '<h3>Không thể xuất báo cáo S07-X</h3><p>'.htmlspecialchars($e->getMessage()).'</p>';
+        }
+    }
 }

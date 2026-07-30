@@ -1994,6 +1994,59 @@ class apiController extends baseController {
             $this->render->abort500($e, 'update', 'user');
         }
     }
+     /*/------------------------ QUẢN LÝ THU CHI ------------------------
+       API below accepts multipart forms so attachments can be saved together
+       with vouchers.  Deletes are soft deletes (status=99), never hard deletes. */
+    private function incomeApiGuard() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') $this->response(['status'=>405, 'message'=>'Chỉ hỗ trợ POST.'], 405);
+        if (!session::isLoggedIn()) $this->response(['status'=>403, 'message'=>'Vui lòng đăng nhập.'], 403);
+    }
+    private function incomeApiMarketId() { return (int)marketService::currentMarketId(); }
+    public function saveIncomeCategory() {
+        $this->incomeApiGuard();
+        $type=$_POST['type'] ?? ''; $name=trim($_POST['name'] ?? '');
+        if (!in_array($type, ['income','expense'], true) || $name==='') $this->response(['status'=>400,'message'=>'Loại và tên danh mục là bắt buộc.'],400);
+        try { $id=(new incomeModel())->saveCategory($this->incomeApiMarketId(), ['category_id'=>(int)($_POST['category_id']??0),'type'=>$type,'name'=>$name,'note'=>trim($_POST['note']??'')]); $this->response(['status'=>200,'message'=>'Đã lưu danh mục.','id'=>$id]); }
+        catch (Exception $e) { $this->response(['status'=>500,'message'=>'Không thể lưu danh mục: '.$e->getMessage()],500); }
+    }
+    public function deleteIncomeCategory() {
+        $this->incomeApiGuard(); $id=(int)($_POST['category_id']??0);
+        if (!$id) $this->response(['status'=>400,'message'=>'Thiếu danh mục cần xóa.'],400);
+        try { (new incomeModel())->deleteCategory($this->incomeApiMarketId(),$id); $this->response(['status'=>200,'message'=>'Đã xóa danh mục.']); }
+        catch (Exception $e) { $this->response(['status'=>500,'message'=>$e->getMessage()],500); }
+    }
+    public function saveIncomeVoucher() {
+        $this->incomeApiGuard();
+        $type=$_POST['type']??''; $amount=(float)str_replace([',',' '],['',''],$_POST['amount']??'0');
+        if (!in_array($type,['income','expense'],true) || empty($_POST['voucher_date']) || trim($_POST['content']??'')==='' || $amount<=0) $this->response(['status'=>400,'message'=>'Ngày, nội dung và số tiền hợp lệ là bắt buộc.'],400);
+        $marketId=$this->incomeApiMarketId(); $model=new incomeModel(); $voucherId=(int)($_POST['voucher_id']??0);
+        $categoryId=(int)($_POST['category_id']??0);
+        if ($categoryId) {
+            $category=$model->category($marketId,$categoryId);
+            if (!$category || $category['category_type']!==$type) $this->response(['status'=>400,'message'=>'Danh mục không hợp lệ.'],400);
+        }
+        $existing=$voucherId ? $model->voucher($marketId,$voucherId) : null;
+        if ($voucherId && !$existing) $this->response(['status'=>404,'message'=>'Không tìm thấy phiếu.'],404);
+        $attachment=$existing['attachment_path']??null;
+        if (!empty($_FILES['attachment']['name'])) {
+            if ($_FILES['attachment']['error']!==UPLOAD_ERR_OK || $_FILES['attachment']['size']>10*1024*1024) $this->response(['status'=>400,'message'=>'Tệp không hợp lệ hoặc vượt quá 10MB.'],400);
+            $ext=strtolower(pathinfo($_FILES['attachment']['name'],PATHINFO_EXTENSION));
+            if (!in_array($ext,['pdf','doc','docx','xls','xlsx','jpg','jpeg','png'],true)) $this->response(['status'=>400,'message'=>'Định dạng tệp không được hỗ trợ.'],400);
+            $folder=DIR_ROOT.'/uploads/income'; if (!is_dir($folder) && !mkdir($folder,0755,true)) $this->response(['status'=>500,'message'=>'Không tạo được thư mục tệp.'],500);
+            $attachment=time().'_'.bin2hex(random_bytes(6)).'.'.$ext;
+            if (!move_uploaded_file($_FILES['attachment']['tmp_name'],$folder.'/'.$attachment)) $this->response(['status'=>500,'message'=>'Không lưu được tệp đính kèm.'],500);
+        }
+        try {
+            $id=$model->saveVoucher($marketId,(int)session::get('user_id',0),['voucher_id'=>$voucherId,'type'=>$type,'category_id'=>$categoryId,'voucher_date'=>$_POST['voucher_date'],'content'=>trim($_POST['content']),'amount'=>$amount,'document_no'=>trim($_POST['document_no']??''),'payer_name'=>trim($_POST['payer_name']??''),'collector_name'=>trim($_POST['collector_name']??''),'beneficiary_name'=>trim($_POST['beneficiary_name']??''),'attachment_path'=>$attachment]);
+            $this->response(['status'=>200,'message'=>'Đã lưu phiếu.','id'=>$id]);
+        } catch (Exception $e) { $this->response(['status'=>500,'message'=>'Không thể lưu phiếu: '.$e->getMessage()],500); }
+    }
+    public function deleteIncomeVoucher() {
+        $this->incomeApiGuard(); $id=(int)($_POST['voucher_id']??0);
+        if (!$id) $this->response(['status'=>400,'message'=>'Thiếu phiếu cần xóa.'],400);
+        try { (new incomeModel())->deleteVoucher($this->incomeApiMarketId(),$id); $this->response(['status'=>200,'message'=>'Đã xóa phiếu.']); }
+        catch (Exception $e) { $this->response(['status'=>500,'message'=>$e->getMessage()],500); }
+    }
 
 }
 

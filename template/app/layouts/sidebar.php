@@ -1,3 +1,62 @@
+ <style>
+        .income-menu-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            border: 0;
+            background: transparent;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font: inherit;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .income-menu-toggle:hover {
+            background: rgba(37, 99, 235, 0.08);
+        }
+
+        .income-menu-toggle.active {
+            color: var(--primary);
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .income-menu-chevron {
+            margin-left: auto;
+            transition: transform 0.2s ease;
+        }
+
+        .income-menu-toggle[aria-expanded="true"] .income-menu-chevron {
+            transform: rotate(180deg);
+        }
+
+        .income-submenu {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin: 0 0 0 28px;
+            padding-left: 9px;
+            border-left: 1px solid var(--border-color);
+            overflow: hidden;
+            max-height: 0;
+            opacity: 0;
+            transition: max-height 0.25s ease, opacity 0.2s ease, margin 0.25s ease;
+        }
+
+        .income-submenu.is-open {
+            max-height: 220px;
+            opacity: 1;
+            margin-top: 4px;
+            margin-bottom: 4px;
+        }
+
+        .income-submenu .nav-link {
+            min-height: 32px;
+            padding: 7px 10px;
+            font-size: 12px;
+        }
+    </style>
 <aside class="sidebar" aria-label="Primary navigation">
     <div class="sidebar-brand">
         <div class="brand-icon" style="background-color: var(--primary); color: white; border-radius: 6px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-weight: bold;">C</div>
@@ -33,7 +92,7 @@
             <?php if ($activeMarketId > 0): ?>
                 <a class="nav-link <?php echo (isset($title) && $title === 'Bảng Điều Khiển') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/dashboard">
                     <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
-                    <span class="nav-text">Dashboard chợ hiện tại</span>
+                    <span class="nav-text">Trang chủ</span>
                 </a>
             <?php endif; ?>
         </div>
@@ -58,10 +117,10 @@
                         </a>
 
                         <!-- Sơ đồ chợ -->
-                        <a class="nav-link <?php echo (isset($title) && $title === 'Thiết lập Sơ đồ chợ tương tác') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/map_editor">
+                        <!-- <a class="nav-link <?php echo (isset($title) && $title === 'Thiết lập Sơ đồ chợ tương tác') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/map_editor">
                             <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
                             <span class="nav-text">Thiết lập Sơ đồ chợ</span>
-                        </a>
+                        </a> -->
 
                         <!-- Sơ đồ Cây sạp chợ -->
                         <a class="nav-link <?php echo (isset($title) && $title === 'Sơ đồ Cây sạp chợ tương tác') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/map_tree">
@@ -88,7 +147,7 @@
                 <?php endif; ?>
             </div>
 
-            <!-- Nhóm dịch vụ & tài chính -->
+              <!-- Nhóm dịch vụ & tài chính -->
             <div class="nav-group">
                 <?php if (marketService::checkModuleAccess('finance')): ?>
                     <div class="nav-label">Vận hành & Tài chính</div>
@@ -100,16 +159,36 @@
                     </a>
 
                     <!-- Hóa đơn -->
-                    <a class="nav-link" href="<?php echo BASE_URL; ?>admin/bills">
+                    <!-- <a class="nav-link" href="<?php echo BASE_URL; ?>admin/bills">
                         <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 21V3h14v18l-3-2-3 2-3-2-3 2-2-2z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
                         <span class="nav-text">Hóa đơn Dịch vụ</span>
-                    </a>
+                    </a> -->
 
                     <!-- Thu Chi -->
-                    <a class="nav-link" href="<?php echo BASE_URL; ?>admin/transactions">
+                    <?php $isIncomeMenu = isset($title) && in_array($title, ['Thu - Chi tài chính', 'Quản Lý Thu', 'Quản Lý Chi', 'Danh Mục Thu Chi', 'Báo Cáo Thu Chi'], true); ?>
+                    <button type="button" class="nav-link income-menu-toggle <?php echo $isIncomeMenu ? 'active' : ''; ?>" aria-expanded="<?php echo $isIncomeMenu ? 'true' : 'false'; ?>" aria-controls="income-submenu">
                         <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="12" y1="2" x2="12" y2="22"/><path d="M16 6H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 010 7H7"/></svg>
                         <span class="nav-text">Thu - Chi tài chính</span>
-                    </a>
+                        <span class="income-menu-chevron" aria-hidden="true">⌄</span>
+                    </button>
+                    <div id="income-submenu" class="income-submenu <?php echo $isIncomeMenu ? 'is-open' : ''; ?>">
+                        <a class="nav-link <?php echo (isset($title) && $title === 'Quản Lý Thu') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/income">
+                            <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 20V4M7 9l5-5 5 5"/><path d="M5 20h14"/></svg>
+                            <span class="nav-text">Quản lý Thu</span>
+                        </a>
+                        <a class="nav-link <?php echo (isset($title) && $title === 'Quản Lý Chi') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/expense">
+                            <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 4v16M7 15l5 5 5-5"/><path d="M5 4h14"/></svg>
+                            <span class="nav-text">Quản lý Chi</span>
+                        </a>
+                        <a class="nav-link <?php echo (isset($title) && $title === 'Danh Mục Thu Chi') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/income_categories">
+                            <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+                            <span class="nav-text">Danh mục Thu Chi</span>
+                        </a>
+                        <a class="nav-link <?php echo (isset($title) && $title === 'Báo Cáo Thu Chi') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/income_report">
+                            <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 3h11l3 3v15H5z"/><path d="M8 11h8M8 15h8M8 7h3"/></svg>
+                            <span class="nav-text">Báo cáo Thu Chi</span>
+                        </a>
+                    </div>
                 <?php endif; ?>
             </div>
         <?php endif; ?>
@@ -200,3 +279,23 @@
         </div>
     </div>
 </aside>
+<script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.income-menu-toggle').forEach(function (toggle) {
+                toggle.addEventListener('click', function (event) {
+                    event.preventDefault();
+
+                    const submenu = document.getElementById(this.getAttribute('aria-controls'));
+                    if (!submenu) {
+                        return;
+                    }
+
+                    const isOpen = this.getAttribute('aria-expanded') === 'true';
+                    this.setAttribute('aria-expanded', String(!isOpen));
+                    submenu.classList.toggle('is-open', !isOpen);
+
+                    submenu.style.maxHeight = !isOpen ? (submenu.scrollHeight + 'px') : '0px';
+                });
+            });
+        });
+    </script>
