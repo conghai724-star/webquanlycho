@@ -1522,10 +1522,10 @@ class apiController extends baseController {
 
             if ($type === 'area') {
                 $data = [
-                    'area_name'   => $_POST['area_name'] ?? '',
-                    'block'       => $_POST['block'] ?? '',
-                    'lot'         => $_POST['lot'] ?? '',
-                    'actor_description' => $_POST['actor_description'] ?? ''
+                    'area_name'        => $_POST['area_name'] ?? '',
+                    'area_block'       => $_POST['area_block'] ?? '',
+                    'area_lot'         => $_POST['area_lot'] ?? '',
+                    'area_description' => $_POST['area_description'] ?? ''
                 ];
                 $validator->required('area_name', $data['area_name'], 'Tên khu vực không được để trống.');
                 $this->render->abort400($validator, 'create', 'category');
@@ -1535,21 +1535,21 @@ class apiController extends baseController {
 
             } elseif ($type === 'stall_type') {
                 $data = [
-                    'type_code'   => $_POST['type_code'] ?? '',
-                    'type_name'   => $_POST['type_name'] ?? '',
-                    'actor_description' => $_POST['actor_description'] ?? ''
+                    'stall_type_code'        => $_POST['stall_type_code'] ?? '',
+                    'stall_type_name'        => $_POST['stall_type_name'] ?? '',
+                    'stall_type_description' => $_POST['stall_type_description'] ?? ''
                 ];
-                $validator->required('type_code', $data['type_code'], 'Mã loại sạp không được để trống.')
-                          ->required('type_name', $data['type_name'], 'Tên loại sạp không được để trống.');
-                $this->render->abort400($validator, 'create', 'category');
+                $validator->required('stall_type_code', $data['stall_type_code'], 'Mã loại sạp không được để trống.')
+                          ->required('stall_type_name', $data['stall_type_name'], 'Tên loại sạp không được để trống.');
+                 $this->render->abort400($validator, 'create', 'category');
 
-                $this->render->abort400(!$categoryModel->isCodeExists('stall_type', 'type_code', $data['type_code']), 'create', 'category', 'Mã loại sạp này đã tồn tại.');
+                $this->render->abort400(!$categoryModel->isCodeExists('stall_type', 'stall_type_code', $data['stall_type_code']), 'create', 'category', 'Mã loại sạp này đã tồn tại.');
 
             } elseif ($type === 'business_line') {
                 $data = [
-                    'line_code'   => $_POST['line_code'] ?? '',
-                    'line_name'   => $_POST['line_name'] ?? '',
-                    'actor_description' => $_POST['actor_description'] ?? ''
+                    'line_code'        => $_POST['line_code'] ?? '',
+                    'line_name'        => $_POST['line_name'] ?? '',
+                    'line_description' => $_POST['line_description'] ?? ''
                 ];
                 $validator->required('line_code', $data['line_code'], 'Mã ngành hàng không được để trống.')
                           ->required('line_name', $data['line_name'], 'Tên ngành hàng không được để trống.');
@@ -1559,15 +1559,15 @@ class apiController extends baseController {
 
             } elseif ($type === 'document_type') {
                 $data = [
-                    'type_code'   => $_POST['type_code'] ?? '',
-                    'type_name'   => $_POST['type_name'] ?? '',
-                    'actor_description' => $_POST['actor_description'] ?? ''
+                    'doc_type_code'        => $_POST['doc_type_code'] ?? '',
+                    'doc_type_name'        => $_POST['doc_type_name'] ?? '',
+                    'doc_type_description' => $_POST['doc_type_description'] ?? ''
                 ];
-                $validator->required('type_code', $data['type_code'], 'Mã loại giấy tờ không được để trống.')
-                          ->required('type_name', $data['type_name'], 'Tên loại giấy tờ không được để trống.');
+                $validator->required('doc_type_code', $data['doc_type_code'], 'Mã loại giấy tờ không được để trống.')
+                          ->required('doc_type_name', $data['doc_type_name'], 'Tên loại giấy tờ không được để trống.');
                 $this->render->abort400($validator, 'create', 'category');
 
-                $this->render->abort400(!$categoryModel->isCodeExists('document_type', 'type_code', $data['type_code']), 'create', 'category', 'Mã loại giấy tờ này đã tồn tại.');
+                $this->render->abort400(!$categoryModel->isCodeExists('document_type', 'doc_type_code', $data['doc_type_code']), 'create', 'category', 'Mã loại giấy tờ này đã tồn tại.');
             } else {
                 $this->render->abort400(false, 'create', 'category', 'Loại danh mục không hợp lệ.');
             }
@@ -1606,10 +1606,10 @@ class apiController extends baseController {
 
             if ($type === 'area') {
                 $data = [
-                    'area_name'   => $_POST['area_name'] ?? '',
-                    'block'       => $_POST['block'] ?? '',
-                    'lot'         => $_POST['lot'] ?? '',
-                    'actor_description' => $_POST['actor_description'] ?? ''
+                    'area_name'        => $_POST['area_name'] ?? '',
+                    'area_block'       => $_POST['area_block'] ?? '',
+                    'area_lot'         => $_POST['area_lot'] ?? '',
+                    'area_description' => $_POST['area_description'] ?? ''
                 ];
                 $validator->required('area_name', $data['area_name'], 'Tên khu vực không được để trống.');
                 $this->render->abort400($validator, 'update', 'category');
@@ -1618,21 +1618,21 @@ class apiController extends baseController {
 
             } elseif ($type === 'stall_type') {
                 $data = [
-                    'type_code'   => $_POST['type_code'] ?? '',
-                    'type_name'   => $_POST['type_name'] ?? '',
-                    'actor_description' => $_POST['actor_description'] ?? ''
+                    'stall_type_code'        => $_POST['stall_type_code'] ?? '',
+                    'stall_type_name'        => $_POST['stall_type_name'] ?? '',
+                    'stall_type_description' => $_POST['stall_type_description'] ?? ''
                 ];
-                $validator->required('type_code', $data['type_code'], 'Mã loại sạp không được để trống.')
-                          ->required('type_name', $data['type_name'], 'Tên loại sạp không được để trống.');
+                $validator->required('stall_type_code', $data['stall_type_code'], 'Mã loại sạp không được để trống.')
+                          ->required('stall_type_name', $data['stall_type_name'], 'Tên loại sạp không được để trống.');
                 $this->render->abort400($validator, 'update', 'category');
 
-                $this->render->abort400(!$categoryModel->isCodeExists('stall_type', 'type_code', $data['type_code'], $user_market_market_id), 'update', 'category', 'Mã loại sạp này đã tồn tại.');
+                $this->render->abort400(!$categoryModel->isCodeExists('stall_type', 'stall_type_code', $data['stall_type_code'], $user_market_market_id), 'update', 'category', 'Mã loại sạp này đã tồn tại.');
 
             } elseif ($type === 'business_line') {
                 $data = [
-                    'line_code'   => $_POST['line_code'] ?? '',
-                    'line_name'   => $_POST['line_name'] ?? '',
-                    'actor_description' => $_POST['actor_description'] ?? ''
+                    'line_code'        => $_POST['line_code'] ?? '',
+                    'line_name'        => $_POST['line_name'] ?? '',
+                    'line_description' => $_POST['line_description'] ?? ''
                 ];
                 $validator->required('line_code', $data['line_code'], 'Mã ngành hàng không được để trống.')
                           ->required('line_name', $data['line_name'], 'Tên ngành hàng không được để trống.');
@@ -1642,15 +1642,15 @@ class apiController extends baseController {
 
             } elseif ($type === 'document_type') {
                 $data = [
-                    'type_code'   => $_POST['type_code'] ?? '',
-                    'type_name'   => $_POST['type_name'] ?? '',
-                    'actor_description' => $_POST['actor_description'] ?? ''
+                    'doc_type_code'        => $_POST['doc_type_code'] ?? '',
+                    'doc_type_name'        => $_POST['doc_type_name'] ?? '',
+                    'doc_type_description' => $_POST['doc_type_description'] ?? ''
                 ];
-                $validator->required('type_code', $data['type_code'], 'Mã loại giấy tờ không được để trống.')
-                          ->required('type_name', $data['type_name'], 'Tên loại giấy tờ không được để trống.');
+                $validator->required('doc_type_code', $data['doc_type_code'], 'Mã loại giấy tờ không được để trống.')
+                          ->required('doc_type_name', $data['doc_type_name'], 'Tên loại giấy tờ không được để trống.');
                 $this->render->abort400($validator, 'update', 'category');
 
-                $this->render->abort400(!$categoryModel->isCodeExists('document_type', 'type_code', $data['type_code'], $user_market_market_id), 'update', 'category', 'Mã loại giấy tờ này đã tồn tại.');
+                $this->render->abort400(!$categoryModel->isCodeExists('document_type', 'doc_type_code', $data['doc_type_code'], $user_market_market_id), 'update', 'category', 'Mã loại giấy tờ này đã tồn tại.');
             } else {
                 $this->render->abort400(false, 'update', 'category', 'Loại danh mục không hợp lệ.');
             }

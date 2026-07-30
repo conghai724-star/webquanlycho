@@ -119,7 +119,7 @@
             <?php 
             $showFoodSafety = $showMarketMenus && marketService::checkModuleAccess('foodsafety');
             $showUsers = marketService::isSuperAdmin() || marketService::isAdminMarket();
-            $showCategories = $showMarketMenus && (marketService::isSuperAdmin() || marketService::isAdminMarket());
+            $showCategories = $showMarketMenus && (marketService::isSuperAdmin() || marketService::isAdminMarket() || session::get('actor_code') === 'admin');
             $showTheme = marketService::isSuperAdmin();
             
             if ($showFoodSafety || $showUsers || $showCategories || $showTheme):

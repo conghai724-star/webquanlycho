@@ -26,15 +26,15 @@
             </div>
             <div class="form-group" style="margin: 0; min-width: 120px; flex: 1;">
                 <label class="form-label" style="font-size: 12px; font-weight: 500; margin-bottom: 4px;">Dãy (Block)</label>
-                <input type="text" name="block" class="form-control form-control-sm" placeholder="Ví dụ: Dãy A1" style="height: 34px; font-size: 13px;">
+                <input type="text" name="area_block" class="form-control form-control-sm" placeholder="Ví dụ: Dãy A1" style="height: 34px; font-size: 13px;">
             </div>
             <div class="form-group" style="margin: 0; min-width: 120px; flex: 1;">
                 <label class="form-label" style="font-size: 12px; font-weight: 500; margin-bottom: 4px;">Lô (Lot)</label>
-                <input type="text" name="lot" class="form-control form-control-sm" placeholder="Ví dụ: Lô 01-10" style="height: 34px; font-size: 13px;">
+                <input type="text" name="area_lot" class="form-control form-control-sm" placeholder="Ví dụ: Lô 01-10" style="height: 34px; font-size: 13px;">
             </div>
             <div class="form-group" style="margin: 0; min-width: 250px; flex: 2;">
                 <label class="form-label" style="font-size: 12px; font-weight: 500; margin-bottom: 4px;">Mô tả chi tiết</label>
-                <input type="text" name="description" class="form-control form-control-sm" placeholder="Mô tả khu vực..." style="height: 34px; font-size: 13px;">
+                <input type="text" name="area_description" class="form-control form-control-sm" placeholder="Mô tả khu vực..." style="height: 34px; font-size: 13px;">
             </div>
             <button type="submit" class="btn btn-primary btn-sm" style="height: 34px; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px;">
                 <i class="fa-solid fa-plus"></i> Thêm mới
@@ -59,18 +59,18 @@
                     <?php if (!empty($areas)): ?>
                         <?php foreach ($areas as $item): ?>
                             <tr style="border-bottom: 1px solid var(--border-color);">
-                                <td style="padding: 14px 16px; color: var(--text-muted); font-family: monospace;"><?php echo $item['id']; ?></td>
+                                <td style="padding: 14px 16px; color: var(--text-muted); font-family: monospace;"><?php echo $item['area_id']; ?></td>
                                 <td style="padding: 14px 16px; font-weight: 600; color: var(--text-heading);"><?php echo htmlspecialchars($item['area_name']); ?></td>
-                                <td style="padding: 14px 16px;"><?php echo htmlspecialchars($item['block'] ?: '-'); ?></td>
-                                <td style="padding: 14px 16px;"><?php echo htmlspecialchars($item['lot'] ?: '-'); ?></td>
-                                <td style="padding: 14px 16px; color: var(--text-muted);"><?php echo htmlspecialchars($item['description'] ?: '-'); ?></td>
+                                <td style="padding: 14px 16px;"><?php echo htmlspecialchars($item['area_block'] ?: '-'); ?></td>
+                                <td style="padding: 14px 16px;"><?php echo htmlspecialchars($item['area_lot'] ?: '-'); ?></td>
+                                <td style="padding: 14px 16px; color: var(--text-muted);"><?php echo htmlspecialchars($item['area_description'] ?: '-'); ?></td>
                                 <td style="padding: 14px 16px; text-align: right;">
                                     <div style="display: flex; justify-content: flex-end; gap: 6px;">
-                                        <button type="button" class="btn btn-outline btn-sm" onclick="App.category.openEditModal('area', <?php echo $item['id']; ?>)" style="padding: 4px 8px; font-size: 11px;" title="Sửa">
+                                        <button type="button" class="btn btn-outline btn-sm" onclick="App.category.openEditModal('area', <?php echo $item['area_id']; ?>)" style="padding: 4px 8px; font-size: 11px;" title="Sửa">
                                             <i class="fa-solid fa-pen"></i>
                                         </button>
                                         <button type="button" class="btn btn-outline btn-sm text-danger btn-open-delete-cat" 
-                                                data-cat-id="<?php echo $item['id']; ?>" 
+                                                data-cat-id="<?php echo $item['area_id']; ?>" 
                                                 data-cat-name="<?php echo htmlspecialchars($item['area_name']); ?>" 
                                                 data-url="<?php echo BASE_URL; ?>api/deleteCategory?type=area" 
                                                 style="padding: 4px 8px; font-size: 11px;" title="Xóa">
@@ -104,15 +104,15 @@
             <?php csrf_field(); ?>
             <div class="form-group" style="margin: 0; min-width: 180px; flex: 1;">
                 <label class="form-label" style="font-size: 12px; font-weight: 500; margin-bottom: 4px;">Mã loại sạp <span style="color: var(--red)">*</span></label>
-                <input type="text" name="type_code" class="form-control form-control-sm" placeholder="Ví dụ: kiot" style="height: 34px; font-size: 13px;" required>
+                <input type="text" name="stall_type_code" class="form-control form-control-sm" placeholder="Ví dụ: kiot" style="height: 34px; font-size: 13px;" required>
             </div>
             <div class="form-group" style="margin: 0; min-width: 180px; flex: 1;">
                 <label class="form-label" style="font-size: 12px; font-weight: 500; margin-bottom: 4px;">Tên loại sạp <span style="color: var(--red)">*</span></label>
-                <input type="text" name="type_name" class="form-control form-control-sm" placeholder="Ví dụ: Kiot" style="height: 34px; font-size: 13px;" required>
+                <input type="text" name="stall_type_name" class="form-control form-control-sm" placeholder="Ví dụ: Kiot" style="height: 34px; font-size: 13px;" required>
             </div>
             <div class="form-group" style="margin: 0; min-width: 250px; flex: 2;">
                 <label class="form-label" style="font-size: 12px; font-weight: 500; margin-bottom: 4px;">Mô tả chi tiết</label>
-                <input type="text" name="description" class="form-control form-control-sm" placeholder="Mô tả loại sạp..." style="height: 34px; font-size: 13px;">
+                <input type="text" name="stall_type_description" class="form-control form-control-sm" placeholder="Mô tả loại sạp..." style="height: 34px; font-size: 13px;">
             </div>
             <button type="submit" class="btn btn-primary btn-sm" style="height: 34px; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px;">
                 <i class="fa-solid fa-plus"></i> Thêm mới
@@ -136,18 +136,18 @@
                     <?php if (!empty($stallTypes)): ?>
                         <?php foreach ($stallTypes as $item): ?>
                             <tr style="border-bottom: 1px solid var(--border-color);">
-                                <td style="padding: 14px 16px; color: var(--text-muted); font-family: monospace;"><?php echo $item['id']; ?></td>
-                                <td class="cell-mono" style="padding: 14px 16px; font-weight: 600; color: var(--text-heading);"><?php echo htmlspecialchars($item['type_code']); ?></td>
-                                <td style="padding: 14px 16px; font-weight: 600; color: var(--text-heading);"><?php echo htmlspecialchars($item['type_name']); ?></td>
-                                <td style="padding: 14px 16px; color: var(--text-muted);"><?php echo htmlspecialchars($item['description'] ?: '-'); ?></td>
+                                <td style="padding: 14px 16px; color: var(--text-muted); font-family: monospace;"><?php echo $item['stall_type_id']; ?></td>
+                                <td class="cell-mono" style="padding: 14px 16px; font-weight: 600; color: var(--text-heading);"><?php echo htmlspecialchars($item['stall_type_code']); ?></td>
+                                <td style="padding: 14px 16px; font-weight: 600; color: var(--text-heading);"><?php echo htmlspecialchars($item['stall_type_name']); ?></td>
+                                <td style="padding: 14px 16px; color: var(--text-muted);"><?php echo htmlspecialchars($item['stall_type_description'] ?: '-'); ?></td>
                                 <td style="padding: 14px 16px; text-align: right;">
                                     <div style="display: flex; justify-content: flex-end; gap: 6px;">
-                                        <button type="button" class="btn btn-outline btn-sm" onclick="App.category.openEditModal('stall_type', <?php echo $item['id']; ?>)" style="padding: 4px 8px; font-size: 11px;" title="Sửa">
+                                        <button type="button" class="btn btn-outline btn-sm" onclick="App.category.openEditModal('stall_type', <?php echo $item['stall_type_id']; ?>)" style="padding: 4px 8px; font-size: 11px;" title="Sửa">
                                             <i class="fa-solid fa-pen"></i>
                                         </button>
                                         <button type="button" class="btn btn-outline btn-sm text-danger btn-open-delete-cat" 
-                                                data-cat-id="<?php echo $item['id']; ?>" 
-                                                data-cat-name="<?php echo htmlspecialchars($item['type_name']); ?>" 
+                                                data-cat-id="<?php echo $item['stall_type_id']; ?>" 
+                                                data-cat-name="<?php echo htmlspecialchars($item['stall_type_name']); ?>" 
                                                 data-url="<?php echo BASE_URL; ?>api/deleteCategory?type=stall_type" 
                                                 style="padding: 4px 8px; font-size: 11px;" title="Xóa">
                                             <i class="fa-solid fa-trash"></i>
@@ -188,7 +188,7 @@
             </div>
             <div class="form-group" style="margin: 0; min-width: 250px; flex: 2;">
                 <label class="form-label" style="font-size: 12px; font-weight: 500; margin-bottom: 4px;">Mô tả chi tiết</label>
-                <input type="text" name="description" class="form-control form-control-sm" placeholder="Mô tả ngành hàng..." style="height: 34px; font-size: 13px;">
+                <input type="text" name="line_description" class="form-control form-control-sm" placeholder="Mô tả ngành hàng..." style="height: 34px; font-size: 13px;">
             </div>
             <button type="submit" class="btn btn-primary btn-sm" style="height: 34px; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px;">
                 <i class="fa-solid fa-plus"></i> Thêm mới
@@ -212,17 +212,17 @@
                     <?php if (!empty($businessLines)): ?>
                         <?php foreach ($businessLines as $item): ?>
                             <tr style="border-bottom: 1px solid var(--border-color);">
-                                <td style="padding: 14px 16px; color: var(--text-muted); font-family: monospace;"><?php echo $item['id']; ?></td>
+                                <td style="padding: 14px 16px; color: var(--text-muted); font-family: monospace;"><?php echo $item['line_id']; ?></td>
                                 <td class="cell-mono" style="padding: 14px 16px; font-weight: 600; color: var(--text-heading);"><?php echo htmlspecialchars($item['line_code']); ?></td>
                                 <td style="padding: 14px 16px; font-weight: 600; color: var(--text-heading);"><?php echo htmlspecialchars($item['line_name']); ?></td>
-                                <td style="padding: 14px 16px; color: var(--text-muted);"><?php echo htmlspecialchars($item['description'] ?: '-'); ?></td>
+                                <td style="padding: 14px 16px; color: var(--text-muted);"><?php echo htmlspecialchars($item['line_description'] ?: '-'); ?></td>
                                 <td style="padding: 14px 16px; text-align: right;">
                                     <div style="display: flex; justify-content: flex-end; gap: 6px;">
-                                        <button type="button" class="btn btn-outline btn-sm" onclick="App.category.openEditModal('business_line', <?php echo $item['id']; ?>)" style="padding: 4px 8px; font-size: 11px;" title="Sửa">
+                                        <button type="button" class="btn btn-outline btn-sm" onclick="App.category.openEditModal('business_line', <?php echo $item['line_id']; ?>)" style="padding: 4px 8px; font-size: 11px;" title="Sửa">
                                             <i class="fa-solid fa-pen"></i>
                                         </button>
                                         <button type="button" class="btn btn-outline btn-sm text-danger btn-open-delete-cat" 
-                                                data-cat-id="<?php echo $item['id']; ?>" 
+                                                data-cat-id="<?php echo $item['line_id']; ?>" 
                                                 data-cat-name="<?php echo htmlspecialchars($item['line_name']); ?>" 
                                                 data-url="<?php echo BASE_URL; ?>api/deleteCategory?type=business_line" 
                                                 style="padding: 4px 8px; font-size: 11px;" title="Xóa">
@@ -256,15 +256,15 @@
             <?php csrf_field(); ?>
             <div class="form-group" style="margin: 0; min-width: 180px; flex: 1;">
                 <label class="form-label" style="font-size: 12px; font-weight: 500; margin-bottom: 4px;">Mã loại giấy tờ <span style="color: var(--red)">*</span></label>
-                <input type="text" name="type_code" class="form-control form-control-sm" placeholder="Ví dụ: attp" style="height: 34px; font-size: 13px;" required>
+                <input type="text" name="doc_type_code" class="form-control form-control-sm" placeholder="Ví dụ: attp" style="height: 34px; font-size: 13px;" required>
             </div>
             <div class="form-group" style="margin: 0; min-width: 180px; flex: 1;">
                 <label class="form-label" style="font-size: 12px; font-weight: 500; margin-bottom: 4px;">Tên loại giấy tờ <span style="color: var(--red)">*</span></label>
-                <input type="text" name="type_name" class="form-control form-control-sm" placeholder="Ví dụ: Giấy chứng nhận..." style="height: 34px; font-size: 13px;" required>
+                <input type="text" name="doc_type_name" class="form-control form-control-sm" placeholder="Ví dụ: Giấy chứng nhận..." style="height: 34px; font-size: 13px;" required>
             </div>
             <div class="form-group" style="margin: 0; min-width: 250px; flex: 2;">
                 <label class="form-label" style="font-size: 12px; font-weight: 500; margin-bottom: 4px;">Mô tả chi tiết</label>
-                <input type="text" name="description" class="form-control form-control-sm" placeholder="Mô tả loại giấy tờ..." style="height: 34px; font-size: 13px;">
+                <input type="text" name="doc_type_description" class="form-control form-control-sm" placeholder="Mô tả loại giấy tờ..." style="height: 34px; font-size: 13px;">
             </div>
             <button type="submit" class="btn btn-primary btn-sm" style="height: 34px; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px;">
                 <i class="fa-solid fa-plus"></i> Thêm mới
@@ -288,18 +288,18 @@
                     <?php if (!empty($documentTypes)): ?>
                         <?php foreach ($documentTypes as $item): ?>
                             <tr style="border-bottom: 1px solid var(--border-color);">
-                                <td style="padding: 14px 16px; color: var(--text-muted); font-family: monospace;"><?php echo $item['id']; ?></td>
-                                <td class="cell-mono" style="padding: 14px 16px; font-weight: 600; color: var(--text-heading);"><?php echo htmlspecialchars($item['type_code']); ?></td>
-                                <td style="padding: 14px 16px; font-weight: 600; color: var(--text-heading);"><?php echo htmlspecialchars($item['type_name']); ?></td>
-                                <td style="padding: 14px 16px; color: var(--text-muted);"><?php echo htmlspecialchars($item['description'] ?: '-'); ?></td>
+                                <td style="padding: 14px 16px; color: var(--text-muted); font-family: monospace;"><?php echo $item['doc_type_id']; ?></td>
+                                <td class="cell-mono" style="padding: 14px 16px; font-weight: 600; color: var(--text-heading);"><?php echo htmlspecialchars($item['doc_type_code']); ?></td>
+                                <td style="padding: 14px 16px; font-weight: 600; color: var(--text-heading);"><?php echo htmlspecialchars($item['doc_type_name']); ?></td>
+                                <td style="padding: 14px 16px; color: var(--text-muted);"><?php echo htmlspecialchars($item['doc_type_description'] ?: '-'); ?></td>
                                 <td style="padding: 14px 16px; text-align: right;">
                                     <div style="display: flex; justify-content: flex-end; gap: 6px;">
-                                        <button type="button" class="btn btn-outline btn-sm" onclick="App.category.openEditModal('document_type', <?php echo $item['id']; ?>)" style="padding: 4px 8px; font-size: 11px;" title="Sửa">
+                                        <button type="button" class="btn btn-outline btn-sm" onclick="App.category.openEditModal('document_type', <?php echo $item['doc_type_id']; ?>)" style="padding: 4px 8px; font-size: 11px;" title="Sửa">
                                             <i class="fa-solid fa-pen"></i>
                                         </button>
                                         <button type="button" class="btn btn-outline btn-sm text-danger btn-open-delete-cat" 
-                                                data-cat-id="<?php echo $item['id']; ?>" 
-                                                data-cat-name="<?php echo htmlspecialchars($item['type_name']); ?>" 
+                                                data-cat-id="<?php echo $item['doc_type_id']; ?>" 
+                                                data-cat-name="<?php echo htmlspecialchars($item['doc_type_name']); ?>" 
                                                 data-url="<?php echo BASE_URL; ?>api/deleteCategory?type=document_type" 
                                                 style="padding: 4px 8px; font-size: 11px;" title="Xóa">
                                             <i class="fa-solid fa-trash"></i>
@@ -324,6 +324,8 @@
 $(document).ready(function() {
     const isDarkTheme = document.documentElement.getAttribute('data-theme') === 'dark';
     const csrfToken = '<?php echo $_SESSION['csrf_token'] ?? ''; ?>';
+    const swalBg = isDarkTheme ? '#1a2332' : '#ffffff';
+    const swalColor = isDarkTheme ? '#ffffff' : '#0f1623';
 
     // Đăng ký namespace App.category
     window.App = window.App || {};
@@ -374,9 +376,9 @@ $(document).ready(function() {
                                 return false;
                             }
                             fd.append('area_name', areaName);
-                            fd.append('block', document.getElementById('swal-block').value.trim());
-                            fd.append('lot', document.getElementById('swal-lot').value.trim());
-                            fd.append('description', document.getElementById('swal-description').value.trim());
+                            fd.append('area_block', document.getElementById('swal-area_block').value.trim());
+                            fd.append('area_lot', document.getElementById('swal-area_lot').value.trim());
+                            fd.append('area_description', document.getElementById('swal-description').value.trim());
                         } else {
                             const code = document.getElementById('swal-code').value.trim();
                             const name = document.getElementById('swal-name').value.trim();
@@ -385,16 +387,18 @@ $(document).ready(function() {
                                 return false;
                             }
                             if (type === 'stall_type') {
-                                fd.append('type_code', code);
-                                fd.append('type_name', name);
+                                fd.append('stall_type_code', code);
+                                fd.append('stall_type_name', name);
+                                fd.append('stall_type_description', document.getElementById('swal-description').value.trim());
                             } else if (type === 'business_line') {
                                 fd.append('line_code', code);
                                 fd.append('line_name', name);
+                                fd.append('line_description', document.getElementById('swal-description').value.trim());
                             } else if (type === 'document_type') {
-                                fd.append('type_code', code);
-                                fd.append('type_name', name);
+                                fd.append('doc_type_code', code);
+                                fd.append('doc_type_name', name);
+                                fd.append('doc_type_description', document.getElementById('swal-description').value.trim());
                             }
-                            fd.append('description', document.getElementById('swal-description').value.trim());
                         }
                         return fd;
                     }
@@ -429,9 +433,16 @@ $(document).ready(function() {
                                 Swal.fire({ icon: 'error', title: 'Thất bại', text: data.message, background: swalBg, color: swalColor });
                             }
                         },
-                        error: function() {
+                        error: function(xhr) {
                             Swal.close();
-                            Swal.fire({ icon: 'error', title: 'Lỗi', text: 'Có lỗi xảy ra trong quá trình xử lý.', background: swalBg, color: swalColor });
+                            let errorMsg = 'Có lỗi xảy ra trong quá trình xử lý.';
+                            try {
+                                const res = JSON.parse(xhr.responseText);
+                                if (res && (res.error || res.message)) {
+                                    errorMsg = res.error || res.message;
+                                }
+                            } catch (e) {}
+                            Swal.fire({ icon: 'error', title: 'Thất bại', text: errorMsg, background: swalBg, color: swalColor });
                         }
                     });
                 }
@@ -457,16 +468,16 @@ $(document).ready(function() {
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
                         <div class="form-group">
                             <label class="form-label" style="font-weight: 500;">Dãy (Block)</label>
-                            <input type="text" id="swal-block" class="form-control" placeholder="Ví dụ: Dãy A1" value="${data && data.block ? data.block : ''}">
+                            <input type="text" id="swal-area_block" class="form-control" placeholder="Ví dụ: Dãy A1" value="${data && data.area_block ? data.area_block : ''}">
                         </div>
                         <div class="form-group">
                             <label class="form-label" style="font-weight: 500;">Lô số (Lot)</label>
-                            <input type="text" id="swal-lot" class="form-control" placeholder="Ví dụ: Lô 01-10" value="${data && data.lot ? data.lot : ''}">
+                            <input type="text" id="swal-area_lot" class="form-control" placeholder="Ví dụ: Lô 01-10" value="${data && data.area_lot ? data.area_lot : ''}">
                         </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label" style="font-weight: 500;">Mô tả chi tiết</label>
-                        <textarea id="swal-description" class="form-control" rows="3" placeholder="Nhập mô tả khu vực...">${data && data.description ? data.description : ''}</textarea>
+                        <textarea id="swal-description" class="form-control" rows="3" placeholder="Nhập mô tả khu vực...">${data && data.area_description ? data.area_description : ''}</textarea>
                     </div>
                 </div>
             `;
@@ -477,7 +488,10 @@ $(document).ready(function() {
             let namePlaceholder = '';
             let codeVal = '';
             let nameVal = '';
-            let descVal = data && data.description ? data.description : '';
+            let descVal = '';
+            if (data) {
+                descVal = data.stall_type_description || data.line_description || data.doc_type_description || '';
+            }
 
             if (type === 'stall_type') {
                 title = data ? 'Sửa Loại Sạp Chợ' : 'Thêm Loại Sạp Chợ Mới';
@@ -485,8 +499,8 @@ $(document).ready(function() {
                 nameLabel = 'Tên loại sạp';
                 codePlaceholder = 'Ví dụ: kiot, quay_hang';
                 namePlaceholder = 'Ví dụ: Kiot, Quầy hàng';
-                codeVal = data ? data.type_code : '';
-                nameVal = data ? data.type_name : '';
+                codeVal = data ? data.stall_type_code : '';
+                nameVal = data ? data.stall_type_name : '';
             } else if (type === 'business_line') {
                 title = data ? 'Sửa Ngành Hàng' : 'Thêm Ngành Hàng Mới';
                 codeLabel = 'Mã ngành hàng';
@@ -501,8 +515,8 @@ $(document).ready(function() {
                 nameLabel = 'Tên loại giấy tờ';
                 codePlaceholder = 'Ví dụ: attp, suc_khoe';
                 namePlaceholder = 'Ví dụ: Giấy chứng nhận ATTP';
-                codeVal = data ? data.type_code : '';
-                nameVal = data ? data.type_name : '';
+                codeVal = data ? data.doc_type_code : '';
+                nameVal = data ? data.doc_type_name : '';
             }
 
             html = `
@@ -575,9 +589,16 @@ $(document).ready(function() {
                         Swal.fire({ icon: 'error', title: 'Thất bại', text: data.message, background: swalBg, color: swalColor });
                     }
                 },
-                error: function() {
+                error: function(xhr) {
                     Swal.close();
-                    Swal.fire({ icon: 'error', title: 'Lỗi', text: 'Có lỗi xảy ra trong quá trình xử lý.', background: swalBg, color: swalColor });
+                    let errorMsg = 'Có lỗi xảy ra trong quá trình xử lý.';
+                    try {
+                        const res = JSON.parse(xhr.responseText);
+                        if (res && (res.error || res.message)) {
+                            errorMsg = res.error || res.message;
+                        }
+                    } catch (e) {}
+                    Swal.fire({ icon: 'error', title: 'Thất bại', text: errorMsg, background: swalBg, color: swalColor });
                 }
             });
         });
@@ -635,9 +656,16 @@ $(document).ready(function() {
                             Swal.fire({ icon: 'error', title: 'Thất bại', text: data.message, background: swalBg, color: swalColor });
                         }
                     },
-                    error: function() {
+                    error: function(xhr) {
                         Swal.close();
-                        Swal.fire({ icon: 'error', title: 'Lỗi', text: 'Có lỗi xảy ra khi kết nối máy chủ.', background: swalBg, color: swalColor });
+                        let errorMsg = 'Có lỗi xảy ra khi kết nối máy chủ.';
+                        try {
+                            const res = JSON.parse(xhr.responseText);
+                            if (res && (res.error || res.message)) {
+                                errorMsg = res.error || res.message;
+                            }
+                        } catch (e) {}
+                        Swal.fire({ icon: 'error', title: 'Thất bại', text: errorMsg, background: swalBg, color: swalColor });
                     }
                 });
             }

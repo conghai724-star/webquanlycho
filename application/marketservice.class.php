@@ -28,8 +28,8 @@ class marketService {
         return self::helper()->getAccessibleMarketIds();
     }
 
-    public static function applyScope(string $sql, string $alias = ''): string {
-        return self::helper()->applyScope($sql, $alias);
+    public static function applyScope(string $sql, string $alias = '', string $column = 'market_id'): string {
+        return self::helper()->applyScope($sql, $alias, $column);
     }
 
     public static function checkWritePermission($marketId) {

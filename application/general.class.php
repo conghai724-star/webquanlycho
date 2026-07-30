@@ -1356,11 +1356,11 @@ Class general{
      * @param string $alias Tên alias của bảng (nếu có, ví dụ: 'a' hoặc 'stalls')
      * @return string Câu truy vấn đã được bổ sung điều kiện lọc
      */
-    public function applyScope(string $sql, string $alias = ''): string {
+    public function applyScope(string $sql, string $alias = '', string $column = 'market_id'): string {
         $marketId = self::currentMarketId();
         
         $prefix = $alias ? "{$alias}." : "";
-        $condition = "{$prefix}market_id = {$marketId}";
+        $condition = "{$prefix}{$column} = {$marketId}";
         
         // Kiểm tra xem đã có mệnh đề WHERE trong câu truy vấn chưa
         if (stripos($sql, 'where') !== false) {
