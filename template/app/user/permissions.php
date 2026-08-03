@@ -1,3 +1,21 @@
+<?php
+// ponytail: Cấu hình phân quyền động (Dễ dàng sao chép & tùy chỉnh ở dự án khác)
+$permissionConfig = [
+    'modules' => [
+        'trader'     => ['name' => 'Tiểu thương', 'icon' => 'fa-users'],
+        'stall'      => ['name' => 'Sạp chợ', 'icon' => 'fa-store'],
+        'contract'   => ['name' => 'Hợp đồng', 'icon' => 'fa-file-signature'],
+        'finance'    => ['name' => 'Tài chính', 'icon' => 'fa-wallet'],
+        'foodsafety' => ['name' => 'An toàn TP', 'icon' => 'fa-shield-halved']
+    ],
+    'roles' => [
+        'ketoan'  => ['name' => 'Kế toán / Thủ quỹ', 'permissions' => ['contract' => true, 'finance' => true]],
+        'kythuat' => ['name' => 'Kỹ thuật / Sạp', 'permissions' => ['trader' => true, 'stall' => true]],
+        'attp'    => ['name' => 'Kiểm tra ATTP', 'permissions' => ['trader' => true, 'foodsafety' => true]],
+        'tonghop' => ['name' => 'Nhân viên tổng hợp', 'permissions' => ['trader' => true, 'stall' => true, 'contract' => true, 'finance' => true, 'foodsafety' => true]]
+    ]
+];
+?>
 <!-- Giao diện Phân Quyền Phân Hệ Nhân Viên -->
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -151,11 +169,21 @@
 
 <div class="permissions-container">
     <div class="card">
-        <div class="card-header">
-            <h2 class="card-title">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid var(--border-color); padding: 16px 20px;">
+            <h2 class="card-title" style="margin: 0; font-size: 16px; font-weight: 600;">
                 <i class="fa-solid fa-user-shield" style="color: #3a7bd5;"></i>
                 Danh sách Phân quyền Phân hệ cho Nhân viên
             </h2>
+            <form method="GET" action="<?php echo BASE_URL; ?>system/permissions" style="display: flex; gap: 8px; flex-wrap: wrap;" data-native-submit="true">
+                <select name="market_id" style="padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 13px; min-width: 180px; background-color: var(--bg-surface, #ffffff); color: var(--text-color);">
+                    <option value="">-- Tất cả chợ --</option>
+                    <?php foreach ($filterMarkets as $m): ?>
+                        <option value="<?php echo $m['market_id']; ?>" <?php echo ($selectedMarket == $m['market_id']) ? 'selected' : ''; ?>><?php echo htmlspecialchars($m['market_name']); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <input type="text" name="q" placeholder="Tìm kiếm nhân viên..." value="<?php echo htmlspecialchars($search ?? ''); ?>" style="padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 13px; width: 220px; background-color: var(--bg-surface, #ffffff); color: var(--text-color);">
+                <button type="submit" class="btn btn-outline" style="padding: 6px 12px; font-size: 13px; height: 34px; display: inline-flex; align-items: center;">Tìm kiếm</button>
+            </form>
         </div>
         <div class="card-body">
             <?php if (!empty($error)): ?>
@@ -177,11 +205,10 @@
                             <tr>
                                 <th>Nhân viên</th>
                                 <th>Chợ áp dụng</th>
-                                <th>Tiểu thương (`trader`)</th>
-                                <th>Sạp chợ (`stall`)</th>
-                                <th>Hợp đồng (`contract`)</th>
-                                <th>Tài chính (`finance`)</th>
-                                <th>An toàn TP (`foodsafety`)</th>
+                                <th style="width: 170px;">Mẫu gán nhanh</th>
+                                <?php foreach ($permissionConfig['modules'] as $code => $mod): ?>
+                                    <th><?php echo htmlspecialchars($mod['name']); ?> (`<?php echo htmlspecialchars($code); ?>`)</th>
+                                <?php endforeach; ?>
                             </tr>
                         </thead>
                         <tbody>
@@ -192,7 +219,7 @@
                                     $db = database::getInstance();
                                     $isLinked = $db->selectOne("
                                         SELECT 1 FROM user_markets 
-                                        WHERE user_id = :u_id AND market_id = :m_id
+                                        WHERE user_market_user_id = :u_id AND user_market_market_id = :m_id
                                     ", ['u_id' => $staff['id'], 'm_id' => $market['market_id']]);
 
                                     if (!$isLinked) continue;
@@ -210,61 +237,28 @@
                                             <?php echo htmlspecialchars($market['market_name']); ?>
                                         </span>
                                     </td>
-                                    <!-- Module: trader -->
+                                    <!-- Mẫu gán nhanh -->
+                                    <td>
+                                        <select class="form-control quick-role-select" style="padding: 4px 8px; font-size: 12.5px; height: 30px; border-radius: 6px; width: 160px; cursor: pointer; border: 1px solid var(--border-color);">
+                                            <option value="">-- Chọn vai trò --</option>
+                                            <?php foreach ($permissionConfig['roles'] as $roleCode => $tpl): ?>
+                                                <option value="<?php echo htmlspecialchars($roleCode); ?>"><?php echo htmlspecialchars($tpl['name']); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </td>
+                                    <!-- Dynamic Module Switch Checkboxes -->
+                                    <?php foreach ($permissionConfig['modules'] as $code => $mod): ?>
                                     <td>
                                         <label class="switch-label">
                                             <input type="checkbox" class="switch-input perm-toggle" 
                                                    data-user="<?php echo $staff['id']; ?>" 
                                                    data-market="<?php echo $market['market_id']; ?>" 
-                                                   data-module="trader"
-                                                   <?php echo isset($permissions[$staff['id']][$market['market_id']]['trader']) ? 'checked' : ''; ?>>
+                                                   data-module="<?php echo htmlspecialchars($code); ?>"
+                                                   <?php echo isset($permissions[$staff['id']][$market['market_id']][$code]) ? 'checked' : ''; ?>>
                                             <span class="switch-toggle"></span>
                                         </label>
                                     </td>
-                                    <!-- Module: stall -->
-                                    <td>
-                                        <label class="switch-label">
-                                            <input type="checkbox" class="switch-input perm-toggle" 
-                                                   data-user="<?php echo $staff['id']; ?>" 
-                                                   data-market="<?php echo $market['market_id']; ?>" 
-                                                   data-module="stall"
-                                                   <?php echo isset($permissions[$staff['id']][$market['market_id']]['stall']) ? 'checked' : ''; ?>>
-                                            <span class="switch-toggle"></span>
-                                        </label>
-                                    </td>
-                                    <!-- Module: contract -->
-                                    <td>
-                                        <label class="switch-label">
-                                            <input type="checkbox" class="switch-input perm-toggle" 
-                                                   data-user="<?php echo $staff['id']; ?>" 
-                                                   data-market="<?php echo $market['market_id']; ?>" 
-                                                   data-module="contract"
-                                                   <?php echo isset($permissions[$staff['id']][$market['market_id']]['contract']) ? 'checked' : ''; ?>>
-                                            <span class="switch-toggle"></span>
-                                        </label>
-                                    </td>
-                                    <!-- Module: finance -->
-                                    <td>
-                                        <label class="switch-label">
-                                            <input type="checkbox" class="switch-input perm-toggle" 
-                                                   data-user="<?php echo $staff['id']; ?>" 
-                                                   data-market="<?php echo $market['market_id']; ?>" 
-                                                   data-module="finance"
-                                                   <?php echo isset($permissions[$staff['id']][$market['market_id']]['finance']) ? 'checked' : ''; ?>>
-                                            <span class="switch-toggle"></span>
-                                        </label>
-                                    </td>
-                                    <!-- Module: foodsafety -->
-                                    <td>
-                                        <label class="switch-label">
-                                            <input type="checkbox" class="switch-input perm-toggle" 
-                                                   data-user="<?php echo $staff['id']; ?>" 
-                                                   data-market="<?php echo $market['market_id']; ?>" 
-                                                   data-module="foodsafety"
-                                                   <?php echo isset($permissions[$staff['id']][$market['market_id']]['foodsafety']) ? 'checked' : ''; ?>>
-                                            <span class="switch-toggle"></span>
-                                        </label>
-                                    </td>
+                                    <?php endforeach; ?>
                                 </tr>
                             <?php 
                                 endforeach;
@@ -280,12 +274,88 @@
 
 <script>
     $(function() {
+        var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        var swalBg = isDark ? '#1a2332' : '#ffffff';
+        var swalColor = isDark ? '#ffffff' : '#0f1623';
+
+        // Hàm tính toán và cập nhật lại giá trị dropdown dựa trên trạng thái thực tế của các checkbox trong dòng
+        function updateDropdownFromCheckboxes(row) {
+            var templates = <?php echo json_encode(array_combine(array_keys($permissionConfig['roles']), array_column($permissionConfig['roles'], 'permissions')), JSON_UNESCAPED_UNICODE); ?>;
+            var currentPerms = {};
+            
+            row.find('.perm-toggle').each(function() {
+                var cb = $(this);
+                if (cb.is(':checked')) {
+                    currentPerms[cb.data('module')] = true;
+                }
+            });
+
+            var matchedRole = '';
+            $.each(templates, function(roleCode, rolePerms) {
+                var isMatch = true;
+                var allModules = <?php echo json_encode(array_keys($permissionConfig['modules'])); ?>;
+                
+                $.each(allModules, function(i, mod) {
+                    var expected = !!rolePerms[mod];
+                    var actual = !!currentPerms[mod];
+                    if (expected !== actual) {
+                        isMatch = false;
+                        return false; // break loop
+                    }
+                });
+                
+                if (isMatch) {
+                    matchedRole = roleCode;
+                    return false; // break loop
+                }
+            });
+
+            row.find('.quick-role-select').val(matchedRole);
+        }
+
+        // Khởi tạo trạng thái ban đầu cho toàn bộ dropdown trên từng dòng
+        $('.perm-table tbody tr').each(function() {
+            updateDropdownFromCheckboxes($(this));
+        });
+
+        // Xử lý sự kiện khi thay đổi mẫu gán nhanh
+        $('.quick-role-select').on('change', function() {
+            var select = $(this);
+            var role = select.val();
+            if (!role) {
+                // Nếu chọn rỗng, bỏ tích tất cả các quyền trên hàng
+                var row = select.closest('tr');
+                row.find('.perm-toggle').each(function() {
+                    var cb = $(this);
+                    if (cb.is(':checked')) {
+                        cb.prop('checked', false).trigger('change');
+                    }
+                });
+                return;
+            }
+
+            var row = select.closest('tr');
+            var templates = <?php echo json_encode(array_combine(array_keys($permissionConfig['roles']), array_column($permissionConfig['roles'], 'permissions')), JSON_UNESCAPED_UNICODE); ?>;
+            var targetPermissions = templates[role] || {};
+
+            row.find('.perm-toggle').each(function() {
+                var cb = $(this);
+                var module = cb.data('module');
+                var expected = !!targetPermissions[module];
+
+                if (cb.is(':checked') !== expected) {
+                    cb.prop('checked', expected).trigger('change');
+                }
+            });
+        });
+
         $('.perm-toggle').on('change', function() {
             var input = $(this);
             var userId = input.data('user');
             var marketId = input.data('market');
             var module = input.data('module');
             var checked = input.is(':checked') ? 1 : 0;
+            var row = input.closest('tr');
 
             // Vô hiệu hóa tạm thời để tránh bấm loạn xạ khi đang gọi AJAX
             input.prop('disabled', true);
@@ -309,24 +379,24 @@
                         // Trả lại trạng thái cũ nếu lỗi
                         input.prop('checked', !checked);
                         Swal.fire({
-                            title: 'Lỗi phân quyền',
-                            text: res.message,
                             icon: 'error',
-                            confirmButtonText: 'Đã hiểu'
+                            title: 'Lỗi phân quyền',
+                            text: res.message || 'Thao tác thất bại.',
+                            background: swalBg,
+                            color: swalColor
                         });
+                        updateDropdownFromCheckboxes(row);
                     } else {
-                        // Toast nhỏ góc màn hình thông báo thành công
-                        const Toast = Swal.mixin({
-                            toast: true,
-                            position: 'top-end',
-                            showConfirmButton: false,
-                            timer: 2000,
-                            timerProgressBar: true
-                        });
-                        Toast.fire({
+                        Swal.fire({
                             icon: 'success',
-                            title: res.message
+                            title: 'Thành công',
+                            text: res.message || 'Cập nhật phân quyền thành công!',
+                            timer: 1500,
+                            showConfirmButton: false,
+                            background: swalBg,
+                            color: swalColor
                         });
+                        updateDropdownFromCheckboxes(row);
                     }
                 },
                 error: function(xhr) {
@@ -337,11 +407,13 @@
                         msg = xhr.responseJSON.message;
                     }
                     Swal.fire({
+                        icon: 'error',
                         title: 'Lỗi kết nối',
                         text: msg,
-                        icon: 'error',
-                        confirmButtonText: 'Đã hiểu'
+                        background: swalBg,
+                        color: swalColor
                     });
+                    updateDropdownFromCheckboxes(row);
                 }
             });
         });

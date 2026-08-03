@@ -63,6 +63,7 @@ class apiController extends baseController {
 		", ['username' => $username]);
 
 		if (!$row) {
+			general::log('login_failed', "Đăng nhập thất bại. Tài khoản không tồn tại hoặc bị khóa: {$username}");
 			$result["status"] = "500";
 			$result['message'] = 'Thông tin tài khoản hoặc mật khẩu không chính xác';
 			echo json_encode($result);
@@ -81,14 +82,16 @@ class apiController extends baseController {
 		}
 
 		if (!$passwordOk) {
+			general::log('login_failed', "Đăng nhập thất bại. Sai mật khẩu cho tài khoản: {$username}");
 			$result["status"] = "500";
 			$result['message'] = 'Thông tin tài khoản hoặc mật khẩu không chính xác';
 			echo json_encode($result);
 			return;
 		}
 
-		// Chỉ cho phép đăng nhập nếu có vai trò là nhân viên vận hành (admin)
-		if (($row['actor_code'] ?? 'admin') !== 'admin') {
+		// Chỉ cho phép đăng nhập nếu có vai trò phù hợp (admin, admin_market, super_market)
+		if (!in_array($row['actor_code'] ?? 'admin', ['admin', 'admin_market', 'super_market'])) {
+			general::log('login_failed', "Đăng nhập thất bại. Tài khoản không có quyền truy cập trang quản trị: {$username}");
 			$result["status"] = "500";
 			$result['message'] = 'Tài khoản không có quyền truy cập trang quản trị này';
 			echo json_encode($result);
@@ -96,8 +99,10 @@ class apiController extends baseController {
 		}
 
 		// Đăng nhập thành công — set session
+		$_SESSION['user_id'] = $row['user_id']; // Phải set user_id trước để general::log nhận diện đúng user đang ghi log
+		general::log('login', "Đăng nhập hệ thống thành công. Tài khoản: {$username}");
+
 		$_SESSION['user']['id'] = $row['user_id'];
-		$_SESSION['user_id'] = $row['user_id'];
 		$_SESSION['user']['market_email'] = $row['user_email'];
 		$_SESSION['user']['fullname'] = $row['user_fullname'];
 		$_SESSION['user_fullname'] = $row['user_fullname'];
@@ -107,6 +112,7 @@ class apiController extends baseController {
 		$_SESSION['user_logged_in'] = true;
 		$_SESSION['actor_code'] = $row['actor_code'] ?? 'admin';
 		$_SESSION['user_group'] = $row['user_group'];
+		$_SESSION['user_market_user_id'] = $row['user_id'];
 
 		// Set active_market_id dựa trên role
 		$actorCode = $row['actor_code'] ?? 'admin';
@@ -151,29 +157,48 @@ class apiController extends baseController {
         $search = $_GET['q'] ?? '';
         $business_line = $_GET['business_line'] ?? '';
         $status = $_GET['status'] ?? '';
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        if ($page < 1) $page = 1;
 
         try {
             $traderModel = new traderModel();
             $marketId = marketService::currentMarketId();
             $traders = $traderModel->getAllTraders($search, $business_line, $status, $marketId);
 
+            $limit = 15;
+            $totalRecords = count($traders);
+            $totalPages = ceil($totalRecords / $limit);
+            if ($page > $totalPages && $totalPages > 0) $page = $totalPages;
+            $offset = ($page - 1) * $limit;
+            $paginatedTraders = array_slice($traders, $offset, $limit);
+
             // Nạp template table_rows.php để sinh ra HTML
             ob_start();
-            // Nạp biến $traders cho view table_rows.php
+            $traders = $paginatedTraders;
             require DIR_TEMPLATE . '/trader/table_rows.php';
             $html = ob_get_clean();
+
+            // Sinh HTML phân trang
+            $baseUrl = BASE_URL . 'admin/traders';
+            $queryParams = [];
+            if (!empty($search)) $queryParams['q'] = $search;
+            if (!empty($business_line)) $queryParams['business_line'] = $business_line;
+            if (!empty($status)) $queryParams['status'] = $status;
+            $paginationHtml = general::getPaginationHtml($page, $totalPages, $baseUrl, $queryParams);
 
             // Sinh query string mới phục vụ cập nhật các link export file
             $queryString = http_build_query([
                 'q' => $search,
                 'business_line' => $business_line,
-                'status' => $status
+                'status' => $status,
+                'page' => $page
             ]);
 
             $this->response([
                 'status' => 200,
-                'total' => count($traders),
+                'total' => $totalRecords,
                 'html' => $html,
+                'paginationHtml' => $paginationHtml,
                 'queryString' => $queryString
             ]);
         } catch (Exception $e) {
@@ -198,6 +223,7 @@ class apiController extends baseController {
             $trader = $this->render->abort404($traderModel, 'getTraderById', $trader_id, 'delete', 'trader');
 
             $traderModel->deleteTrader($trader_id);
+            general::log('delete_trader', "Xóa tiểu thương: {$trader['trader_fullname']} (Mã: {$trader['trader_code']}, ID: {$trader_id})");
             $this->render->apiResponse('delete', 'trader', true);
         } catch (Exception $e) {
             $this->render->abort500($e, 'delete', 'trader');
@@ -244,6 +270,7 @@ class apiController extends baseController {
             $data['trader_license_file'] = !empty($uploadedFiles) ? json_encode($uploadedFiles) : null;
 
             $traderModel->createTrader($data);
+            general::log('create_trader', "Thêm tiểu thương mới: {$data['trader_fullname']} (Mã: {$data['trader_code']})");
             $this->render->apiResponse('create', 'trader', true);
         } catch (Exception $e) {
             $this->render->abort500($e, 'create', 'trader');
@@ -301,6 +328,7 @@ class apiController extends baseController {
             $data['trader_license_file'] = !empty($finalFiles) ? json_encode(array_values($finalFiles)) : null;
 
             $traderModel->updateTrader($trader_id, $data);
+            general::log('update_trader', "Cập nhật tiểu thương: {$data['trader_fullname']} (Mã: {$trader['trader_code']}, ID: {$trader_id})");
             $this->render->apiResponse('update', 'trader', true);
         } catch (Exception $e) {
             $this->render->abort500($e, 'update', 'trader');
@@ -311,26 +339,46 @@ class apiController extends baseController {
         $search = $_GET['q'] ?? '';
         $area_id = $_GET['area_id'] ?? '';
         $status = $_GET['status'] ?? '';
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        if ($page < 1) $page = 1;
 
         try {
             $stallModel = new stallModel();
             $marketId = marketService::currentMarketId();
             $stalls = $stallModel->getAll($area_id ?: null, $status ?: null, $search ?: null, $marketId);
 
+            $limit = 15;
+            $totalRecords = count($stalls);
+            $totalPages = ceil($totalRecords / $limit);
+            if ($page > $totalPages && $totalPages > 0) $page = $totalPages;
+            $offset = ($page - 1) * $limit;
+            $paginatedStalls = array_slice($stalls, $offset, $limit);
+
             ob_start();
+            $stalls = $paginatedStalls;
             require DIR_TEMPLATE . '/stall/table_rows.php';
             $html = ob_get_clean();
+
+            // Sinh HTML phân trang
+            $baseUrl = BASE_URL . 'admin/stalls';
+            $queryParams = [];
+            if (!empty($search)) $queryParams['q'] = $search;
+            if (!empty($area_id)) $queryParams['area_id'] = $area_id;
+            if (!empty($status)) $queryParams['status'] = $status;
+            $paginationHtml = general::getPaginationHtml($page, $totalPages, $baseUrl, $queryParams);
 
             $queryString = http_build_query([
                 'q' => $search,
                 'area_id' => $area_id,
-                'status' => $status
+                'status' => $status,
+                'page' => $page
             ]);
 
             $this->response([
                 'status' => 200,
-                'total' => count($stalls),
+                'total' => $totalRecords,
                 'html' => $html,
+                'paginationHtml' => $paginationHtml,
                 'queryString' => $queryString
             ]);
         } catch (Exception $e) {
@@ -389,6 +437,7 @@ class apiController extends baseController {
             $this->render->abort400(!$stallModel->isStallCodeExists($data['stall_code']), 'create', 'stall', 'Mã sạp đã tồn tại trên hệ thống');
 
             $stallModel->create($data);
+            general::log('create_stall', "Thêm sạp mới: {$data['stall_code']} (Khu vực ID: {$data['stall_area_id']}, Diện tích: {$data['stall_area_size']}m2)");
             $this->render->apiResponse('create', 'stall', true);
         } catch (Exception $e) {
             $this->render->abort500($e, 'create', 'stall');
@@ -445,6 +494,7 @@ class apiController extends baseController {
             $this->render->abort400(!$stallModel->isStallCodeExists($data['stall_code'], $stall_id), 'update', 'stall', 'Mã sạp đã tồn tại trên hệ thống');
 
             $stallModel->update($stall_id, $data);
+            general::log('update_stall', "Cập nhật sạp: {$data['stall_code']} (ID: {$stall_id}, Diện tích: {$data['stall_area_size']}m2)");
             $this->render->apiResponse('update', 'stall', true);
         } catch (Exception $e) {
             $this->render->abort500($e, 'update', 'stall');
@@ -473,6 +523,7 @@ class apiController extends baseController {
             }
 
             $stallModel->delete($stall_id);
+            general::log('delete_stall', "Xóa sạp: {$stall['stall_code']} (ID: {$stall_id})");
             $this->render->apiResponse('delete', 'stall', true);
         } catch (Exception $e) {
             $this->render->abort500($e, 'delete', 'stall');
@@ -557,6 +608,7 @@ class apiController extends baseController {
             ];
 
             $contractModel->create($contractData);
+            general::log('assign_stall', "Gán nhanh sạp: {$stall['stall_code']} (ID: {$stallId}) cho tiểu thương ID: {$traderId} (Khởi tạo HĐ số: {$contractData['contract_number']})");
             
             $this->response([
                 'status' => 200,
@@ -588,6 +640,7 @@ class apiController extends baseController {
             $this->render->abort400($contract1 !== null && $contract1 !== false, 'update', 'stall', 'Không tìm thấy hợp đồng hợp lệ cho sạp hiện tại.');
 
             $message = $stallModel->transferStall($currentStall, $newStall, $contract1);
+            general::log('transfer_stall', "Chuyển nhượng sạp từ sạp cũ: {$currentStall['stall_code']} (ID: {$currentStallId}) sang sạp mới: {$newStall['stall_code']} (ID: {$newStallId})");
 
             $this->response([
                 'status' => 200,
@@ -651,25 +704,44 @@ class apiController extends baseController {
     public function filterContracts() {
         $search = $_GET['q'] ?? '';
         $status = $_GET['status'] ?? '';
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        if ($page < 1) $page = 1;
 
         try {
             $contractModel = new contractModel();
             $marketId = marketService::currentMarketId();
             $contracts = $contractModel->getAll($status ?: null, $search ?: null, $marketId);
 
+            $limit = 15;
+            $totalRecords = count($contracts);
+            $totalPages = ceil($totalRecords / $limit);
+            if ($page > $totalPages && $totalPages > 0) $page = $totalPages;
+            $offset = ($page - 1) * $limit;
+            $paginatedContracts = array_slice($contracts, $offset, $limit);
+
             ob_start();
+            $contracts = $paginatedContracts;
             require DIR_TEMPLATE . '/contract/table_rows.php';
             $html = ob_get_clean();
 
+            // Sinh HTML phân trang
+            $baseUrl = BASE_URL . 'admin/contracts';
+            $queryParams = [];
+            if (!empty($search)) $queryParams['q'] = $search;
+            if (!empty($status)) $queryParams['status'] = $status;
+            $paginationHtml = general::getPaginationHtml($page, $totalPages, $baseUrl, $queryParams);
+
             $queryString = http_build_query([
                 'q' => $search,
-                'status' => $status
+                'status' => $status,
+                'page' => $page
             ]);
 
             $this->response([
                 'status' => 200,
-                'total' => count($contracts),
+                'total' => $totalRecords,
                 'html' => $html,
+                'paginationHtml' => $paginationHtml,
                 'queryString' => $queryString
             ]);
         } catch (Exception $e) {
@@ -732,6 +804,7 @@ class apiController extends baseController {
             }
 
             $contractModel->create($data);
+            general::log('create_contract', "Tạo mới hợp đồng số: {$data['contract_number']} (Hợp đồng: {$data['contract_name']})");
             $this->render->apiResponse('create', 'contract', true);
         } catch (Exception $e) {
             $this->render->abort500($e, 'create', 'contract');
@@ -755,6 +828,7 @@ class apiController extends baseController {
             $this->render->abort400(strtotime($newEndDate) > strtotime($contract['contract_end_date']), 'update', 'contract', 'Ngày gia hạn mới phải sau ngày hết hạn hiện tại (' . $contract['contract_end_date'] . ').');
 
             $contractModel->renew($contractId, $newEndDate);
+            general::log('renew_contract', "Gia hạn hợp đồng số: " . ($contract['contract_number'] ?? $contractId) . " (ID: {$contractId}) đến ngày: {$newEndDate}");
             $this->render->apiResponse('update', 'contract', true);
         } catch (Exception $e) {
             $this->render->abort500($e, 'update', 'contract');
@@ -824,6 +898,7 @@ class apiController extends baseController {
             $data['contract_file'] = !empty($allFiles) ? json_encode($allFiles, JSON_UNESCAPED_UNICODE) : null;
 
             $contractModel->activateDraftContract($contractId, $data);
+            general::log('activate_contract', "Kích hoạt hợp đồng số: {$data['contract_number']} (ID: {$contractId})");
             
             $this->response([
                 'status' => 200,
@@ -847,7 +922,9 @@ class apiController extends baseController {
             $contractModel = new contractModel();
             $this->render->abort404($contractModel, 'getById', $contractId, 'update', 'contract');
 
+            $contract = $contractModel->getById($contractId);
             $contractModel->liquidate($contractId);
+            general::log('liquidate_contract', "Thanh lý hợp đồng số: " . ($contract['contract_number'] ?? $contractId) . " (ID: {$contractId})");
             $this->render->apiResponse('update', 'contract', true);
         } catch (Exception $e) {
             $this->render->abort500($e, 'update', 'contract');
@@ -867,7 +944,9 @@ class apiController extends baseController {
             $contractModel = new contractModel();
             $this->render->abort404($contractModel, 'getById', $contractId, 'update', 'contract');
 
+            $contract = $contractModel->getById($contractId);
             $contractModel->terminate($contractId);
+            general::log('terminate_contract', "Chấm dứt trước hạn hợp đồng số: " . ($contract['contract_number'] ?? $contractId) . " (ID: {$contractId})");
             $this->render->apiResponse('update', 'contract', true);
         } catch (Exception $e) {
             $this->render->abort500($e, 'update', 'contract');
@@ -887,7 +966,9 @@ class apiController extends baseController {
             $contractModel = new contractModel();
             $this->render->abort404($contractModel, 'getById', $contractId, 'delete', 'contract');
 
+            $contract = $contractModel->getById($contractId);
             $contractModel->softDelete($contractId);
+            general::log('delete_contract', "Xóa mềm hợp đồng số: " . ($contract['contract_number'] ?? $contractId) . " (ID: {$contractId})");
             $this->render->apiResponse('delete', 'contract', true);
         } catch (Exception $e) {
             $this->render->abort500($e, 'delete', 'contract');
@@ -907,7 +988,9 @@ class apiController extends baseController {
             $contractModel = new contractModel();
             $this->render->abort404($contractModel, 'getById', $contractId, 'update', 'contract');
 
+            $contract = $contractModel->getById($contractId);
             $contractModel->reactivate($contractId);
+            general::log('reactivate_contract', "Tái kích hoạt hợp đồng số: " . ($contract['contract_number'] ?? $contractId) . " (ID: {$contractId})");
             $this->render->apiResponse('update', 'contract', true, 'Tái kích hoạt hợp đồng thành công!');
         } catch (Exception $e) {
             $this->render->abort500($e, 'update', 'contract');
@@ -1014,7 +1097,7 @@ class apiController extends baseController {
             $data['contract_file'] = !empty($allFiles) ? json_encode($allFiles, JSON_UNESCAPED_UNICODE) : null;
 
             $contractModel->updateContractDetails($contractId, $data);
-            
+            general::log('update_contract', "Cập nhật hợp đồng số: {$data['contract_number']} (ID: {$contractId}, Tên: {$data['contract_name']})");
             $this->response([
                 'status' => 200,
                 'message' => 'Cập nhật thông tin hợp đồng thành công!'
@@ -1094,6 +1177,7 @@ class apiController extends baseController {
             }
 
             $contractModel->addAppendix($data);
+            general::log('create_appendix', "Thêm phụ lục hợp đồng số: {$data['appendix_number']} cho hợp đồng ID: {$data['contract_id']} (Tên phụ lục: {$data['market_name']})");
             $this->render->apiResponse('create', 'appendix', true);
         } catch (Exception $e) {
             $this->render->abort500($e, 'create', 'appendix');
@@ -1251,6 +1335,7 @@ class apiController extends baseController {
             }
 
             $foodsafetyModel->createCertificate($data);
+            general::log('create_certificate', "Thêm chứng nhận ATTP mới: {$data['attp_name']} (Số: {$data['attp_doc_number']}, ID tiểu thương: {$data['attp_trader_id']})");
             $this->render->apiResponse('create', 'certificate', true);
         } catch (Exception $e) {
             $this->render->abort500($e, 'create', 'certificate');
@@ -1311,6 +1396,7 @@ class apiController extends baseController {
             }
 
             $foodsafetyModel->updateCertificate($attp_id, $data);
+            general::log('update_certificate', "Cập nhật chứng nhận ATTP: {$data['attp_name']} (Số: {$data['attp_doc_number']}, ID: {$attp_id})");
             $this->render->apiResponse('update', 'certificate', true);
         } catch (Exception $e) {
             $this->render->abort500($e, 'update', 'certificate');
@@ -1330,7 +1416,9 @@ class apiController extends baseController {
             $foodsafetyModel = new foodsafetyModel();
             $this->render->abort404($foodsafetyModel, 'getById', $attp_id, 'delete', 'certificate');
 
+            $cert = $foodsafetyModel->getById($attp_id);
             $foodsafetyModel->deleteCertificate($attp_id);
+            general::log('delete_certificate', "Xóa chứng nhận ATTP: " . ($cert['attp_name'] ?? $attp_id) . " (Số: " . ($cert['attp_doc_number'] ?? '') . ", ID: {$attp_id})");
             $this->render->apiResponse('delete', 'certificate', true);
         } catch (Exception $e) {
             $this->render->abort500($e, 'delete', 'certificate');
@@ -1463,6 +1551,8 @@ class apiController extends baseController {
         try {
             $mapModel = new mapModel();
             $mapModel->saveElements($data['elements']);
+            general::log('save_map', "Lưu/Cấu hình lại sơ đồ thiết kế bản đồ chợ (Số phần tử: " . count($data['elements']) . ")");
+            
             $this->response([
                 'status' => 200,
                 'message' => 'Lưu sơ đồ chợ thành công!'
@@ -1573,6 +1663,17 @@ class apiController extends baseController {
             }
 
             $itemId = $categoryModel->createItem($type, $data);
+            
+            $categoryNames = [
+                'area' => 'Khu vực',
+                'stall_type' => 'Loại sạp',
+                'business_line' => 'Ngành hàng',
+                'document_type' => 'Loại giấy tờ'
+            ];
+            $friendlyTypeName = $categoryNames[$type] ?? $type;
+            $catName = $data['area_name'] ?? $data['stall_type_name'] ?? $data['line_name'] ?? $data['doc_type_name'] ?? '';
+            general::log('create_category', "Thêm mới danh mục {$friendlyTypeName}: {$catName} (ID: {$itemId})");
+
             $this->response([
                 'status' => 200,
                 'message' => 'Thêm mới danh mục thành công!',
@@ -1656,6 +1757,17 @@ class apiController extends baseController {
             }
 
             $categoryModel->updateItem($type, $user_market_market_id, $data);
+            
+            $categoryNames = [
+                'area' => 'Khu vực',
+                'stall_type' => 'Loại sạp',
+                'business_line' => 'Ngành hàng',
+                'document_type' => 'Loại giấy tờ'
+            ];
+            $friendlyTypeName = $categoryNames[$type] ?? $type;
+            $catName = $data['area_name'] ?? $data['stall_type_name'] ?? $data['line_name'] ?? $data['doc_type_name'] ?? '';
+            general::log('update_category', "Cập nhật danh mục {$friendlyTypeName}: {$catName} (ID: {$user_market_market_id})");
+
             $this->response([
                 'status' => 200,
                 'message' => 'Cập nhật danh mục thành công!'
@@ -1685,6 +1797,17 @@ class apiController extends baseController {
 
         try {
             $categoryModel->deleteItem($type, $user_market_market_id);
+            
+            $categoryNames = [
+                'area' => 'Khu vực',
+                'stall_type' => 'Loại sạp',
+                'business_line' => 'Ngành hàng',
+                'document_type' => 'Loại giấy tờ'
+            ];
+            $friendlyTypeName = $categoryNames[$type] ?? $type;
+            $catName = $item['area_name'] ?? $item['stall_type_name'] ?? $item['line_name'] ?? $item['doc_type_name'] ?? '';
+            general::log('delete_category', "Xóa danh mục {$friendlyTypeName}: {$catName} (ID: {$user_market_market_id})");
+
             $this->response([
                 'status' => 200,
                 'message' => 'Xóa danh mục thành công!'
@@ -1722,6 +1845,7 @@ class apiController extends baseController {
         try {
             $marketModel = new marketModel();
             $marketModel->create($data);
+            general::log('create_market', "Tạo mới chợ: {$data['market_name']} (Mã: {$data['market_code']})");
             $this->render->apiResponse('create', 'market', true);
         } catch (Exception $e) {
             $this->render->abort500($e, 'create', 'market');
@@ -1756,6 +1880,7 @@ class apiController extends baseController {
         try {
             $marketModel = new marketModel();
             $marketModel->update($user_market_market_id, $data);
+            general::log('update_market', "Cập nhật thông tin chợ: {$data['market_name']} (ID: {$user_market_market_id}, Mã: {$data['market_code']})");
             $this->render->apiResponse('update', 'market', true);
         } catch (Exception $e) {
             $this->render->abort500($e, 'update', 'market');
@@ -1775,6 +1900,7 @@ class apiController extends baseController {
         try {
             $marketModel = new marketModel();
             $marketModel->delete($user_market_market_id);
+            general::log('delete_market', "Xóa chợ ID: {$user_market_market_id}");
             $this->render->apiResponse('delete', 'market', true);
         } catch (Exception $e) {
             $this->render->abort500($e, 'delete', 'market');
@@ -1791,7 +1917,7 @@ class apiController extends baseController {
         $db = database::getInstance();
         $username = trim($_POST['username'] ?? '');
         $fullname = trim($_POST['fullname'] ?? '');
-        $market_email = trim($_POST['market_email'] ?? '');
+        $market_email = trim($_POST['email'] ?? $_POST['market_email'] ?? '');
         $password = $_POST['password'] ?? '';
         $role = $_POST['role'] ?? 'admin';
         $status = $_POST['status'] ?? 'active';
@@ -1807,7 +1933,7 @@ class apiController extends baseController {
         $validator->required('username', $username, 'Vui lòng nhập tên đăng nhập.')
                   ->required('password', $password, 'Vui lòng nhập mật khẩu.')
                   ->required('fullname', $fullname, 'Vui lòng nhập họ tên.')
-                  ->market_email('market_email', $market_email, 'market_email không đúng định dạng.');
+                  ->email('market_email', $market_email, 'Email không đúng định dạng.');
 
         $this->render->abort400($validator, 'create', 'user');
 
@@ -1825,7 +1951,7 @@ class apiController extends baseController {
                 'username' => $username,
                 'password' => $password,
                 'fullname' => $fullname,
-                'market_email' => $market_email,
+                'email' => $market_email,
                 'user_group' => ($role === 'super_market') ? 1 : 2,
                 'actor_id' => $actorId,
                 'is_active' => $isActive
@@ -1865,6 +1991,7 @@ class apiController extends baseController {
                 }
             }
 
+            general::log('create_user', "Tạo mới tài khoản nhân viên: {$username} (ID: {$newUserId}, Họ tên: {$fullname}, Vai trò: {$role})");
             $this->render->apiResponse('create', 'user', true);
         } catch (Exception $e) {
             $this->render->abort500($e, 'create', 'user');
@@ -1879,7 +2006,7 @@ class apiController extends baseController {
         $this->render->abort403(marketService::isSuperAdmin() || marketService::isAdminMarket(), 'update', 'user');
         
         $id = $_POST['id'] ?? $_POST['market_id'] ?? $_POST['user_market_market_id'] ?? '';
-        $this->render->abort400($id, 'update', 'user', 'Thiếu ID tài khoản cần sửa.');
+        $this->render->abort400(!empty($id), 'update', 'user', 'Thiếu ID tài khoản cần sửa.');
 
         $db = database::getInstance();
         $userModel = new userModel();
@@ -1989,6 +2116,7 @@ class apiController extends baseController {
                 }
             }
 
+            general::log('update_user', "Cập nhật tài khoản nhân viên: {$user['user_username']} (ID: {$id}, Họ tên: {$fullname}, Vai trò: {$role})");
             $this->render->apiResponse('update', 'user', true);
         } catch (Exception $e) {
             $this->render->abort500($e, 'update', 'user');
@@ -2038,15 +2166,92 @@ class apiController extends baseController {
         }
         try {
             $id=$model->saveVoucher($marketId,(int)session::get('user_id',0),['voucher_id'=>$voucherId,'type'=>$type,'category_id'=>$categoryId,'voucher_date'=>$_POST['voucher_date'],'content'=>trim($_POST['content']),'amount'=>$amount,'document_no'=>trim($_POST['document_no']??''),'payer_name'=>trim($_POST['payer_name']??''),'collector_name'=>trim($_POST['collector_name']??''),'beneficiary_name'=>trim($_POST['beneficiary_name']??''),'attachment_path'=>$attachment]);
+            
+            $voucherTypeLabel = ($type === 'income') ? 'Thu' : 'Chi';
+            $actionLabel = $voucherId ? 'Cập nhật' : 'Tạo mới';
+            general::log('save_voucher', "{$actionLabel} phiếu {$voucherTypeLabel} ID: {$id} (Nội dung: " . trim($_POST['content']) . ", Số tiền: " . number_format($amount) . "đ)");
+
             $this->response(['status'=>200,'message'=>'Đã lưu phiếu.','id'=>$id]);
         } catch (Exception $e) { $this->response(['status'=>500,'message'=>'Không thể lưu phiếu: '.$e->getMessage()],500); }
     }
     public function deleteIncomeVoucher() {
         $this->incomeApiGuard(); $id=(int)($_POST['voucher_id']??0);
         if (!$id) $this->response(['status'=>400,'message'=>'Thiếu phiếu cần xóa.'],400);
-        try { (new incomeModel())->deleteVoucher($this->incomeApiMarketId(),$id); $this->response(['status'=>200,'message'=>'Đã xóa phiếu.']); }
+        try { 
+            $voucher = (new incomeModel())->voucher($this->incomeApiMarketId(), $id);
+            (new incomeModel())->deleteVoucher($this->incomeApiMarketId(),$id); 
+            
+            $voucherDesc = $voucher ? "Nội dung: " . $voucher['content'] . ", Số tiền: " . number_format($voucher['amount']) . "đ" : "ID: {$id}";
+            general::log('delete_voucher', "Xóa phiếu thu/chi ID: {$id} ({$voucherDesc})");
+
+            $this->response(['status'=>200,'message'=>'Đã xóa phiếu.']); 
+        }
         catch (Exception $e) { $this->response(['status'=>500,'message'=>$e->getMessage()],500); }
     }
 
+    /**
+     * API cập nhật thông tin cá nhân của user đang đăng nhập (AJAX POST)
+     */
+    public function updateProfile() {
+        $this->render->abort405('POST', 'update', 'user');
+        
+        $userId = session::get('user_id');
+        if (!$userId) {
+            $this->response(['error' => 'Bạn chưa đăng nhập.'], 401);
+        }
+
+        $db = database::getInstance();
+        $fullname = trim($_POST['fullname'] ?? '');
+        $email = trim($_POST['email'] ?? $_POST['market_email'] ?? '');
+        $password = $_POST['password'] ?? '';
+        $confirm_password = $_POST['confirm_password'] ?? '';
+
+        $validator = new validator();
+        $validator->required('fullname', $fullname, 'Vui lòng nhập họ tên.')
+                  ->email('email', $email, 'Email không đúng định dạng.');
+
+        if (!empty($password)) {
+            if (strlen($password) < 6) {
+                $validator->addError('password', 'Mật khẩu phải có ít nhất 6 ký tự.');
+            }
+            if ($password !== $confirm_password) {
+                $validator->addError('confirm_password', 'Mật khẩu xác nhận không khớp.');
+            }
+        }
+
+        $this->render->abort400($validator, 'update', 'user');
+
+        try {
+            $userModel = new userModel();
+            $dupUser = $userModel->getByEmail($email);
+            if ($dupUser && $dupUser['user_id'] != $userId) {
+                $this->render->abort400(false, 'update', 'user', 'Email này đã được sử dụng bởi một tài khoản khác.');
+            }
+
+            // Cập nhật thông tin cơ bản
+            $db->query("
+                UPDATE users 
+                SET user_fullname = :fullname, user_email = :email 
+                WHERE user_id = :id
+            ", [
+                'fullname' => $fullname,
+                'email' => $email,
+                'id' => $userId
+            ]);
+
+            // Cập nhật mật khẩu nếu có nhập
+            if (!empty($password)) {
+                $userModel->updatePassword($userId, $password);
+            }
+
+            // Cập nhật họ tên hiển thị trong session
+            $_SESSION['user_fullname'] = $fullname;
+
+            general::log('update_profile', "Cập nhật thông tin cá nhân của bản thân (Họ tên mới: {$fullname}, Email mới: {$email}" . (!empty($password) ? ", Thay đổi mật khẩu" : "") . ")");
+            $this->render->apiResponse('update', 'user', true, 'Cập nhật thông tin cá nhân thành công.');
+        } catch (Exception $e) {
+            $this->render->abort500($e, 'update', 'user');
+        }
+    }
 }
 

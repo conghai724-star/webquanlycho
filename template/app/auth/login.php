@@ -74,9 +74,12 @@ $htmlBg = $theme === 'dark' ? '#0f1623' : '#f5f7fb';
     <script>
 			$(document).ready(function(){
 				$("#sendlogin").click(function(){
-					console.log('a');
 					var email = $('#username').val();
 					var password = $('#password').val();
+					var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+					var swalBg = isDark ? '#1a2332' : '#ffffff';
+					var swalColor = isDark ? '#ffffff' : '#0f1623';
+
 					$.ajax({
 						"type": "POST",
 						"url": "<?php echo XC_URL; ?>/api/login",
@@ -93,8 +96,11 @@ $htmlBg = $theme === 'dark' ? '#0f1623' : '#f5f7fb';
 								  icon: 'error',
 								  title: "Đăng nhập thất bại!",
 								  text: data.message,
-								  footer: '<a href=""></a>'
-								})
+								  timer: 2000,
+								  showConfirmButton: false,
+								  background: swalBg,
+								  color: swalColor
+								});
 							}
 						}
 					

@@ -1,46 +1,35 @@
 <?php
 
 /**
- * Static facade used by the adminmaster controllers and models.
+ * Static facade cho các controller/view gọi logic nghiệp vụ Chợ.
  *
- * The underlying market/session logic lives in the existing `general`
- * singleton.  This facade keeps the newer module's static API compatible
- * without duplicating its authorization rules.
+ * ponytail: 6 method wrapper thuần (isSuperAdmin, isAdminMarket, currentMarketId,
+ * getAccessibleMarketIds, applyScope, checkWritePermission) được thay bằng __callStatic.
+ * Chỉ giữ 2 method có logic riêng: checkModuleAccess + requireModuleAccess.
+ * 50+ caller không cần sửa gì.
  */
 class marketService {
-    private static function helper() {
-        return general::getInstance();
-    }
 
-    public static function isSuperAdmin(): bool {
-        return self::helper()->isSuperAdmin();
-    }
-
-    public static function isAdminMarket(): bool {
-        return self::helper()->isAdminMarket();
-    }
-
-    public static function currentMarketId(): int {
-        return self::helper()->currentMarketId();
-    }
-
-    public static function getAccessibleMarketIds(): array {
-        return self::helper()->getAccessibleMarketIds();
-    }
-
-    public static function applyScope(string $sql, string $alias = '', string $column = 'market_id'): string {
-        return self::helper()->applyScope($sql, $alias, $column);
-    }
-
-    public static function checkWritePermission($marketId) {
-        return self::helper()->checkWritePermission($marketId);
+    /**
+     * Proxy mọi static call không khai báo sang general singleton.
+     * Ví dụ: marketService::isSuperAdmin() → general::getInstance()->isSuperAdmin()
+     */
+    public static function __callStatic(string $name, array $args) {
+        return general::getInstance()->$name(...$args);
     }
 
     public static function checkModuleAccess(string $module): bool {
-        return self::helper()->checkModuleAccess($module);
+        $helper = general::getInstance();
+        $userId = (int)($helper->get('user_id') ?? 0);
+        $scopeId = (int)$helper->currentMarketId();
+        $actorCode = $helper->get('actor_code') ?? '';
+        return permissionService::checkAccess($module, $userId, $scopeId, $actorCode);
     }
 
     public static function requireModuleAccess(string $module) {
-        return self::helper()->requireModuleAccess($module);
+        if (!self::checkModuleAccess($module)) {
+            header('Location: ' . BASE_URL . 'system/users');
+            exit();
+        }
     }
 }

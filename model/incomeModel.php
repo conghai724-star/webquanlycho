@@ -89,4 +89,37 @@ class incomeModel {
         return $this->db->lastInsertId();
     }
     public function deleteVoucher($marketId, $id) { return $this->db->query('UPDATE income_vouchers SET status=99 WHERE voucher_id=:id AND market_id=:market_id', ['id'=>(int)$id,'market_id'=>(int)$marketId]); }
+
+    /** Monthly income/expense totals for a year, optionally filtered by category. */
+    public function getMonthlyReport($marketId, $year, $categoryId = null) {
+        $where = ['market_id=:market_id', 'status != 99', 'YEAR(voucher_date)=:year'];
+        $params = ['market_id'=>(int)$marketId, 'year'=>(int)$year];
+        if ($categoryId) { $where[]='category_id=:category_id'; $params['category_id']=(int)$categoryId; }
+        $condition = implode(' AND ', $where);
+        $rows = $this->db->select("SELECT MONTH(voucher_date) AS m, voucher_type, SUM(amount) AS total FROM income_vouchers WHERE $condition GROUP BY m, voucher_type ORDER BY m", $params);
+        // Build 12-month array
+        $months = [];
+        for ($i=1; $i<=12; $i++) $months[$i] = ['income'=>0, 'expense'=>0];
+        foreach ($rows as $r) $months[(int)$r['m']][$r['voucher_type']] = (float)$r['total'];
+        return $months;
+    }
+
+    /** All categories (both income & expense) for filter dropdowns. */
+    public function allCategories($marketId) {
+        return $this->db->select('SELECT * FROM income_categories WHERE market_id=:market_id AND status != 99 ORDER BY category_type, category_name', ['market_id'=>(int)$marketId]);
+    }
+
+    /** Daily income/expense for a specific month. Returns array keyed by day (1-31). */
+    public function getDailyReport($marketId, $year, $month, $categoryId = null) {
+        $where = ['market_id=:market_id', 'status != 99', 'YEAR(voucher_date)=:year', 'MONTH(voucher_date)=:month'];
+        $params = ['market_id'=>(int)$marketId, 'year'=>(int)$year, 'month'=>(int)$month];
+        if ($categoryId) { $where[]='category_id=:category_id'; $params['category_id']=(int)$categoryId; }
+        $condition = implode(' AND ', $where);
+        $rows = $this->db->select("SELECT DAY(voucher_date) AS d, voucher_type, SUM(amount) AS total FROM income_vouchers WHERE $condition GROUP BY d, voucher_type ORDER BY d", $params);
+        $daysInMonth = (int)date('t', mktime(0,0,0,(int)$month,1,(int)$year));
+        $days = [];
+        for ($i=1; $i<=$daysInMonth; $i++) $days[$i] = ['income'=>0, 'expense'=>0];
+        foreach ($rows as $r) $days[(int)$r['d']][$r['voucher_type']] = (float)$r['total'];
+        return $days;
+    }
 }

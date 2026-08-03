@@ -2,8 +2,7 @@
 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
     <!-- Nút chuyển đổi Tab -->
     <div class="segmented" role="radiogroup" style="max-width: 380px;">
-        <label><input type="radio" name="user-mode" value="accounts" checked onclick="App.user.switchTab('accounts')"><span>Tài khoản & Phân quyền</span></label>
-        <label><input type="radio" name="user-mode" value="logs" onclick="App.user.switchTab('logs')"><span>Nhật ký hệ thống (Audit)</span></label>
+        <label><input type="radio" name="user-mode" value="accounts" checked><span>Tài khoản & Phân quyền</span></label>
     </div>
     
     <a href="<?php echo BASE_URL; ?>system/user_add" class="btn btn-primary" style="height: 36px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: white;">
@@ -14,8 +13,18 @@
 
 <!-- TAB 1: DANH SÁCH TÀI KHOẢN -->
 <div id="user-accounts" class="card">
-    <div class="card-header" style="border-bottom: 1px solid var(--border-color); padding: 16px 20px;">
-        <div class="card-title" style="font-size: 16px; font-weight: 600;">Danh sách tài khoản nhân viên BQL</div>
+    <div class="card-header" style="border-bottom: 1px solid var(--border-color); padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div class="card-title" style="font-size: 16px; font-weight: 600; margin: 0;">Danh sách tài khoản nhân viên BQL (<?php echo $totalRecords; ?>)</div>
+        <form method="GET" action="<?php echo BASE_URL; ?>system/users" style="display: flex; gap: 8px; flex-wrap: wrap;" data-native-submit="true">
+            <select name="market_id" style="padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 13px; min-width: 180px; background-color: var(--bg-surface, #ffffff); color: var(--text-color);">
+                <option value="">-- Tất cả chợ --</option>
+                <?php foreach ($marketsList as $m): ?>
+                    <option value="<?php echo $m['id']; ?>" <?php echo ($selectedMarket == $m['id']) ? 'selected' : ''; ?>><?php echo htmlspecialchars($m['name']); ?></option>
+                <?php endforeach; ?>
+            </select>
+            <input type="text" name="q" placeholder="Tìm theo tên, họ tên, email..." value="<?php echo htmlspecialchars($search ?? ''); ?>" style="padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 13px; width: 220px; background-color: var(--bg-surface, #ffffff); color: var(--text-color);">
+            <button type="submit" class="btn btn-outline" style="padding: 6px 12px; font-size: 13px; height: 34px; display: inline-flex; align-items: center;">Tìm kiếm</button>
+        </form>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -85,53 +94,19 @@
                 </tbody>
             </table>
         </div>
-    </div>
-</div>
-
-<!-- TAB 2: NHẬT KÝ HỆ THỐNG (AUDIT LOG - Mục F.9, F.10) -->
-<div id="user-logs" class="card" style="display: none;">
-    <div class="card-header" style="border-bottom: 1px solid var(--border-color); padding: 16px 20px;">
-        <div class="card-title" style="font-size: 16px; font-weight: 600;">Nhật ký Đăng nhập & Thao tác vận hành hệ thống</div>
-    </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table" style="width: 100%; border-collapse: collapse; font-size: 12.5px;">
-                <thead>
-                    <tr style="text-align: left; background-color: var(--bg-surface-secondary); border-bottom: 1px solid var(--border-color);">
-                        <th style="padding: 12px 16px; width: 160px;">Thời gian</th>
-                        <th style="padding: 12px 16px; width: 140px;">Tài khoản</th>
-                        <th style="padding: 12px 16px; width: 140px;">Phân loại nhật ký</th>
-                        <th style="padding: 12px 16px;">Hành động chi tiết (Audit Log)</th>
-                        <th style="padding: 12px 16px; width: 130px;">Địa chỉ IP</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr style="border-bottom: 1px solid var(--border-color);">
-                        <td style="padding: 12px 16px; color: var(--text-muted);">01/07/2026 17:58:34</td>
-                        <td style="padding: 12px 16px; font-weight: 600;">admin</td>
-                        <td style="padding: 12px 16px;"><span class="status status-green">Đăng nhập</span></td>
-                        <td style="padding: 12px 16px; color: var(--text-heading);">Đăng nhập thành công vào hệ thống điều hành.</td>
-                        <td style="padding: 12px 16px; color: var(--text-muted); font-family: monospace;">192.168.1.55</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid var(--border-color);">
-                        <td style="padding: 12px 16px; color: var(--text-muted);">01/07/2026 17:55:12</td>
-                        <td style="padding: 12px 16px; font-weight: 600;">admin</td>
-                        <td style="padding: 12px 16px;"><span class="status status-blue">Thao tác</span></td>
-                        <td style="padding: 12px 16px; color: var(--text-heading);">Thêm mới tiểu thương <strong>Nguyễn Thị Thu Hà</strong> vào danh sách.</td>
-                        <td style="padding: 12px 16px; color: var(--text-muted); font-family: monospace;">192.168.1.55</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid var(--border-color);">
-                        <td style="padding: 12px 16px; color: var(--text-muted);">01/07/2026 17:51:20</td>
-                        <td style="padding: 12px 16px; font-weight: 600;">ketoan_an</td>
-                        <td style="padding: 12px 16px;"><span class="status status-blue">Thao tác</span></td>
-                        <td style="padding: 12px 16px; color: var(--text-heading);">Lập phiếu thu tiền sạp <strong>SẠP-B01</strong> trị giá 5.480.000 đ.</td>
-                        <td style="padding: 12px 16px; color: var(--text-muted); font-family: monospace;">192.168.1.102</td>
-                    </tr>
-                </tbody>
-            </table>
+        <!-- Phân trang -->
+        <div style="padding: 10px 20px; border-top: 1px solid var(--border-color);">
+            <?php
+            $baseUrl = BASE_URL . 'system/users';
+            $queryParams = [];
+            if (!empty($search)) $queryParams['q'] = $search;
+            if (!empty($selectedMarket)) $queryParams['market_id'] = $selectedMarket;
+            echo general::getPaginationHtml($page, $totalPages, $baseUrl, $queryParams);
+            ?>
         </div>
     </div>
 </div>
+
 
 <script>
 $(document).ready(function() {
@@ -141,22 +116,7 @@ $(document).ready(function() {
 
     window.App = window.App || {};
     window.App.user = {
-        // 1. Chuyển tab giữa Tài khoản và Nhật ký
-        switchTab: function(mode) {
-            const accounts = document.getElementById('user-accounts');
-            const logs = document.getElementById('user-logs');
-            if (!accounts || !logs) return;
-
-            if (mode === 'accounts') {
-                accounts.style.display = 'block';
-                logs.style.display = 'none';
-            } else {
-                accounts.style.display = 'none';
-                logs.style.display = 'block';
-            }
-        },
-
-    // 2. Khóa / Mở khóa tài khoản
+    // Khóa / Mở khóa tài khoản
         toggleLockUser: function(id, name) {
             Swal.fire({
                 title: 'Khóa/Mở khóa tài khoản?',
@@ -190,7 +150,8 @@ $(document).ready(function() {
                                     Swal.fire({
                                         icon: 'success',
                                         title: 'Đã kích hoạt lại tài khoản!',
-                                        confirmButtonColor: '#1ABB9C',
+                                        timer: 1500,
+                                        showConfirmButton: false,
                                         background: swalBg,
                                         color: swalColor
                                     });
@@ -199,7 +160,8 @@ $(document).ready(function() {
                                     Swal.fire({
                                         icon: 'success',
                                         title: 'Đã khóa tài khoản!',
-                                        confirmButtonColor: '#1ABB9C',
+                                        timer: 1500,
+                                        showConfirmButton: false,
                                         background: swalBg,
                                         color: swalColor
                                     });

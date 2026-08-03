@@ -36,6 +36,85 @@ Class general{
         }
         return self::$instance;
     }
+    
+    /**
+     * Ghi nhật ký hoạt động hệ thống vào bảng system_logs
+     */
+    public static function log($actionType, $description) {
+        try {
+            $db = database::getInstance();
+            $userId = session::get('user_id') ?: null;
+            $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '';
+            $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+
+            $db->query("
+                INSERT INTO system_logs (log_user_id, log_action_type, log_action_description, log_ip_address, log_user_agent, log_created_at) 
+                VALUES (:user_id, :action_type, :description, :ip_address, :user_agent, NOW())
+            ", [
+                'user_id' => $userId,
+                'action_type' => $actionType,
+                'description' => $description,
+                'ip_address' => $ipAddress,
+                'user_agent' => $userAgent
+            ]);
+        } catch (Exception $e) {
+            // Ghi nhận im lặng để tránh sập luồng xử lý chính
+        }
+    }
+
+    /**
+     * Sinh HTML phân trang chuẩn Bootstrap/HopeUI
+     */
+    public static function getPaginationHtml($page, $totalPages, $baseUrl, $queryParams = []) {
+        if ($totalPages <= 1) {
+            return '';
+        }
+
+        // Inline CSS để đảm bảo phân trang luôn hiển thị ngang và căn giữa không phụ thuộc CSS ngoài
+        $ulStyle = 'display: flex; justify-content: center; align-items: center; list-style: none; padding-left: 0; margin: 15px 0; gap: 6px; flex-wrap: wrap;';
+        $liStyle = 'list-style: none; margin: 0; padding: 0; display: inline-block;';
+        $linkBase = 'display: inline-block; padding: 6px 12px; font-size: 13px; font-weight: 500; text-decoration: none; border: 1px solid var(--border-color, #dee2e6); border-radius: 6px; transition: all 0.2s ease;';
+        $linkNormal = $linkBase . ' background-color: var(--bg-surface, #ffffff); color: var(--text-color, #495057);';
+        $linkPrimary = $linkBase . ' background-color: var(--primary, #3a57e8); border-color: var(--primary, #3a57e8); color: #ffffff; font-weight: 600;';
+        $linkDisabled = $linkBase . ' background-color: var(--bg-surface, #f8f9fa); border-color: var(--border-color, #dee2e6); color: var(--text-muted, #adb5bd); cursor: not-allowed; opacity: 0.6;';
+
+        $html = '<nav aria-label="Page navigation" style="display: block; width: 100%;"><ul class="pagination justify-content-center" style="' . $ulStyle . '">';
+
+        // Nút Trước
+        $prevPage = $page - 1;
+        if ($page <= 1) {
+            $html .= '<li class="page-item disabled" style="' . $liStyle . '"><span class="page-link" style="' . $linkDisabled . '">Trước</span></li>';
+        } else {
+            $queryParams['page'] = $prevPage;
+            $url = $baseUrl . '?' . http_build_query($queryParams);
+            $html .= '<li class="page-item" style="' . $liStyle . '"><a class="page-link" href="' . htmlspecialchars($url) . '" style="' . $linkNormal . '">Trước</a></li>';
+        }
+
+        // Các số trang
+        for ($i = 1; $i <= $totalPages; $i++) {
+            if ($i == $page) {
+                $html .= '<li class="page-item active" style="' . $liStyle . '"><span class="page-link" style="' . $linkPrimary . '">' . $i . '</span></li>';
+            } else {
+                $queryParams['page'] = $i;
+                $url = $baseUrl . '?' . http_build_query($queryParams);
+                $html .= '<li class="page-item" style="' . $liStyle . '"><a class="page-link" href="' . htmlspecialchars($url) . '" style="' . $linkNormal . '">' . $i . '</a></li>';
+            }
+        }
+
+        // Nút Sau
+        $nextPage = $page + 1;
+        if ($page >= $totalPages) {
+            $html .= '<li class="page-item disabled" style="' . $liStyle . '"><span class="page-link" style="' . $linkDisabled . '">Sau</span></li>';
+        } else {
+            $queryParams['page'] = $nextPage;
+            $url = $baseUrl . '?' . http_build_query($queryParams);
+            $html .= '<li class="page-item" style="' . $liStyle . '"><a class="page-link" href="' . htmlspecialchars($url) . '" style="' . $linkNormal . '">Sau</a></li>';
+        }
+
+        $html .= '</ul></nav>';
+        return $html;
+    }
+
 	public function get_config($key)
 	{
 		global $db;

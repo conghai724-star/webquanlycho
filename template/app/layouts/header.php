@@ -119,6 +119,8 @@ $htmlBg = $theme === 'dark' ? '#0f1623' : '#f5f7fb';
 
     <!-- jQuery (cần cho inline script trong các view PHP dùng $().ready / $.ajax) -->
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <!-- ponytail: Restore sidebar-rail state before first paint to avoid layout flash -->
+    <script>if(localStorage.getItem('sidebar-collapsed')==='1'&&window.innerWidth>768)document.documentElement.classList.add('sidebar-rail-pending');</script>
 </head>
 <?php
 $successMsg = session::get('success_message');

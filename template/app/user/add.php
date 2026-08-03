@@ -1,4 +1,4 @@
-<?php require "header.php"; ?>
+<!-- Form Khai Báo Nhân Viên Mới -->
 <div style="margin-bottom: 20px;">
     <a href="<?php echo BASE_URL; ?>system/users" class="btn btn-outline" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
         <i class="fa-solid fa-arrow-left"></i> Quay lại tài khoản
@@ -167,5 +167,4 @@
             </div>
         </form>
     </div>
-</div>
-<?php require "footer.php"; ?>
+</div>

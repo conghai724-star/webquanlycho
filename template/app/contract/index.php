@@ -41,7 +41,7 @@
 
 <div class="card">
     <div class="card-header" style="border-bottom: 1px solid var(--border-color); padding: 16px 20px;">
-        <div class="card-title" style="font-size: 16px; font-weight: 600;">Hồ sơ Hợp đồng thuê mặt bằng sạp (<span id="filter-total-contracts"><?php echo count($contracts); ?></span>)</div>
+        <div class="card-title" style="font-size: 16px; font-weight: 600;">Hồ sơ Hợp đồng thuê mặt bằng sạp (<span id="filter-total-contracts"><?php echo $totalRecords; ?></span>)</div>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -67,6 +67,16 @@
                     <?php require DIR_TEMPLATE . '/contract/table_rows.php'; ?>
                 </tbody>
             </table>
+        </div>
+        <!-- Phân trang -->
+        <div id="contract-pagination-container" style="padding: 10px 20px; border-top: 1px solid var(--border-color);">
+            <?php
+            $baseUrl = BASE_URL . 'admin/contracts';
+            $queryParams = [];
+            if (!empty($search)) $queryParams['q'] = $search;
+            if (!empty($status_filter)) $queryParams['status'] = $status_filter;
+            echo general::getPaginationHtml($page, $totalPages, $baseUrl, $queryParams);
+            ?>
         </div>
     </div>
 </div>
@@ -1122,7 +1132,7 @@ $(document).ready(function() {
         var tbody = $('#table-body-contracts');
         var totalEl = $('#filter-total-contracts');
 
-        function doFilter() {
+        function doFilter(page) {
             var params = {};
             inputs.each(function() {
                 var value = $(this).val().trim();
@@ -1130,6 +1140,9 @@ $(document).ready(function() {
                     params[$(this).attr('name')] = value;
                 }
             });
+            if (page) {
+                params['page'] = page;
+            }
             var query = $.param(params);
             if (tbody.length) {
                 tbody.css('opacity', '0.5');
@@ -1146,6 +1159,10 @@ $(document).ready(function() {
                     if (totalEl.length && typeof data.total !== 'undefined') {
                         totalEl.text(data.total);
                     }
+                    var pagContainer = $('#contract-pagination-container');
+                    if (pagContainer.length && typeof data.paginationHtml !== 'undefined') {
+                        pagContainer.html(data.paginationHtml);
+                    }
                     var newUrl = '<?php echo BASE_URL; ?>admin/contracts' + (query ? '?' + query : '');
                     window.history.pushState({ path: newUrl }, '', newUrl);
                 },
@@ -1155,11 +1172,21 @@ $(document).ready(function() {
             });
         }
 
-        btn.on('click', doFilter);
+        btn.on('click', function() { doFilter(1); });
         form.find('input[type="text"]').on('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                doFilter();
+                doFilter(1);
+            }
+        });
+
+        // Lắng nghe sự kiện click trên các nút phân trang
+        $(document).on('click', '#contract-pagination-container .page-link', function(e) {
+            var href = $(this).attr('href');
+            if (href && href.indexOf('page=') !== -1) {
+                e.preventDefault();
+                var page = href.split('page=')[1].split('&')[0];
+                doFilter(page);
             }
         });
     })();

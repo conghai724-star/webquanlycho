@@ -23,8 +23,8 @@ if (!defined('XVN_CONFIG_LOADED')) {
 	define('DB_NAME', 'quanlycho.vn'); //database name
 	define('DB_USER', 'root'); //database user
 	define('DB_PASSWORD', ''); //database password
-	define('DB_HOST', 'localhost'); //sql server
-define('DB_PORT', '3307');
+	define('DB_HOST', '127.0.0.1:3307'); //sql server
+	define('DB_PORT', '3307');
 	/*** define mailer ***/
 	define('MAIL_PROTOCOL', 'SMTP');
 	define('MAIL_HOST', 'smtp.gmail.com');
@@ -50,6 +50,9 @@ define('DB_PORT', '3307');
 	define('DIR_TEMPLATE', __DIR__ . '/template/' . AdminTheme);
 	define('ADMINMASTER_URL','http://localhost/quanlycho.vn/admin'); //Replace by your site url
 	define('APP_URL','http://localhost/quanlycho.vn/app'); //Replace by your site url
+
+	// ponytail: permissionService tự chứa cấu hình mặc định cho dự án Chợ.
+	// Khi dùng cho dự án khác, gọi permissionService::init([...]) tại đây để ghi đè.
 }
 
 $siteurl = XC_URL;

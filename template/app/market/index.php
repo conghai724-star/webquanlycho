@@ -10,7 +10,7 @@
 
 <div class="card">
     <div class="card-header" style="border-bottom: 1px solid var(--border-color); padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">
-        <div class="card-title" style="font-size: 16px; font-weight: 600;">Danh sách chợ trong hệ thống</div>
+        <div class="card-title" style="font-size: 16px; font-weight: 600;">Danh sách chợ trong hệ thống (<?php echo $totalRecords; ?>)</div>
         <form method="GET" action="<?php echo BASE_URL; ?>system/markets" style="display: flex; gap: 8px;" data-native-submit="true">
             <input type="text" name="q" placeholder="Tìm theo tên hoặc mã chợ..." value="<?php echo htmlspecialchars($search ?? ''); ?>" style="padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 13px; width: 220px;">
             <button type="submit" class="btn btn-outline" style="padding: 6px 12px; font-size: 13px;">Tìm kiếm</button>
@@ -78,6 +78,15 @@
                     <?php endif; ?>
                 </tbody>
             </table>
+        </div>
+        <!-- Phân trang -->
+        <div style="padding: 10px 20px; border-top: 1px solid var(--border-color);">
+            <?php
+            $baseUrl = BASE_URL . 'system/markets';
+            $queryParams = [];
+            if (!empty($search)) $queryParams['q'] = $search;
+            echo general::getPaginationHtml($page, $totalPages, $baseUrl, $queryParams);
+            ?>
         </div>
     </div>
 </div>

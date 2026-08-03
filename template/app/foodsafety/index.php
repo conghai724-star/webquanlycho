@@ -92,7 +92,7 @@ if (!empty($certificates)) {
 
     <div class="card">
         <div class="card-header" style="border-bottom: 1px solid var(--border-color); padding: 16px 20px;">
-            <div class="card-title" style="font-size: 16px; font-weight: 600;">Hồ sơ Chứng nhận vệ sinh ATTP & Sức khỏe tiểu thương (<span id="filter-total-certificates"><?php echo count($certificates); ?></span>)</div>
+            <div class="card-title" style="font-size: 16px; font-weight: 600;">Hồ sơ Chứng nhận vệ sinh ATTP & Sức khỏe tiểu thương (<span id="filter-total-certificates"><?php echo $totalRecords; ?></span>)</div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -116,6 +116,17 @@ if (!empty($certificates)) {
                         <?php require DIR_TEMPLATE . '/foodsafety/table_rows.php'; ?>
                     </tbody>
                 </table>
+            </div>
+            <!-- Phân trang -->
+            <div style="padding: 10px 20px; border-top: 1px solid var(--border-color);">
+                <?php
+                $baseUrl = BASE_URL . 'admin/foodsafety';
+                $queryParams = [];
+                if (!empty($search)) $queryParams['q'] = $search;
+                if (!empty($doc_type_filter)) $queryParams['doc_type'] = $doc_type_filter;
+                if (!empty($status_filter)) $queryParams['status'] = $status_filter;
+                echo general::getPaginationHtml($page, $totalPages, $baseUrl, $queryParams);
+                ?>
             </div>
         </div>
     </div>

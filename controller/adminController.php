@@ -9,7 +9,7 @@ Class adminController extends baseController {
         // Bảo vệ toàn bộ các action trong adminController (trừ login)
         $action = isset($this->registry->router->action) ? $this->registry->router->action : '';
         if ($action !== 'login') {
-            if (!$this->helper->isLoggedIn() || $this->helper->get('actor_code') !== 'admin') {
+            if (!$this->helper->isLoggedIn() || !in_array($this->helper->get('actor_code'), ['admin', 'admin_market', 'super_market'])) {
                 header('Location: ' . BASE_URL . 'login');
                 exit();
             }
@@ -23,7 +23,7 @@ Class adminController extends baseController {
     public function login()
 	{ 
 		// Nếu đã đăng nhập đúng role admin, chuyển hướng thẳng vào dashboard
-		if ($this->helper->isLoggedIn() && $this->helper->get('actor_code') === 'admin') {
+		if ($this->helper->isLoggedIn() && in_array($this->helper->get('actor_code'), ['admin', 'admin_market', 'super_market'])) {
 			header('Location: ' . BASE_URL . 'admin/dashboard');
 			exit();
 		}
@@ -132,15 +132,28 @@ Class adminController extends baseController {
             error_log('[stalls] EXCEPTION: ' . $e->getMessage());
         }
 
+        // Phân trang
+        $limit = 15;
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        if ($page < 1) $page = 1;
+        $totalRecords = count($stalls);
+        $totalPages = ceil($totalRecords / $limit);
+        if ($page > $totalPages && $totalPages > 0) $page = $totalPages;
+        $offset = ($page - 1) * $limit;
+        $paginatedStalls = array_slice($stalls, $offset, $limit);
+
         $this->view('backend/stall/index', [
             'title' => 'Quản Lý Sạp Chợ',
-            'stalls' => $stalls,
+            'stalls' => $paginatedStalls,
             'areas' => $areas,
             'statuses' => $statuses,
             'stats' => $stats,
             'search' => $search,
             'area_filter' => $areaId,
-            'status_filter' => $status
+            'status_filter' => $status,
+            'page' => $page,
+            'totalPages' => $totalPages,
+            'totalRecords' => $totalRecords
         ]);
     }
 
@@ -164,12 +177,25 @@ Class adminController extends baseController {
             error_log('[contracts] EXCEPTION: ' . $e->getMessage());
         }
 
+        // Phân trang
+        $limit = 15;
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        if ($page < 1) $page = 1;
+        $totalRecords = count($contracts);
+        $totalPages = ceil($totalRecords / $limit);
+        if ($page > $totalPages && $totalPages > 0) $page = $totalPages;
+        $offset = ($page - 1) * $limit;
+        $paginatedContracts = array_slice($contracts, $offset, $limit);
+
         $this->view('backend/contract/index', [
             'title' => 'Hợp Đồng Thuê Sạp',
-            'contracts' => $contracts,
+            'contracts' => $paginatedContracts,
             'statuses' => $statuses,
             'status_filter' => $status,
-            'search' => $search
+            'search' => $search,
+            'page' => $page,
+            'totalPages' => $totalPages,
+            'totalRecords' => $totalRecords
         ]);
     }
 
@@ -243,14 +269,27 @@ Class adminController extends baseController {
             error_log('[foodsafety] EXCEPTION: ' . $e->getMessage());
         }
 
+        // Phân trang
+        $limit = 15;
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        if ($page < 1) $page = 1;
+        $totalRecords = count($certificates);
+        $totalPages = ceil($totalRecords / $limit);
+        if ($page > $totalPages && $totalPages > 0) $page = $totalPages;
+        $offset = ($page - 1) * $limit;
+        $paginatedCertificates = array_slice($certificates, $offset, $limit);
+
         $this->view('backend/foodsafety/index', [
             'title' => 'An Toàn Thực Phẩm',
-            'certificates' => $certificates,
+            'certificates' => $paginatedCertificates,
             'statuses' => $statuses,
             'documentTypes' => $documentTypes,
             'search' => $search,
             'doc_type_filter' => $docType,
-            'status_filter' => $status
+            'status_filter' => $status,
+            'page' => $page,
+            'totalPages' => $totalPages,
+            'totalRecords' => $totalRecords
         ]);
     }
 
@@ -573,14 +612,27 @@ Class adminController extends baseController {
             $statuses = [];
         }
 
+        // Phân trang
+        $limit = 15;
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        if ($page < 1) $page = 1;
+        $totalRecords = count($traders);
+        $totalPages = ceil($totalRecords / $limit);
+        if ($page > $totalPages && $totalPages > 0) $page = $totalPages;
+        $offset = ($page - 1) * $limit;
+        $paginatedTraders = array_slice($traders, $offset, $limit);
+
         $this->view('backend/trader/index', [
             'title' => 'Quản Lý Tiểu Thương',
-            'traders' => $traders,
+            'traders' => $paginatedTraders,
             'business_lines' => $business_lines,
             'statuses' => $statuses,
             'search' => $search,
             'business_line_filter' => $business_line,
-            'status_filter' => $status
+            'status_filter' => $status,
+            'page' => $page,
+            'totalPages' => $totalPages,
+            'totalRecords' => $totalRecords
         ]);
     }
 
@@ -931,14 +983,34 @@ Class adminController extends baseController {
         ]);
     }
 
-    /** Form xuất S07-X. Header đơn vị luôn được đọc từ market đang chọn. */
+    /** Form xuất S07-X + Dashboard thống kê thu chi theo tháng. */
     public function income_report() {
         $marketId = marketService::currentMarketId();
+        $year = (int)($_GET['year'] ?? date('Y'));
+        $categoryId = (int)($_GET['category_id'] ?? 0) ?: null;
+        $month = (int)($_GET['month'] ?? 0) ?: null;
+
+        $model = new incomeModel();
+        $monthly = $model->getMonthlyReport($marketId, $year, $categoryId);
+
+        $totalIncome = $totalExpense = 0;
+        foreach ($monthly as $m) { $totalIncome += $m['income']; $totalExpense += $m['expense']; }
+
+        // Daily breakdown when a specific month is selected
+        $daily = $month ? $model->getDailyReport($marketId, $year, $month, $categoryId) : null;
+
         $service = new incomeReportService();
         $this->view('backend/income/report', [
             'title' => 'Báo Cáo Thu Chi',
             'unit' => $service->getUnitConfig($marketId),
-            'year' => (int)($_GET['year'] ?? date('Y'))
+            'year' => $year,
+            'month' => $month,
+            'categoryId' => $categoryId,
+            'monthly' => $monthly,
+            'daily' => $daily,
+            'totalIncome' => $totalIncome,
+            'totalExpense' => $totalExpense,
+            'categories' => $model->allCategories($marketId),
         ]);
     }
 
@@ -958,5 +1030,65 @@ Class adminController extends baseController {
             http_response_code(500);
             echo '<h3>Không thể xuất báo cáo S07-X</h3><p>'.htmlspecialchars($e->getMessage()).'</p>';
         }
+    }
+
+    /**
+     * Trang thông tin cá nhân của người dùng đang đăng nhập
+     */
+    public function profile() {
+        $userId = session::get('user_id');
+        $db = database::getInstance();
+
+        // Lấy thông tin tài khoản
+        $user = $db->selectOne("
+            SELECT u.*, u.user_username AS username, u.user_fullname AS fullname, u.user_email AS email, sa.actor_name, sa.actor_code 
+            FROM users u
+            LEFT JOIN system_actors sa ON u.user_actor_id = sa.actor_id
+            WHERE u.user_id = :id
+        ", ['id' => $userId]);
+
+        if (!$user) {
+            header('Location: ' . BASE_URL . 'login');
+            exit();
+        }
+
+        // Lấy danh sách chợ trực thuộc
+        $assignedMarkets = $db->select("
+            SELECT m.market_id, m.market_name 
+            FROM user_markets um
+            JOIN markets m ON um.user_market_market_id = m.market_id
+            WHERE um.user_market_user_id = :id AND m.market_status_code = 'active'
+            ORDER BY m.market_name ASC
+        ", ['id' => $userId]);
+
+        // Lấy danh sách các quyền phân hệ của user này
+        $userPermsRows = $db->select("
+            SELECT permission_market_id, permission_module_code 
+            FROM user_market_permissions 
+            WHERE permission_user_id = :id
+        ", ['id' => $userId]);
+
+        $permissions = [];
+        foreach ($userPermsRows as $p) {
+            $permissions[$p['permission_market_id']][] = $p['permission_module_code'];
+        }
+
+        // Tên thân thiện của các phân hệ chức năng
+        $moduleNames = [
+            'trader' => 'Tiểu thương',
+            'stall' => 'Sạp chợ',
+            'contract' => 'Hợp đồng',
+            'finance' => 'Tài chính',
+            'foodsafety' => 'An toàn thực phẩm'
+        ];
+
+        // Định dạng dữ liệu để nạp vào template
+        $this->view('backend/user/profile', [
+            'title' => 'Thông tin cá nhân',
+            'user' => $user,
+            'assignedMarkets' => $assignedMarkets,
+            'permissions' => $permissions,
+            'moduleNames' => $moduleNames
+        ]);
     }
 }

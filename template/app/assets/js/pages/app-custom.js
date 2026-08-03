@@ -623,19 +623,6 @@ window.App = Object.assign(window.App || {}, {
 
     // 4. Module Tài khoản người dùng (User)
     user: {
-        switchTab(mode) {
-            const accounts = document.getElementById('user-accounts');
-            const logs = document.getElementById('user-logs');
-            if (!accounts || !logs) return;
-
-            if (mode === 'accounts') {
-                accounts.style.display = 'block';
-                logs.style.display = 'none';
-            } else {
-                accounts.style.display = 'none';
-                logs.style.display = 'block';
-            }
-        },
         toggleLockUser(id, name) {
             const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
             Swal.fire({
