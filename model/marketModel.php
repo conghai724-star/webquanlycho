@@ -13,13 +13,13 @@ class marketModel {
      * Lấy toàn bộ danh sách chợ
      */
     public function getAll($search = '') {
-        $sql = "SELECT * FROM markets WHERE status_code != 'deleted'";
+        $sql = "SELECT * FROM markets WHERE market_status_code != 'deleted'";
         $params = [];
         if ($search) {
-            $sql .= " AND (name LIKE :search OR market_code LIKE :search)";
+            $sql .= " AND (market_name LIKE :search OR market_code LIKE :search)";
             $params['search'] = "%{$search}%";
         }
-        $sql .= " ORDER BY id DESC";
+        $sql .= " ORDER BY market_id DESC";
         return $this->db->select($sql, $params);
     }
 
@@ -27,7 +27,7 @@ class marketModel {
      * Lấy chi tiết chợ theo ID
      */
     public function getById($id) {
-        return $this->db->selectOne("SELECT * FROM markets WHERE id = :id", ['id' => $id]);
+        return $this->db->selectOne("SELECT * FROM markets WHERE market_id = :id", ['id' => $id]);
     }
 
     /**
@@ -55,12 +55,12 @@ class marketModel {
     public function update($id, $data) {
         $sql = "UPDATE markets SET 
                     market_code = :market_code,
-                    name = :name,
-                    phone = :phone,
-                    email = :email,
-                    manager_name = :manager_name,
-                    status_code = :status_code
-                WHERE id = :id";
+                    market_name = :name,
+                    market_phone = :phone,
+                    market_email = :email,
+                    market_manager_name = :manager_name,
+                    market_status_code = :status_code
+                WHERE market_id = :id";
         
         return $this->db->query($sql, [
             'id'           => $id,
@@ -76,7 +76,7 @@ class marketModel {
      * Xóa chợ (Soft Delete)
      */
     public function delete($id) {
-        $sql = "UPDATE markets SET market_status_code = 'deleted' WHERE id = :id";
+        $sql = "UPDATE markets SET market_status_code = 'deleted' WHERE market_id = :id";
         return $this->db->query($sql, ['id' => $id]);
     }
 }

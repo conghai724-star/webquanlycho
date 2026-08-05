@@ -51,10 +51,12 @@
                 <div class="form-group">
                     <label class="form-label" for="role" style="font-weight: 500;">Vai trò hệ thống <span style="color: var(--red)">*</span></label>
                     <select id="role" name="role" class="form-control" required>
-                        <?php if (marketService::isSuperAdmin()): ?>
-                            <option value="super_market" <?php echo (($data['role'] ?? '') === 'super_market') ? 'selected' : ''; ?>>Quản trị tối cao (Super Admin)</option>
-                            <option value="admin_market" <?php echo (($data['role'] ?? '') === 'admin_market') ? 'selected' : ''; ?>>Quản lý chợ (Market Manager)</option>
-                            <option value="admin" <?php echo (($data['role'] ?? '') === 'admin') ? 'selected' : ''; ?>>Nhân viên vận hành (Staff)</option>
+                        <?php if (marketService::isSuperAdmin() && !empty($actorsList)): ?>
+                            <?php foreach ($actorsList as $actor): ?>
+                                <option value="<?php echo htmlspecialchars($actor['actor_code']); ?>" <?php echo (($data['role'] ?? '') === $actor['actor_code']) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($actor['actor_name']); ?>
+                                </option>
+                            <?php endforeach; ?>
                         <?php else: ?>
                             <option value="admin" selected>Nhân viên vận hành (Staff)</option>
                         <?php endif; ?>
@@ -74,13 +76,24 @@
             <!-- Danh sách chợ liên kết -->
             <?php if (!empty($marketsList)): ?>
                 <div id="markets-container" class="form-group" style="margin-bottom: 24px; padding: 16px; background-color: var(--bg-surface-light, #f8f9fa); border: 1px solid var(--border-color); border-radius: 6px;">
-                    <label class="form-label" style="font-weight: 600; margin-bottom: 8px; display: block;">Chọn chợ trực thuộc quản lý <span style="color: var(--red)">*</span></label>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 8px;">
+                    <label class="form-label" style="font-weight: 600; margin-bottom: 12px; display: block;">Chọn chợ trực thuộc quản lý & Vai trò <span style="color: var(--red)">*</span></label>
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 8px;">
                         <?php foreach ($marketsList as $m): ?>
-                            <label style="display: inline-flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer; color: var(--text-color);">
-                                <input type="checkbox" name="markets[]" value="<?php echo $m['id']; ?>" style="width: 16px; height: 16px; accent-color: var(--primary-color);">
-                                <?php echo htmlspecialchars($m['name']); ?>
-                            </label>
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; background: var(--bg-surface, #ffffff); border-radius: 6px; border: 1px solid var(--border-color); gap: 12px; max-width: 500px;">
+                                <label style="display: inline-flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer; color: var(--text-color); margin: 0; flex-grow: 1;">
+                                    <input type="checkbox" name="markets[]" value="<?php echo $m['id']; ?>" class="market-checkbox" style="width: 16px; height: 16px; accent-color: var(--primary-color);">
+                                    <?php echo htmlspecialchars($m['name']); ?>
+                                </label>
+                                <div class="market-role-select-wrapper" style="display: none;">
+                                    <select name="market_roles[<?php echo $m['id']; ?>]" class="form-control market-role-select" style="width: 180px; padding: 4px 8px; font-size: 13px; height: auto;" disabled>
+                                        <?php if (!empty($marketRolesList)): ?>
+                                            <?php foreach ($marketRolesList as $mr): ?>
+                                                <option value="<?php echo $mr['role_id']; ?>"><?php echo htmlspecialchars($mr['role_name']); ?></option>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </select>
+                                </div>
+                            </div>
                         <?php endforeach; ?>
                     </div>
                     <small style="color: #7f8c8d; margin-top: 8px; display: block;">
@@ -96,13 +109,36 @@
                     var swalBg = isDark ? '#1a2332' : '#ffffff';
                     var swalColor = isDark ? '#ffffff' : '#0f1623';
 
+                    function updateMarketRolesVisibility() {
+                        var mainRole = $('#role').val();
+                        if (mainRole === 'admin') {
+                            $('.market-role-select-wrapper').show();
+                            $('.market-checkbox').each(function() {
+                                var $select = $(this).closest('div').find('.market-role-select');
+                                if ($(this).is(':checked')) {
+                                    $select.prop('disabled', false);
+                                } else {
+                                    $select.prop('disabled', true);
+                                }
+                            });
+                        } else {
+                            $('.market-role-select-wrapper').hide();
+                            $('.market-role-select').prop('disabled', true);
+                        }
+                    }
+
                     $('#role').on('change', function() {
                         if (this.value === 'super_market') {
                             $('#markets-container').hide().find('input[type="checkbox"]').prop('checked', false);
                         } else {
                             $('#markets-container').show();
                         }
+                        updateMarketRolesVisibility();
                     }).trigger('change');
+
+                    $(document).on('change', '.market-checkbox', function() {
+                        updateMarketRolesVisibility();
+                    });
 
                     $('#form-add-user').on('submit', function(e) {
                         e.preventDefault();

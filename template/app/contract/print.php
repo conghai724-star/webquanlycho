@@ -212,13 +212,12 @@ if ($width === null || $length === null) {
             width: 210mm;
             min-height: 297mm;
             margin: 0 auto;
-            padding: 20mm 20mm 20mm 30mm; /* Top: 2cm, Right: 2cm, Bottom: 2cm, Left: 3cm */
+            padding: 20mm 20mm 20mm 30mm;
             box-sizing: border-box;
             background-color: #fff;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
-        /* Centralized paragraph and block styling to prevent double spacing */
         .paper div, .paper p {
             margin-top: 3pt;
             margin-bottom: 3pt;
@@ -226,146 +225,52 @@ if ($width === null || $length === null) {
             text-align: justify;
         }
 
-        .paper .p-ind {
-            text-indent: 1cm;
-        }
+        .paper .p-ind { text-indent: 1cm; }
 
-        .header-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 10px;
-        }
-
-        .header-table td {
-            vertical-align: top;
-            padding: 0;
-        }
-
-        .left-header {
-            width: 60mm; /* 6cm wide */
-            text-align: center;
-            font-size: 13pt;
-            font-weight: bold;
-            line-height: 1.15;
-        }
-
-        .right-header {
-            text-align: center;
-            font-size: 13pt;
-            line-height: 1.15;
-        }
-
-        .right-header .national-title {
-            font-weight: bold;
-            font-size: 13pt;
-            text-transform: uppercase;
-        }
-
-        .national-subtitle {
-            font-weight: bold;
-            font-size: 14pt;
-        }
-
-        .line-dec {
-            width: 60px;
-            margin: 4px auto 0 auto;
-            border-bottom: 1px solid #000;
-        }
-
-        .line-dec-long {
-            width: 155px;
-            margin: 4px auto 0 auto;
-            border-bottom: 1px solid #000;
-        }
-
-        .paper .doc-title {
-            text-align: center;
-            font-weight: bold;
-            font-size: 14pt;
-            margin-top: 14pt;
-            margin-bottom: 0;
-            text-transform: uppercase;
-            line-height: 1.15;
-        }
-
-        .paper .doc-subtitle {
-            text-align: center;
-            font-weight: bold;
-            font-size: 14pt;
-            margin-top: 0;
-            margin-bottom: 0;
-            text-transform: uppercase;
-            line-height: 1.15;
-        }
-
-        .section-title {
-            font-weight: bold;
-            margin-top: 3pt;
-            margin-bottom: 3pt;
-            text-indent: 1cm;
-        }
-
-        .indent-block {
-            margin-left: 20px;
-            margin-top: 3pt;
-            margin-bottom: 3pt;
-        }
-
-        .signature-table {
-            width: 100%;
-            margin-top: 6pt;
-            border-collapse: collapse;
-        }
-
-        .signature-table td {
-            width: 50%;
-            text-align: center;
-            vertical-align: top;
-            font-size: 14pt;
-            line-height: 1.15;
-        }
-
-        .signature-table td div {
-            text-align: center;
-        }
-
-        .signature-title {
-            font-weight: bold;
-        }
+        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+        .header-table td { vertical-align: top; padding: 0; }
+        .left-header { width: 60mm; text-align: center; font-size: 13pt; font-weight: bold; line-height: 1.15; }
+        .right-header { text-align: center; font-size: 13pt; line-height: 1.15; }
+        .right-header .national-title { font-weight: bold; font-size: 13pt; text-transform: uppercase; }
+        .national-subtitle { font-weight: bold; font-size: 14pt; }
+        .line-dec { width: 60px; margin: 4px auto 0 auto; border-bottom: 1px solid #000; }
+        .line-dec-long { width: 155px; margin: 4px auto 0 auto; border-bottom: 1px solid #000; }
+        .paper .doc-title { text-align: center; font-weight: bold; font-size: 14pt; margin-top: 14pt; margin-bottom: 0; text-transform: uppercase; line-height: 1.15; }
+        .paper .doc-subtitle { text-align: center; font-weight: bold; font-size: 14pt; margin-top: 0; margin-bottom: 0; text-transform: uppercase; line-height: 1.15; }
+        .section-title { font-weight: bold; margin-top: 3pt; margin-bottom: 3pt; text-indent: 1cm; }
+        .indent-block { margin-left: 20px; margin-top: 3pt; margin-bottom: 3pt; }
+        .signature-table { width: 100%; margin-top: 6pt; border-collapse: collapse; }
+        .signature-table td { width: 50%; text-align: center; vertical-align: top; font-size: 14pt; line-height: 1.15; }
+        .signature-table td div { text-align: center; }
+        .signature-title { font-weight: bold; }
 
         @media print {
-            .no-print-bar {
-                display: none;
-            }
-            body {
-                padding: 0;
-                margin: 0;
-                background-color: #fff;
-            }
-            .paper {
-                width: 100%;
-                min-height: auto;
-                padding: 0;
-                box-shadow: none;
-            }
-            @page {
-                size: A4;
-                margin: 20mm 20mm 20mm 30mm; /* Top: 2cm, Right: 2cm, Bottom: 2cm, Left: 3cm */
-            }
+            .no-print-bar { display: none; }
+            body { padding: 0; margin: 0; background-color: #fff; }
+            .paper { width: 100%; min-height: auto; padding: 0; box-shadow: none; }
+            @page { size: A4; margin: 20mm 20mm 20mm 30mm; }
         }
     </style>
 </head>
 <body>
 
     <div class="no-print-bar">
-        <span style="font-size: 14px; font-weight: 500; color: #3c4043;">Xem thử bản in hợp đồng</span>
+        <span style="font-size: 14px; font-weight: 500; color: #3c4043;">
+            Xem thử bản in hợp đồng
+            <?php if (!empty($allConfigs) && count($allConfigs) > 1): ?>
+                 |  Mẫu in:
+                <select id="config_select" style="padding: 4px 8px; border-radius: 4px; border: 1px solid #ccc; outline: none; margin-left: 4px; font-size: 13px;">
+                    <?php foreach ($allConfigs as $cfg): ?>
+                        <option value="<?php echo $cfg['config_id']; ?>" <?php echo isset($selectedConfig['config_id']) && (int)$cfg['config_id'] === (int)$selectedConfig['config_id'] ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($cfg['template_name']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            <?php endif; ?>
+        </span>
         <div style="display: flex; gap: 8px;">
-            <button onclick="window.print()" class="btn-print">
-                🖨️ In hợp đồng
-            </button>
-            <button onclick="window.close()" class="btn-print" style="background-color: #5f6368;">
-                Đóng
-            </button>
+            <button onclick="window.print()" class="btn-print">🖨 In hợp đồng</button>
+            <button onclick="window.close()" class="btn-print" style="background-color: #5f6368;">Đóng</button>
         </div>
     </div>
 
@@ -373,7 +278,7 @@ if ($width === null || $length === null) {
         <table class="header-table" style="margin-bottom: 0;">
             <tr style="margin: 0; padding: 0;">
                 <td class="left-header" style="padding: 0; margin: 0; line-height: 1;">
-                    UBND PHƯỜNG KON TUM
+                    <?php echo nl2br(htmlspecialchars($selectedConfig['gov_agency_1'] ?? '')); ?>
                 </td>
                 <td class="right-header" style="padding: 0; margin: 0; line-height: 1;">
                     <span class="national-title">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</span>
@@ -381,7 +286,7 @@ if ($width === null || $length === null) {
             </tr>
             <tr style="margin: 0; padding: 0;">
                 <td class="left-header" style="padding: 0; margin: 0; line-height: 1;">
-                    PHÒNG KT,HT&ĐT
+                    <?php echo nl2br(htmlspecialchars($selectedConfig['gov_agency_2'] ?? '')); ?>
                     <div class="line-dec" style="margin: 2pt auto 0 auto;"></div>
                 </td>
                 <td class="right-header" style="padding: 0; margin: 0; line-height: 1;">
@@ -394,32 +299,48 @@ if ($width === null || $length === null) {
                     Số: <?php echo htmlspecialchars($contract['contract_number'] ?: '..... ...'); ?>/<?php echo date('Y', $sign_ts); ?>/HĐTQLC
                 </td>
                 <td class="right-header" style="padding: 0; margin: 0; line-height: 1;">
-                    &nbsp;
+                     
                 </td>
             </tr>
         </table>
 
         <div class="doc-title">HỢP ĐỒNG DỊCH VỤ</div>
-        <div class="doc-subtitle">SỬ DỤNG DIỆN TÍCH BÁN HÀNG TẠI CÁC CHỢ HẠNG 3<br>PHƯỜNG KON TUM</div>
+        <div class="doc-subtitle">SỬ DỤNG DIỆN TÍCH BÁN HÀNG <?php echo nl2br(htmlspecialchars($selectedConfig['contract_title_suffix'] ?? '')); ?></div>
         <div class="line-dec" style="width: 70px; margin: 2pt auto 14pt auto;"></div>
 
         <div style="font-style: italic;">
-            <div class="p-ind">Căn cứ Bộ Luật dân sự ngày 24 tháng 11 năm 2015;</div>
-            <div class="p-ind">Căn cứ Nghị định số 60/2024/NĐ-CP ngày 05 tháng 6 năm 2024 của Chính phủ về phát triển và quản lý chợ;</div>
-            <div class="p-ind">Căn cứ Quyết định số 131/QĐ-UBND ngày 06/8/2025 của UBND phường Kon Tum về việc thành lập Tổ quản lý các chợ hạng 3 trên địa bàn phường Kon Tum;</div>
-            <div class="p-ind">Căn cứ nhu cầu sử dụng diện tích bán hàng của hộ kinh doanh và xét khả năng đáp ứng của đơn vị.</div>
+            <?php
+            $grounds = explode("\n", $selectedConfig['legal_grounds'] ?? '');
+            foreach ($grounds as $g) {
+                $g = trim($g);
+                if ($g !== '') {
+                    echo '<div class="p-ind">' . htmlspecialchars($g) . '</div>';
+                }
+            }
+            ?>
         </div>
 
         <div class="p-ind">
             Hôm nay, ngày <?php echo date('d', $sign_ts); ?> tháng <?php echo date('m', $sign_ts); ?> năm <?php echo date('Y', $sign_ts); ?> chúng tôi gồm có:
         </div>
 
-        <div class="section-title">Đại diện Tổ quản lý các chợ hạng 3 trên địa bàn phường Kon Tum - Trưởng phòng Kinh tế, Hạ tầng và Đô thị (gọi tắt là Bên A):</div>
-        <div class="p-ind">1. Ông: Phan Thành Trung; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Chức vụ: Tổ trưởng;</div>
-        <div class="p-ind">2. Bà: Trương Thảo Linh; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Chức vụ: Tài chính - Kế Toán.</div>
-        <div class="p-ind">Địa chỉ: 342 Nguyễn Huệ, phường Kon Tum, tỉnh Quảng Ngãi.</div>
-        <div class="p-ind">Điện thoại: ......... &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Fax: ........</div>
-        <div class="p-ind">Tài khoản: 3723.0.1153520.00000 Tại: Phòng Giao dịch số 23 - KBNN khu vực XV.</div>
+        <div class="section-title"><?php echo nl2br(htmlspecialchars($selectedConfig['rep_a_header'] ?? '')); ?></div>
+        <?php if (!empty($selectedConfig['rep_a_name_1'])): ?>
+            <div class="p-ind">1. Ông (Bà): <?php echo htmlspecialchars($selectedConfig['rep_a_name_1']); ?>;        Chức vụ: <?php echo htmlspecialchars($selectedConfig['rep_a_position_1']); ?>;</div>
+        <?php endif; ?>
+        <?php if (!empty($selectedConfig['rep_a_name_2'])): ?>
+            <div class="p-ind">2. Ông (Bà): <?php echo htmlspecialchars($selectedConfig['rep_a_name_2']); ?>;        Chức vụ: <?php echo htmlspecialchars($selectedConfig['rep_a_position_2']); ?>.</div>
+        <?php endif; ?>
+        <div class="p-ind">Địa chỉ: <?php echo htmlspecialchars($selectedConfig['rep_a_address']); ?></div>
+        <?php if (!empty($selectedConfig['rep_a_phone']) || !empty($selectedConfig['rep_a_fax'])): ?>
+            <div class="p-ind">
+                <?php if (!empty($selectedConfig['rep_a_phone'])): ?>Điện thoại: <?php echo htmlspecialchars($selectedConfig['rep_a_phone']); ?><?php endif; ?>
+                <?php if (!empty($selectedConfig['rep_a_fax'])): ?>    Fax: <?php echo htmlspecialchars($selectedConfig['rep_a_fax']); ?><?php endif; ?>
+            </div>
+        <?php endif; ?>
+        <?php if (!empty($selectedConfig['rep_a_bank_account'])): ?>
+            <div class="p-ind">Tài khoản: <?php echo htmlspecialchars($selectedConfig['rep_a_bank_account']); ?><?php if (!empty($selectedConfig['rep_a_bank_name'])): ?> Tại: <?php echo htmlspecialchars($selectedConfig['rep_a_bank_name']); ?><?php endif; ?></div>
+        <?php endif; ?>
 
         <div class="section-title">Đại diện người thuê sử dụng mặt bằng (gọi tắt là Bên B):</div>
         <div class="p-ind">Ông (Bà): <?php echo mb_strtoupper(htmlspecialchars($contract['trader_name'] ?? ''), 'UTF-8'); ?></div>
@@ -428,11 +349,11 @@ if ($width === null || $length === null) {
         <div class="p-ind">Căn cước công dân số: <?php echo htmlspecialchars(($contract['trader_cccd'] ?? '') ?: '....................................................................................'); ?></div>
 
         <div class="p-ind">
-            Sau khi hai bên bàn bạc và đi đến thống nhất về nội dung thu tiền dịch vụ sử dụng diện tích bán hàng và thu gom, vận chuyển rác thải tại các chợ hạng 3 trên địa bàn phường Kon Tum năm <?php echo date('Y', $sign_ts); ?> gồm có các điều khoản như sau:
+            Sau khi hai bên bàn bạc và đi đến thống nhất về nội dung thu tiền dịch vụ sử dụng diện tích bán hàng và thu gom, vận chuyển rác thải năm <?php echo date('Y', $sign_ts); ?> gồm có các điều khoản như sau:
         </div>
 
         <div class="section-title">Điều 1. Nội dung hợp đồng</div>
-        <div class="p-ind">Bên A thỏa thuận cho bên B thuê sử dụng mặt bằng bán hàng tại các chợ hạng 3 trên địa bàn phường Kon Tum năm <?php echo date('Y', $sign_ts); ?>: 01 sạp (lô); vị trí: <?php echo htmlspecialchars($contract['area_name'] ?? ''); ?>, cụ thể như sau:</div>
+        <div class="p-ind">Bên A thỏa thuận cho bên B thuê sử dụng mặt bằng bán hàng năm <?php echo date('Y', $sign_ts); ?>: 01 sạp (lô); vị trí: <?php echo htmlspecialchars($contract['area_name'] ?? ''); ?>, cụ thể như sau:</div>
         <div class="p-ind">Diện tích sử dụng: <?php echo htmlspecialchars((float)($contract['stall_area_size'] ?? 0)); ?> m² <em>(chiều dài <?php echo $length; ?>m x chiều rộng <?php echo $width; ?>m)</em></div>
         <div class="p-ind">Mặt hàng kinh doanh: <?php echo htmlspecialchars(($contract['stall_type'] ?? '') ?: 'Hàng khô'); ?></div>
 
@@ -446,17 +367,17 @@ if ($width === null || $length === null) {
         
         <div class="p-ind"><strong>2.2 Phương thức thanh toán:</strong></div>
         <div class="p-ind">- Bên B phải thực hiện thanh toán tiền sử dụng diện tích bán hàng, các khoản phí, lệ phí, thuế theo quy định hiện hành vào Ngân sách nhà nước cho Tổ quản lý và Đội thuế theo đúng thời gian đã quy định. Nếu trễ phải nộp phạt quá hạn theo quy định.</div>
-        <div class="p-ind">- Bên B phải thanh toán cho bên A các khoản dịch vụ nêu trên cũng như các khoản khác (nếu có) vào ngày <strong>10 hàng tháng. Trong vòng 10 ngày</strong> sử dụng diện tích kinh doanh mà không thanh toán tiền thuê thì bên A có quyền hủy bỏ hợp đồng, thu hồi vị trí kinh doanh mà không cần sự thỏa thuận của bên B và xử lý theo quy định chung của Nhà nước.</div>
+        <div class="p-ind">- Bên B phải thanh toán cho bên A các khoản dịch vụ nêu trên cũng như các khoản khác (nếu có) vào ngày <strong><?php echo htmlspecialchars($selectedConfig['payment_due_day'] ?? '10'); ?> hàng tháng. Trong vòng <?php echo htmlspecialchars($selectedConfig['payment_grace_period'] ?? '10'); ?> ngày</strong> sử dụng diện tích kinh doanh mà không thanh toán tiền thuê thì bên A có quyền hủy bỏ hợp đồng, thu hồi vị trí kinh doanh mà không cần sự thỏa thuận của bên B và xử lý theo quy định chung của Nhà nước.</div>
         
         <div class="p-ind"><strong>2.3 Thời hạn hợp đồng:</strong></div>
         <div class="p-ind">- Thời gian sử dụng diện tích bán hàng <?php echo $months; ?> tháng từ ngày <?php echo date('d/m/Y', $start_ts); ?> đến ngày <?php echo date('d/m/Y', $end_ts); ?>.</div>
         <div class="p-ind">- Hết thời hạn sử dụng diện tích bán hàng ghi trên hợp đồng mà cả hai bên có nhu cầu tiếp tục gia hạn hợp đồng thì tiến hành ký kết tiếp hợp đồng cho thời gian sử dụng diện tích bán hàng tiếp theo. Nếu không có nhu cầu gia hạn thì tiến hành thanh lý hợp đồng, Bên B hoàn trả lại mặt bằng diện tích bán hàng cho Bên A. Tuyệt đối không được phép mua bán, sang nhượng dưới bất kỳ hình thức nào.</div>
- 
-         <div class="section-title">Điều 3. Trách nhiệm của bên A</div>
-         <div class="p-ind">- Bên A chính thức công nhận bên B được quyền sử dụng vị trí (sạp) đã thuê để kinh doanh khi bên B chấp hành đúng nội quy chợ và kinh doanh đúng ngành hàng đăng ký và nộp đủ tiền thuê mặt bằng.</div>
-         <div class="p-ind">- Bên A tạo điều kiện thuận lợi cho bên B để kinh doanh mua bán như:</div>
-         <div class="p-ind">+ Hướng dẫn bên B lập đầy đủ thủ tục hợp lệ theo quy định của Nhà nước để kinh doanh như: đăng ký giấy phép kinh doanh, kê khai nộp thuế theo quy định của pháp luật,....</div>
-         <div class="p-ind">+ Thường xuyên tu sửa mặt bằng, chống mưa nắng, hệ thống thoát nước để bên B kinh doanh có hiệu quả.</div>
+
+        <div class="section-title">Điều 3. Trách nhiệm của bên A</div>
+        <div class="p-ind">- Bên A chính thức công nhận bên B được quyền sử dụng vị trí (sạp) đã thuê để kinh doanh khi bên B chấp hành đúng nội quy chợ và kinh doanh đúng ngành hàng đăng ký và nộp đủ tiền thuê mặt bằng.</div>
+        <div class="p-ind">- Bên A tạo điều kiện thuận lợi cho bên B để kinh doanh mua bán như:</div>
+        <div class="p-ind">+ Hướng dẫn bên B lập đầy đủ thủ tục hợp lệ theo quy định của Nhà nước để kinh doanh như: đăng ký giấy phép kinh doanh, kê khai nộp thuế theo quy định của pháp luật,....</div>
+        <div class="p-ind">+ Thường xuyên tu sửa mặt bằng, chống mưa nắng, hệ thống thoát nước để bên B kinh doanh có hiệu quả.</div>
 
         <div class="section-title">Điều 4. Trách nhiệm của bên B</div>
         <div class="p-ind">- Chấp hành nghiêm chỉnh các chủ trương chính sách của Nhà nước và nội qui chợ, thực hiện đầy đủ thủ tục và nghĩa vụ với Nhà nước trước khi kinh doanh theo quy định của pháp luật hiện hành.</div>
@@ -484,12 +405,19 @@ if ($width === null || $length === null) {
                 <td style="width: 50%;">
                     <div style="margin-top: 0; margin-bottom: 0; line-height: 1; text-align: center;">
                         <span class="signature-title">ĐẠI DIỆN BÊN A</span>
-                        <div style="margin-top: 0; margin-bottom: 0; font-weight: bold; text-transform: uppercase; text-align: center;">TỔ TRƯỞNG</div>
+                        <div style="margin-top: 0; margin-bottom: 0; font-weight: bold; text-transform: uppercase; text-align: center;"><?php echo htmlspecialchars(mb_strtoupper($selectedConfig['rep_a_position_1'] ?? '', 'UTF-8')); ?></div>
                     </div>
                 </td>
             </tr>
         </table>
     </div>
 
+    <script>
+    document.getElementById('config_select')?.addEventListener('change', function() {
+        var url = new URL(window.location.href);
+        url.searchParams.set('config_id', this.value);
+        window.location.href = url.toString();
+    });
+    </script>
 </body>
 </html>

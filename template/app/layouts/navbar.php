@@ -103,13 +103,18 @@
                 <h1 class="page-title"><?php echo $title ?? 'Dashboard'; ?></h1>
             </div>
             <!-- Nút lối tắt -->
-            <div class="page-actions">
-                <a href="<?php echo BASE_URL; ?>admin/traders" class="btn btn-outline" style="text-decoration: none;">
-                    <i class="fa-solid fa-users me-1" style="font-size: 11px;"></i> Tiểu thương
-                </a>
-                <a href="<?php echo BASE_URL; ?>admin/stalls" class="btn btn-primary" style="text-decoration: none; color: white;">
-                    <i class="fa-solid fa-store me-1" style="font-size: 11px;"></i> Quản lý Sạp
-                </a>
-            </div>
+            <?php 
+            $activeMId = session::get('active_market_id') !== null ? (int)session::get('active_market_id') : 0;
+            if ($activeMId > 0): 
+            ?>
+                <div class="page-actions">
+                    <a href="<?php echo BASE_URL; ?>admin/traders" class="btn btn-outline" style="text-decoration: none;">
+                        <i class="fa-solid fa-users me-1" style="font-size: 11px;"></i> Tiểu thương
+                    </a>
+                    <a href="<?php echo BASE_URL; ?>admin/stalls" class="btn btn-primary" style="text-decoration: none; color: white;">
+                        <i class="fa-solid fa-store me-1" style="font-size: 11px;"></i> Quản lý Sạp
+                    </a>
+                </div>
+            <?php endif; ?>
         </div>
     </div>

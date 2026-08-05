@@ -131,7 +131,11 @@ class apiController extends baseController {
 
 		$result["status"] = 200;
 		$result["contract_name"] = $_SESSION['user']['fullname'];
-		$result['return_url'] = XC_URL."/admin";
+		if (in_array($actorCode, ['super_market', 'admin_market'])) {
+			$result['return_url'] = XC_URL."/system/dashboard";
+		} else {
+			$result['return_url'] = XC_URL."/admin";
+		}
 		echo json_encode($result);
 	}
 
@@ -1820,92 +1824,6 @@ class apiController extends baseController {
         }
     }
 
-    /**
-     * API thêm chợ mới (AJAX POST)
-     */
-    public function addMarket() {
-        $this->render->abort405('POST', 'create', 'market');
-        $this->render->abort403(marketService::isSuperAdmin(), 'create', 'market');
-
-        $data = [
-            'market_code'  => trim($_POST['market_code'] ?? ''),
-            'market_name'         => trim($_POST['market_name'] ?? ''),
-            'market_phone'        => trim($_POST['market_phone'] ?? ''),
-            'market_email'        => trim($_POST['market_email'] ?? ''),
-            'market_manager_name' => trim($_POST['market_manager_name'] ?? ''),
-            'market_status_code'  => $_POST['market_status_code'] ?? 'active'
-        ];
-
-        $validator = new validator();
-        $validator->required('market_name', $data['market_name'], 'Tên chợ không được để trống.')
-                  ->required('market_code', $data['market_code'], 'Mã chợ không được để trống.');
-
-        $this->render->abort400($validator, 'create', 'market');
-
-        try {
-            $marketModel = new marketModel();
-            $marketModel->create($data);
-            general::log('create_market', "Tạo mới chợ: {$data['market_name']} (Mã: {$data['market_code']})");
-            $this->render->apiResponse('create', 'market', true);
-        } catch (Exception $e) {
-            $this->render->abort500($e, 'create', 'market');
-        }
-    }
-
-    /**
-     * API cập nhật thông tin chợ (AJAX POST)
-     */
-    public function editMarket() {
-        $this->render->abort405('POST', 'update', 'market');
-        $this->render->abort403(marketService::isSuperAdmin(), 'update', 'market');
-        
-        $user_market_market_id = $_POST['id'] ?? $_POST['user_market_market_id'] ?? '';
-        $this->render->abort400($user_market_market_id, 'update', 'market', 'Thiếu ID chợ.');
-
-        $data = [
-            'market_code'  => trim($_POST['market_code'] ?? ''),
-            'market_name'         => trim($_POST['market_name'] ?? ''),
-            'market_phone'        => trim($_POST['market_phone'] ?? ''),
-            'market_email'        => trim($_POST['market_email'] ?? ''),
-            'market_manager_name' => trim($_POST['market_manager_name'] ?? ''),
-            'market_status_code'  => $_POST['market_status_code'] ?? 'active'
-        ];
-
-        $validator = new validator();
-        $validator->required('market_name', $data['market_name'], 'Tên chợ không được để trống.')
-                  ->required('market_code', $data['market_code'], 'Mã chợ không được để trống.');
-
-        $this->render->abort400($validator, 'update', 'market');
-
-        try {
-            $marketModel = new marketModel();
-            $marketModel->update($user_market_market_id, $data);
-            general::log('update_market', "Cập nhật thông tin chợ: {$data['market_name']} (ID: {$user_market_market_id}, Mã: {$data['market_code']})");
-            $this->render->apiResponse('update', 'market', true);
-        } catch (Exception $e) {
-            $this->render->abort500($e, 'update', 'market');
-        }
-    }
-
-    /**
-     * API xóa chợ (AJAX POST)
-     */
-    public function deleteMarket() {
-        $this->render->abort405('POST', 'delete', 'market');
-        $this->render->abort403(marketService::isSuperAdmin(), 'delete', 'market');
-        
-        $user_market_market_id = $_POST['id'] ?? $_POST['user_market_market_id'] ?? '';
-        $this->render->abort400($user_market_market_id, 'delete', 'market', 'Thiếu ID chợ cần xóa.');
-
-        try {
-            $marketModel = new marketModel();
-            $marketModel->delete($user_market_market_id);
-            general::log('delete_market', "Xóa chợ ID: {$user_market_market_id}");
-            $this->render->apiResponse('delete', 'market', true);
-        } catch (Exception $e) {
-            $this->render->abort500($e, 'delete', 'market');
-        }
-    }
 
     /**
      * API tạo tài khoản nhân viên mới (AJAX POST)
@@ -1957,13 +1875,6 @@ class apiController extends baseController {
                 'is_active' => $isActive
             ]);
 
-            $roleMapping = [
-                'super_market' => 1,
-                'admin_market' => 4,
-                'admin' => 2
-            ];
-            $roleId = $roleMapping[$role] ?? 2;
-
             if ($role !== 'super_market') {
                 if (marketService::isSuperAdmin()) {
                     $allowedMarkets = array_column($db->select("SELECT market_id FROM markets WHERE market_status_code = 'active'"), 'market_id');
@@ -1977,16 +1888,48 @@ class apiController extends baseController {
                     ", ['manager_id' => $managerUserId]), 'market_id');
                 }
 
+                $marketRolesInput = $_POST['market_roles'] ?? [];
+
                 foreach ($checkedMarkets as $mId) {
                     if (in_array((int)$mId, $allowedMarkets)) {
+                        if ($role === 'admin_market') {
+                            $selectedRoleId = 4; // Quản lý chợ
+                        } else {
+                            $selectedRoleId = (int)($marketRolesInput[$mId] ?? 2);
+                            $roleExists = $db->selectOne("SELECT 1 FROM market_roles WHERE role_id = :rid", ['rid' => $selectedRoleId]);
+                            if (!$roleExists) {
+                                $selectedRoleId = 2; // Default to Nhân viên tổng hợp
+                            }
+                        }
+
                         $db->query("
                             INSERT INTO user_markets (user_market_user_id, user_market_market_id, user_market_role_id)
                             VALUES (:user_id, :market_id, :role_id)
                         ", [
                             'user_id' => $newUserId,
                             'market_id' => $mId,
-                            'role_id' => $roleId
+                            'role_id' => $selectedRoleId
                         ]);
+
+                        // Sync permissions for Employee (admin)
+                        if ($role === 'admin') {
+                            $roleRow = $db->selectOne("SELECT role_permissions FROM market_roles WHERE role_id = :rid", ['rid' => $selectedRoleId]);
+                            $permissionsStr = $roleRow ? ($roleRow['role_permissions'] ?? '') : '';
+                            $permsArray = array_filter(explode(',', $permissionsStr));
+                            
+                            // Clear and insert
+                            $db->query("DELETE FROM user_market_permissions WHERE permission_user_id = :uid AND permission_market_id = :mid", [
+                                'uid' => $newUserId,
+                                'mid' => $mId
+                            ]);
+                            foreach ($permsArray as $permCode) {
+                                $db->query("INSERT INTO user_market_permissions (permission_user_id, permission_market_id, permission_module_code) VALUES (:uid, :mid, :mod)", [
+                                    'uid' => $newUserId,
+                                    'mid' => $mId,
+                                    'mod' => $permCode
+                                ]);
+                            }
+                        }
                     }
                 }
             }
@@ -2092,28 +2035,59 @@ class apiController extends baseController {
                     $deleteParams["m{$idx}"] = $mId;
                 }
                 $db->query("DELETE FROM user_markets WHERE user_market_user_id = :id AND user_market_market_id IN ($placeholders)", $deleteParams);
+                $db->query("DELETE FROM user_market_permissions WHERE permission_user_id = :id AND permission_market_id IN ($placeholders)", $deleteParams);
             }
 
-            $roleMapping = [
-                'super_market' => 1,
-                'admin_market' => 4,
-                'admin' => 2
-            ];
-            $roleId = $roleMapping[$role] ?? 2;
-
             if ($role !== 'super_market') {
+                $marketRolesInput = $_POST['market_roles'] ?? [];
+
                 foreach ($checkedMarkets as $mId) {
                     if (in_array((int)$mId, $marketsScopeIds)) {
+                        if ($role === 'admin_market') {
+                            $selectedRoleId = 4; // Quản lý chợ
+                        } else {
+                            $selectedRoleId = (int)($marketRolesInput[$mId] ?? 2);
+                            $roleExists = $db->selectOne("SELECT 1 FROM market_roles WHERE role_id = :rid", ['rid' => $selectedRoleId]);
+                            if (!$roleExists) {
+                                $selectedRoleId = 2; // Default to Nhân viên tổng hợp
+                            }
+                        }
+
                         $db->query("
                             INSERT INTO user_markets (user_market_user_id, user_market_market_id, user_market_role_id)
                             VALUES (:user_id, :market_id, :role_id)
                         ", [
                             'user_id' => $id,
                             'market_id' => $mId,
-                            'role_id' => $roleId
+                            'role_id' => $selectedRoleId
                         ]);
+
+                        // Sync permissions for Employee (admin)
+                        if ($role === 'admin') {
+                            $roleRow = $db->selectOne("SELECT role_permissions FROM market_roles WHERE role_id = :rid", ['rid' => $selectedRoleId]);
+                            $permissionsStr = $roleRow ? ($roleRow['role_permissions'] ?? '') : '';
+                            $permsArray = array_filter(explode(',', $permissionsStr));
+                            
+                            // Clear and insert
+                            $db->query("DELETE FROM user_market_permissions WHERE permission_user_id = :uid AND permission_market_id = :mid", [
+                                'uid' => $id,
+                                'mid' => $mId
+                            ]);
+                            foreach ($permsArray as $permCode) {
+                                $db->query("INSERT INTO user_market_permissions (permission_user_id, permission_market_id, permission_module_code) VALUES (:uid, :mid, :mod)", [
+                                    'uid' => $id,
+                                    'mid' => $mId,
+                                    'mod' => $permCode
+                                ]);
+                            }
+                        }
                     }
                 }
+            }
+
+            // If the role is no longer an employee (admin), clean up all their module permissions
+            if ($role !== 'admin') {
+                $db->query("DELETE FROM user_market_permissions WHERE permission_user_id = :uid", ['uid' => $id]);
             }
 
             general::log('update_user', "Cập nhật tài khoản nhân viên: {$user['user_username']} (ID: {$id}, Họ tên: {$fullname}, Vai trò: {$role})");

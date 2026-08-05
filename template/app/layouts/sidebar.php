@@ -186,6 +186,14 @@
                             <span class="nav-text">Hợp đồng Thuê sạp</span>
                         </a>
                     <?php endif; ?>
+
+                    <!-- Cấu hình mẫu in (Chỉ dành cho Super Admin hoặc Admin Chợ khi đang chọn Chợ làm việc) -->
+                    <?php if ($showContracts && $activeMarketId > 0 && (marketService::isSuperAdmin() || marketService::isAdminMarket())): ?>
+                        <a class="nav-link <?php echo (isset($title) && strpos($title, 'Mẫu In Hợp Đồng') !== false) ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>system/market_contract_configs/<?php echo $activeMarketId; ?>" data-rail-label="Cấu hình mẫu in">
+                            <i class="fa-solid fa-print icon" style="font-size: 16px; margin-right: 8px;"></i>
+                            <span class="nav-text">Cấu hình mẫu in</span>
+                        </a>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
 
@@ -262,13 +270,21 @@
                         <span class="nav-text">Tài khoản & Quyền</span>
                     </a>
                     
-                    <!-- Phân quyền nhanh dành cho admin_market -->
-                    <?php if (marketService::isAdminMarket()): ?>
+                    <!-- Phân quyền nhanh dành cho admin_market và super_market -->
+                    <?php if (marketService::isSuperAdmin() || marketService::isAdminMarket()): ?>
                         <a class="nav-link <?php echo (isset($title) && $title === 'Phân Quyền Nhân Viên') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>system/permissions" data-rail-label="Phân quyền">
                             <i class="fa-solid fa-user-shield icon" style="font-size: 16px;"></i>
                             <span class="nav-text">Phân quyền Nhân viên</span>
                         </a>
                     <?php endif; ?>
+                <?php endif; ?>
+
+                <!-- Cấu hình mẫu in hợp đồng (Hiển thị ở trang tổng cho Super Admin và Admin Chợ) -->
+                <?php if ($activeMarketId === 0 && (marketService::isSuperAdmin() || marketService::isAdminMarket())): ?>
+                    <a class="nav-link <?php echo (isset($title) && strpos($title, 'Mẫu In Hợp Đồng') !== false) ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>system/all_contract_configs" data-rail-label="Mẫu in">
+                        <i class="fa-solid fa-print icon" style="font-size: 16px; margin-right: 8px;"></i>
+                        <span class="nav-text">Mẫu in hợp đồng</span>
+                    </a>
                 <?php endif; ?>
 
                 <!-- Nhật ký hoạt động -->
@@ -307,12 +323,37 @@
                 <div class="name" style="font-weight: 600; font-size: 13.5px;"><?php echo session::get('user_fullname', 'BQL Chợ'); ?></div>
                 <div class="role" style="font-size: 11px;">
                     <?php 
-                    $actorNameMapping = [
-                        'super_market' => 'Quản trị tối cao',
-                        'admin_market' => 'Quản lý chợ',
-                        'admin' => 'Nhân viên vận hành'
-                    ];
-                    echo $actorNameMapping[session::get('actor_code')] ?? 'Nhân viên'; 
+                    $roleName = 'Nhân viên';
+                    $actorCode = session::get('actor_code');
+                    if ($actorCode === 'super_market') {
+                        $roleName = 'Quản trị tối cao';
+                    } elseif ($actorCode === 'admin_market') {
+                        $roleName = 'Quản lý chợ';
+                    } else {
+                        // Admin cấp 3: Lấy vai trò cụ thể tại chợ đang hoạt động
+                        $db = database::getInstance();
+                        $activeMarketId = session::get('active_market_id');
+                        $userId = session::get('user_id');
+                        
+                        if ($activeMarketId && $userId) {
+                            $umRole = $db->selectOne("
+                                SELECT user_market_role_id 
+                                FROM user_markets 
+                                WHERE user_market_user_id = :user_id AND user_market_market_id = :market_id
+                            ", ['user_id' => $userId, 'market_id' => $activeMarketId]);
+                            
+                            if ($umRole) {
+                                $roleId = (int)$umRole['user_market_role_id'];
+                                $mRoleInfo = $db->selectOne("SELECT role_name FROM market_roles WHERE role_id = :rid", ['rid' => $roleId]);
+                                $roleName = $mRoleInfo ? $mRoleInfo['role_name'] : 'Nhân viên vận hành';
+                            } else {
+                                $roleName = 'Nhân viên vận hành';
+                            }
+                        } else {
+                            $roleName = 'Nhân viên vận hành';
+                        }
+                    }
+                    echo htmlspecialchars($roleName);
                     ?>
                 </div>
             </div>

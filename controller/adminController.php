@@ -22,16 +22,26 @@ Class adminController extends baseController {
     
     public function login()
 	{ 
-		// Nếu đã đăng nhập đúng role admin, chuyển hướng thẳng vào dashboard
-		if ($this->helper->isLoggedIn() && in_array($this->helper->get('actor_code'), ['admin', 'admin_market', 'super_market'])) {
-			header('Location: ' . BASE_URL . 'admin/dashboard');
-			exit();
+		// Nếu đã đăng nhập đúng role, chuyển hướng thẳng vào dashboard tương ứng
+		if ($this->helper->isLoggedIn()) {
+			$actorCode = $this->helper->get('actor_code');
+			if (in_array($actorCode, ['super_market', 'admin_market'])) {
+				header('Location: ' . BASE_URL . 'system/dashboard');
+				exit();
+			} elseif ($actorCode === 'admin') {
+				header('Location: ' . BASE_URL . 'admin/dashboard');
+				exit();
+			}
 		}
 		$this->view->app("auth/login");
 	}
 
     public function dashboard() {
         $marketId = $this->helper->currentMarketId();
+        if ($marketId === 0 && ($this->helper->get('actor_code') === 'super_market' || $this->helper->get('actor_code') === 'admin_market')) {
+            header('Location: ' . BASE_URL . 'system/dashboard');
+            exit();
+        }
         $db = database::getInstance();
         
         $stallStats = $db->selectOne("
@@ -909,6 +919,55 @@ Class adminController extends baseController {
             exit();
         }
 
+        $db = database::getInstance();
+        $marketId = $contract['area_market_id'] ?? 0;
+        
+        $allConfigs = $db->select("SELECT * FROM market_contract_configs WHERE market_id = :mId ORDER BY config_id ASC", ['mId' => $marketId]);
+        
+        $configId = isset($_GET['config_id']) ? (int)$_GET['config_id'] : 0;
+        $selectedConfig = null;
+        
+        if ($configId > 0) {
+            foreach ($allConfigs as $cfg) {
+                if ((int)$cfg['config_id'] === $configId) {
+                    $selectedConfig = $cfg;
+                    break;
+                }
+            }
+        }
+        
+        if (!$selectedConfig && !empty($allConfigs)) {
+            foreach ($allConfigs as $cfg) {
+                if ((int)$cfg['is_default'] === 1) {
+                    $selectedConfig = $cfg;
+                    break;
+                }
+            }
+            if (!$selectedConfig) {
+                $selectedConfig = $allConfigs[0];
+            }
+        }
+        
+        // Fallback defaults if no configs found in DB
+        if (!$selectedConfig) {
+            $selectedConfig = [
+                'gov_agency_1' => 'UBND PHƯỜNG KON TUM',
+                'gov_agency_2' => 'PHÒNG KT,HT&ĐT',
+                'contract_title_suffix' => 'TẠI CÁC CHỢ HẠNG 3 PHƯỜNG KON TUM',
+                'rep_a_header' => 'Đại diện Tổ quản lý các chợ hạng 3 trên địa bàn phường Kon Tum - Trưởng phòng Kinh tế, Hạ tầng và Đô thị (gọi tắt là Bên A):',
+                'rep_a_name_1' => 'Phan Thành Trung',
+                'rep_a_position_1' => 'Tổ trưởng',
+                'rep_a_name_2' => 'Trương Thảo Linh',
+                'rep_a_position_2' => 'Tài chính - Kế Toán',
+                'rep_a_address' => '342 Nguyễn Huệ, phường Kon Tum, tỉnh Kon Tum',
+                'rep_a_phone' => '',
+                'rep_a_fax' => '',
+                'rep_a_bank_account' => '',
+                'rep_a_bank_name' => '',
+                'legal_grounds' => "Căn cứ Bộ Luật dân sự ngày 24 tháng 11 năm 2015;\nCăn cứ Nghị định số 60/2024/NĐ-CP ngày 05 tháng 6 năm 2024 của Chính phủ về phát triển và quản lý chợ;\nCăn cứ Quyết định số 131/QĐ-UBND ngày 06/8/2025 của UBND phường Kon Tum về việc thành lập Tổ quản lý các chợ hạng 3 trên địa bàn phường Kon Tum;\nCăn cứ nhu cầu sử dụng diện tích bán hàng của hộ kinh doanh và xét khả năng đáp ứng của đơn vị."
+            ];
+        }
+
         // standalone view without theme panels
         require_once DIR_TEMPLATE . '/contract/print.php';
         exit();
@@ -1090,5 +1149,154 @@ Class adminController extends baseController {
             'permissions' => $permissions,
             'moduleNames' => $moduleNames
         ]);
+    }
+
+    // =========================================================================
+    // QUẢN LÝ MẪU IN HỢP ĐỒNG (APIS CHO ADMIN CẤP 2 & CẤP 1)
+    // =========================================================================
+
+    /**
+     * API thêm mẫu in hợp đồng (AJAX POST)
+     */
+    public function addContractConfig() {
+        $this->render->abort405('POST', 'create', 'contract_config');
+        $this->render->abort403(marketService::isSuperAdmin() || marketService::isAdminMarket(), 'create', 'contract_config');
+
+        $data = $this->getContractConfigData();
+
+        $validator = new validator();
+        $validator->required('template_name', $data['template_name'], 'Tên mẫu không được để trống.')
+                  ->required('market_id', $data['market_id'], 'Thiếu ID chợ.');
+
+        $this->render->abort400($validator, 'create', 'contract_config');
+
+        $marketId = $data['market_id'];
+        if (!marketService::isSuperAdmin()) {
+            $accMarkets = marketService::getAccessibleMarketIds();
+            if (!in_array((int)$marketId, $accMarkets)) {
+                $this->render->apiResponse('create', 'contract_config', false, 'Bạn không có quyền thực hiện hành động này tại chợ này.', 403);
+            }
+        }
+
+        try {
+            $db = database::getInstance();
+
+            // Nếu đánh dấu mặc định, bỏ mặc định các mẫu khác cùng chợ
+            if ($data['is_default']) {
+                $db->query("UPDATE market_contract_configs SET is_default = 0 WHERE market_id = :mId", ['mId' => $marketId]);
+            }
+
+            $db->query("INSERT INTO market_contract_configs 
+                (market_id, template_name, gov_agency_1, gov_agency_2, contract_title_suffix, rep_a_header, rep_a_name_1, rep_a_position_1, rep_a_name_2, rep_a_position_2, rep_a_address, rep_a_phone, rep_a_fax, rep_a_bank_account, rep_a_bank_name, legal_grounds, is_default, payment_due_day, payment_grace_period)
+                VALUES (:market_id, :template_name, :gov_agency_1, :gov_agency_2, :contract_title_suffix, :rep_a_header, :rep_a_name_1, :rep_a_position_1, :rep_a_name_2, :rep_a_position_2, :rep_a_address, :rep_a_phone, :rep_a_fax, :rep_a_bank_account, :rep_a_bank_name, :legal_grounds, :is_default, :payment_due_day, :payment_grace_period)", $data);
+
+            general::log('create_contract_config', "Tạo mẫu in hợp đồng: {$data['template_name']} (Chợ ID: {$marketId})");
+            $this->render->apiResponse('create', 'contract_config', true);
+        } catch (Exception $e) {
+            $this->render->abort500($e, 'create', 'contract_config');
+        }
+    }
+
+    /**
+     * API cập nhật mẫu in hợp đồng (AJAX POST)
+     */
+    public function editContractConfig() {
+        $this->render->abort405('POST', 'update', 'contract_config');
+        $this->render->abort403(marketService::isSuperAdmin() || marketService::isAdminMarket(), 'update', 'contract_config');
+
+        $configId = $_POST['config_id'] ?? '';
+        $this->render->abort400(!empty($configId), 'update', 'contract_config', 'Thiếu ID cấu hình.');
+
+        $db = database::getInstance();
+        $config = $db->selectOne("SELECT * FROM market_contract_configs WHERE config_id = :id", ['id' => $configId]);
+        if (!$config) {
+            $this->render->apiResponse('update', 'contract_config', false, 'Không tìm thấy cấu hình cần cập nhật.', 404);
+        }
+
+        $marketId = $config['market_id'];
+        if (!marketService::isSuperAdmin()) {
+            $accMarkets = marketService::getAccessibleMarketIds();
+            if (!in_array((int)$marketId, $accMarkets)) {
+                $this->render->apiResponse('update', 'contract_config', false, 'Bạn không có quyền cập nhật mẫu in tại chợ này.', 403);
+            }
+        }
+
+        $data = $this->getContractConfigData();
+
+        $validator = new validator();
+        $validator->required('template_name', $data['template_name'], 'Tên mẫu không được để trống.');
+
+        $this->render->abort400($validator, 'update', 'contract_config');
+
+        try {
+            if ($data['is_default']) {
+                $db->query("UPDATE market_contract_configs SET is_default = 0 WHERE market_id = :mId", ['mId' => $marketId]);
+            }
+
+            $data['config_id'] = $configId;
+            $db->query("UPDATE market_contract_configs SET
+                template_name = :template_name, gov_agency_1 = :gov_agency_1, gov_agency_2 = :gov_agency_2,
+                contract_title_suffix = :contract_title_suffix, rep_a_header = :rep_a_header,
+                rep_a_name_1 = :rep_a_name_1, rep_a_position_1 = :rep_a_position_1,
+                rep_a_name_2 = :rep_a_name_2, rep_a_position_2 = :rep_a_position_2,
+                rep_a_address = :rep_a_address, rep_a_phone = :rep_a_phone, rep_a_fax = :rep_a_fax,
+                rep_a_bank_account = :rep_a_bank_account, rep_a_bank_name = :rep_a_bank_name,
+                legal_grounds = :legal_grounds, is_default = :is_default,
+                payment_due_day = :payment_due_day, payment_grace_period = :payment_grace_period
+                WHERE config_id = :config_id", $data);
+
+            general::log('update_contract_config', "Cập nhật mẫu in hợp đồng ID: {$configId}");
+            $this->render->apiResponse('update', 'contract_config', true);
+        } catch (Exception $e) {
+            $this->render->abort500($e, 'update', 'contract_config');
+        }
+    }
+
+    /**
+     * API xóa mẫu in hợp đồng (AJAX POST)
+     */
+    public function deleteContractConfig() {
+        $this->render->abort405('POST', 'delete', 'contract_config');
+        // Chỉ Super Admin được phép xóa
+        $this->render->abort403(marketService::isSuperAdmin(), 'delete', 'contract_config');
+
+        $configId = $_POST['config_id'] ?? '';
+        $this->render->abort400(!empty($configId), 'delete', 'contract_config', 'Thiếu ID cấu hình cần xóa.');
+
+        try {
+            $db = database::getInstance();
+            $db->query("DELETE FROM market_contract_configs WHERE config_id = :id", ['id' => $configId]);
+            general::log('delete_contract_config', "Xóa mẫu in hợp đồng ID: {$configId}");
+            $this->render->apiResponse('delete', 'contract_config', true);
+        } catch (Exception $e) {
+            $this->render->abort500($e, 'delete', 'contract_config');
+        }
+    }
+
+    /**
+     * Helper: Lấy dữ liệu từ POST cho contract config
+     */
+    private function getContractConfigData() {
+        return [
+            'market_id'             => $_POST['market_id'] ?? '',
+            'template_name'         => trim($_POST['template_name'] ?? ''),
+            'gov_agency_1'          => trim($_POST['gov_agency_1'] ?? ''),
+            'gov_agency_2'          => trim($_POST['gov_agency_2'] ?? ''),
+            'contract_title_suffix' => trim($_POST['contract_title_suffix'] ?? ''),
+            'rep_a_header'          => trim($_POST['rep_a_header'] ?? ''),
+            'rep_a_name_1'          => trim($_POST['rep_a_name_1'] ?? ''),
+            'rep_a_position_1'      => trim($_POST['rep_a_position_1'] ?? ''),
+            'rep_a_name_2'          => trim($_POST['rep_a_name_2'] ?? ''),
+            'rep_a_position_2'      => trim($_POST['rep_a_position_2'] ?? ''),
+            'rep_a_address'         => trim($_POST['rep_a_address'] ?? ''),
+            'rep_a_phone'           => trim($_POST['rep_a_phone'] ?? ''),
+            'rep_a_fax'             => trim($_POST['rep_a_fax'] ?? ''),
+            'rep_a_bank_account'    => trim($_POST['rep_a_bank_account'] ?? ''),
+            'rep_a_bank_name'       => trim($_POST['rep_a_bank_name'] ?? ''),
+            'legal_grounds'         => trim($_POST['legal_grounds'] ?? ''),
+            'is_default'            => (int)($_POST['is_default'] ?? 0),
+            'payment_due_day'       => trim($_POST['payment_due_day'] ?? '10'),
+            'payment_grace_period'  => trim($_POST['payment_grace_period'] ?? '10')
+        ];
     }
 }

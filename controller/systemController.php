@@ -25,8 +25,8 @@ Class systemController extends baseController {
             exit();
         }
 
-        // Chỉ cho phép super_market (Super Admin) quản lý chợ
-        if (strpos($action, 'market') === 0) {
+        // Chỉ cho phép super_market (Super Admin) quản lý chợ (ngoại trừ cấu hình in hợp đồng được phép cho admin_market)
+        if (strpos($action, 'market') === 0 && strpos($action, 'market_contract_') !== 0) {
             if (!$this->helper->isSuperAdmin()) {
                 header('Location: ' . BASE_URL . 'system/users');
                 exit();
@@ -265,7 +265,14 @@ Class systemController extends baseController {
             ", ['manager_id' => $managerUserId]);
         }
 
-        $this->view->app("user/add", ['marketsList' => $marketsList]);
+        $actorsList = $db->select("SELECT * FROM system_actors ORDER BY actor_id ASC");
+        $marketRolesList = $db->select("SELECT * FROM market_roles ORDER BY role_id ASC");
+
+        $this->view->app("user/add", [
+            'marketsList' => $marketsList,
+            'actorsList' => $actorsList,
+            'marketRolesList' => $marketRolesList
+        ]);
     }
 
     /**
@@ -324,16 +331,28 @@ Class systemController extends baseController {
         }
 
         $assignedMarketsRows = $db->select("
-            SELECT user_market_market_id AS market_id 
+            SELECT user_market_market_id AS market_id, user_market_role_id AS role_id 
             FROM user_markets 
             WHERE user_market_user_id = :id
         ", ['id' => $id]);
-        $assignedMarkets = array_column($assignedMarketsRows, 'market_id');
+        
+        $assignedMarkets = [];
+        $assignedMarketRoles = [];
+        foreach ($assignedMarketsRows as $row) {
+            $assignedMarkets[] = (int)$row['market_id'];
+            $assignedMarketRoles[(int)$row['market_id']] = (int)$row['role_id'];
+        }
+
+        $actorsList = $db->select("SELECT * FROM system_actors ORDER BY actor_id ASC");
+        $marketRolesList = $db->select("SELECT * FROM market_roles ORDER BY role_id ASC");
 
         $this->view->app("user/edit", [
             'user' => $user, 
             'marketsList' => $marketsList, 
-            'assignedMarkets' => $assignedMarkets
+            'assignedMarkets' => $assignedMarkets,
+            'assignedMarketRoles' => $assignedMarketRoles,
+            'actorsList' => $actorsList,
+            'marketRolesList' => $marketRolesList
         ]);
     }
 
@@ -477,13 +496,16 @@ Class systemController extends baseController {
             $permissions[$p['permission_user_id']][$p['permission_market_id']][$p['permission_module_code']] = 1;
         }
 
+        $marketRoles = $db->select("SELECT * FROM market_roles ORDER BY role_id ASC");
+
         $this->view->app("user/permissions", [
             'staffList' => $staffList, 
             'managedMarkets' => $managedMarkets, 
             'filterMarkets' => $filterMarkets,
             'permissions' => $permissions,
             'search' => $search,
-            'selectedMarket' => $selectedMarket
+            'selectedMarket' => $selectedMarket,
+            'marketRoles' => $marketRoles
         ]);
     }
 
@@ -559,6 +581,33 @@ Class systemController extends baseController {
             ]);
         }
 
+        // Cập nhật lại role tương ứng trong user_markets nếu khớp vai trò mẫu
+        $currentPerms = array_column($db->select("
+            SELECT permission_module_code 
+            FROM user_market_permissions 
+            WHERE permission_user_id = :uid AND permission_market_id = :mid
+        ", ['uid' => $userId, 'mid' => $marketId]), 'permission_module_code');
+        sort($currentPerms);
+
+        $marketRoles = $db->select("SELECT role_id, role_permissions FROM market_roles");
+        $matchedRoleId = null;
+        foreach ($marketRoles as $r) {
+            $rPerms = array_filter(explode(',', $r['role_permissions'] ?? ''));
+            sort($rPerms);
+            if ($currentPerms === $rPerms) {
+                $matchedRoleId = (int)$r['role_id'];
+                break;
+            }
+        }
+
+        if ($matchedRoleId !== null) {
+            $db->query("
+                UPDATE user_markets 
+                SET user_market_role_id = :rid 
+                WHERE user_market_user_id = :uid AND user_market_market_id = :mid
+            ", ['rid' => $matchedRoleId, 'uid' => $userId, 'mid' => $marketId]);
+        }
+
         $targetUser = $db->selectOne("SELECT user_username FROM users WHERE user_id = :id", ['id' => $userId]);
         $targetMarket = $db->selectOne("SELECT market_name FROM markets WHERE market_id = :id", ['id' => $marketId]);
         $targetUsername = $targetUser ? $targetUser['user_username'] : "ID {$userId}";
@@ -599,10 +648,11 @@ Class systemController extends baseController {
                     market_email AS email, 
                     market_manager_name AS manager_name, 
                     market_status_code AS status_code
-                FROM markets";
+                FROM markets
+                WHERE market_status_code != 'deleted'";
 
         if (!empty($search)) {
-            $sql .= " WHERE market_name LIKE :search OR market_code LIKE :search";
+            $sql .= " AND (market_name LIKE :search OR market_code LIKE :search)";
             $markets = $db->select($sql, ['search' => "%$search%"]);
         } else {
             $markets = $db->select($sql);
@@ -618,12 +668,16 @@ Class systemController extends baseController {
         $offset = ($page - 1) * $limit;
         $paginatedMarkets = array_slice($markets, $offset, $limit);
 
+        // Lấy danh sách trạng thái của chợ
+        $statuses = $db->select("SELECT * FROM system_statuses WHERE status_domain = 'market'");
+
         $this->view->app("market/index", [
             'markets' => $paginatedMarkets,
             'search' => $search,
             'page' => $page,
             'totalPages' => $totalPages,
-            'totalRecords' => $totalRecords
+            'totalRecords' => $totalRecords,
+            'statuses' => $statuses
         ]);
     }
 
@@ -631,7 +685,11 @@ Class systemController extends baseController {
      * Trang thêm Chợ mới (Chỉ Super Admin)
      */
     public function market_add() {
-        $this->view->app("market/add");
+        $db = database::getInstance();
+        $statuses = $db->select("SELECT * FROM system_statuses WHERE status_domain = 'market'");
+        $this->view->app("market/add", [
+            'statuses' => $statuses
+        ]);
     }
 
     /**
@@ -656,7 +714,153 @@ Class systemController extends baseController {
             exit();
         }
 
-        $this->view->app("market/edit", ['market' => $market]);
+        $statuses = $db->select("SELECT * FROM system_statuses WHERE status_domain = 'market'");
+
+        $this->view->app("market/edit", [
+            'market' => $market,
+            'statuses' => $statuses
+        ]);
+    }
+
+    // =========================================================================
+    // 4B. QUẢN LÝ MẪU IN HỢP ĐỒNG (CONTRACT CONFIGS)
+    // =========================================================================
+
+    /**
+     * Danh sách tất cả mẫu in hợp đồng của các chợ mà admin quản lý
+     */
+    public function all_contract_configs() {
+        $db = database::getInstance();
+        
+        // Lấy danh sách các chợ được quyền quản lý
+        $accMarkets = marketService::getAccessibleMarketIds();
+        
+        if (empty($accMarkets)) {
+            $configs = [];
+            $markets = [];
+        } else {
+            // Lấy danh sách mẫu in
+            $configs = $db->select("
+                SELECT c.*, m.market_name 
+                FROM market_contract_configs c
+                JOIN markets m ON c.market_id = m.market_id
+                WHERE c.market_id IN (" . implode(',', $accMarkets) . ")
+                ORDER BY m.market_name ASC, c.config_id ASC
+            ");
+            
+            // Lấy danh sách chợ để chọn khi muốn thêm mẫu mới
+            $markets = $db->select("
+                SELECT market_id, market_name 
+                FROM markets 
+                WHERE market_id IN (" . implode(',', $accMarkets) . ")
+                ORDER BY market_name ASC
+            ");
+        }
+
+        $this->view->app("contract_config/all", [
+            'configs' => $configs,
+            'markets' => $markets
+        ]);
+    }
+
+    /**
+     * Danh sách mẫu in hợp đồng của một chợ
+     */
+    public function market_contract_configs($para) {
+        $marketId = is_array($para) ? reset($para) : $para;
+        if (!$marketId) {
+            header('Location: ' . BASE_URL . 'system/markets');
+            exit();
+        }
+
+        // Kiểm tra quyền hạn đối với Chợ
+        if (!$this->helper->isSuperAdmin()) {
+            $accMarkets = marketService::getAccessibleMarketIds();
+            if (!in_array((int)$marketId, $accMarkets)) {
+                header('Location: ' . BASE_URL . 'system/dashboard');
+                exit();
+            }
+        }
+
+        $db = database::getInstance();
+        $market = $db->selectOne("SELECT * FROM markets WHERE market_id = :id", ['id' => $marketId]);
+        if (!$market) {
+            header('Location: ' . BASE_URL . 'system/markets');
+            exit();
+        }
+
+        $configs = $db->select("SELECT * FROM market_contract_configs WHERE market_id = :mId ORDER BY config_id ASC", ['mId' => $marketId]);
+
+        $this->view->app("contract_config/index", [
+            'market' => $market,
+            'configs' => $configs
+        ]);
+    }
+
+    /**
+     * Form thêm mẫu in hợp đồng
+     */
+    public function market_contract_config_add($para) {
+        $marketId = is_array($para) ? reset($para) : $para;
+        if (!$marketId) {
+            header('Location: ' . BASE_URL . 'system/markets');
+            exit();
+        }
+
+        // Kiểm tra quyền hạn đối với Chợ
+        if (!$this->helper->isSuperAdmin()) {
+            $accMarkets = marketService::getAccessibleMarketIds();
+            if (!in_array((int)$marketId, $accMarkets)) {
+                header('Location: ' . BASE_URL . 'system/dashboard');
+                exit();
+            }
+        }
+
+        $db = database::getInstance();
+        $market = $db->selectOne("SELECT * FROM markets WHERE market_id = :id", ['id' => $marketId]);
+        if (!$market) {
+            header('Location: ' . BASE_URL . 'system/markets');
+            exit();
+        }
+
+        $this->view->app("contract_config/add", [
+            'market' => $market
+        ]);
+    }
+
+    /**
+     * Form sửa mẫu in hợp đồng
+     */
+    public function market_contract_config_edit($para) {
+        $configId = is_array($para) ? reset($para) : $para;
+        if (!$configId) {
+            header('Location: ' . BASE_URL . 'system/markets');
+            exit();
+        }
+
+        $db = database::getInstance();
+        $config = $db->selectOne("SELECT * FROM market_contract_configs WHERE config_id = :id", ['id' => $configId]);
+        if (!$config) {
+            header('Location: ' . BASE_URL . 'system/markets');
+            exit();
+        }
+
+        $marketId = $config['market_id'];
+        // Kiểm tra quyền hạn đối với Chợ
+        if (!$this->helper->isSuperAdmin()) {
+            $accMarkets = marketService::getAccessibleMarketIds();
+            if (!in_array((int)$marketId, $accMarkets)) {
+                header('Location: ' . BASE_URL . 'system/dashboard');
+                exit();
+            }
+        }
+
+        $market = $db->selectOne("SELECT * FROM markets WHERE market_id = :id", ['id' => $marketId]);
+
+        $this->view->app("contract_config/edit", [
+            'market' => $market,
+            'config' => $config
+        ]);
     }
 
     // =========================================================================

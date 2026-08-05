@@ -17,7 +17,7 @@
                 </div>
             <?php endif; ?>
 
-            <form id="form-add-market" method="POST" action="<?php echo BASE_URL; ?>api/addMarket" data-native-submit="true">
+            <form id="form-add-market" method="POST" action="<?php echo BASE_URL; ?>adminmaster/addMarket" data-native-submit="true">
                 <?php csrf_field(); ?>
                 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px;">
@@ -56,8 +56,16 @@
                     <div class="form-group">
                         <label class="form-label" for="status_code" style="font-weight: 500;">Trạng Thái</label>
                         <select id="status_code" name="status_code" class="form-control">
-                            <option value="active">Đang Hoạt Động</option>
-                            <option value="inactive">Ngừng Hoạt Động</option>
+                            <?php if (!empty($statuses)): ?>
+                                <?php foreach ($statuses as $st): ?>
+                                    <option value="<?php echo htmlspecialchars($st['status_code']); ?>">
+                                        <?php echo htmlspecialchars($st['status_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <option value="active">Đang Hoạt Động</option>
+                                <option value="inactive">Ngừng Hoạt Động</option>
+                            <?php endif; ?>
                         </select>
                     </div>
                 </div>
@@ -121,12 +129,21 @@ $(document).ready(function() {
                         window.location.href = '<?php echo BASE_URL; ?>system/markets';
                     });
                 } else {
-                    Swal.fire({ icon: 'error', title: 'Thất bại', text: data.message, background: swalBg, color: swalColor });
+                    Swal.fire({ icon: 'error', title: 'Thất bại', text: data.error || data.message || 'Thao tác thất bại.', background: swalBg, color: swalColor });
                 }
             },
-            error: function() {
+            error: function(xhr) {
                 Swal.close();
-                Swal.fire({ icon: 'error', title: 'Lỗi', text: 'Có lỗi xảy ra trong quá trình xử lý.', background: swalBg, color: swalColor });
+                var errorMsg = 'Có lỗi xảy ra khi kết nối máy chủ.';
+                if (xhr.responseJSON && xhr.responseJSON.error) {
+                    errorMsg = xhr.responseJSON.error;
+                } else if (xhr.responseText) {
+                    try {
+                        var res = JSON.parse(xhr.responseText);
+                        if (res.error) errorMsg = res.error;
+                    } catch(e) {}
+                }
+                Swal.fire({ icon: 'error', title: 'Thất bại', text: errorMsg, background: swalBg, color: swalColor });
             }
         });
     });

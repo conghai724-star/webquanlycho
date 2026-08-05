@@ -1368,8 +1368,15 @@ Class general{
         }
         
         $marketId = $this->get('active_market_id');
-        if ($marketId) {
-            return (int)$marketId;
+        if ($marketId !== null) {
+            $mId = (int)$marketId;
+            if ($mId > 0) {
+                return $mId;
+            }
+            $actorCode = $this->get('actor_code');
+            if ($mId === 0 && ($actorCode === 'super_market' || $actorCode === 'admin_market')) {
+                return 0;
+            }
         }
 
         // Tìm chợ hợp lệ đầu tiên được quyền truy cập

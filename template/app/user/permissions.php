@@ -1,5 +1,5 @@
 <?php
-// ponytail: Cấu hình phân quyền động (Dễ dàng sao chép & tùy chỉnh ở dự án khác)
+// ponytail: Cấu hình phân quyền động được tải trực tiếp từ DB (bảng market_roles)
 $permissionConfig = [
     'modules' => [
         'trader'     => ['name' => 'Tiểu thương', 'icon' => 'fa-users'],
@@ -8,13 +8,22 @@ $permissionConfig = [
         'finance'    => ['name' => 'Tài chính', 'icon' => 'fa-wallet'],
         'foodsafety' => ['name' => 'An toàn TP', 'icon' => 'fa-shield-halved']
     ],
-    'roles' => [
-        'ketoan'  => ['name' => 'Kế toán / Thủ quỹ', 'permissions' => ['contract' => true, 'finance' => true]],
-        'kythuat' => ['name' => 'Kỹ thuật / Sạp', 'permissions' => ['trader' => true, 'stall' => true]],
-        'attp'    => ['name' => 'Kiểm tra ATTP', 'permissions' => ['trader' => true, 'foodsafety' => true]],
-        'tonghop' => ['name' => 'Nhân viên tổng hợp', 'permissions' => ['trader' => true, 'stall' => true, 'contract' => true, 'finance' => true, 'foodsafety' => true]]
-    ]
+    'roles' => []
 ];
+
+if (!empty($marketRoles)) {
+    foreach ($marketRoles as $mr) {
+        $rolePerms = [];
+        $pCodes = array_filter(explode(',', $mr['role_permissions'] ?? ''));
+        foreach ($pCodes as $code) {
+            $rolePerms[$code] = true;
+        }
+        $permissionConfig['roles'][$mr['role_id']] = [
+            'name' => $mr['role_name'],
+            'permissions' => $rolePerms
+        ];
+    }
+}
 ?>
 <!-- Giao diện Phân Quyền Phân Hệ Nhân Viên -->
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">

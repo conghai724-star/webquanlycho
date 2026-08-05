@@ -23,7 +23,7 @@ if (!defined('XVN_CONFIG_LOADED')) {
 	define('DB_NAME', 'quanlycho.vn'); //database name
 	define('DB_USER', 'root'); //database user
 	define('DB_PASSWORD', ''); //database password
-	define('DB_HOST', 'localhost'); //sql server
+	define('DB_HOST', '127.0.0.1:3307'); //sql server
 	define('DB_PORT', '3307');
 	/*** define mailer ***/
 	define('MAIL_PROTOCOL', 'SMTP');

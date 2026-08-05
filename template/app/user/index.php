@@ -5,10 +5,18 @@
         <label><input type="radio" name="user-mode" value="accounts" checked><span>Tài khoản & Phân quyền</span></label>
     </div>
     
-    <a href="<?php echo BASE_URL; ?>system/user_add" class="btn btn-primary" style="height: 36px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: white;">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 14px; height: 14px;"><path d="M8 2v12M2 8h12"/></svg>
-        Tạo tài khoản mới
-    </a>
+    <div style="display: flex; gap: 8px;">
+        <?php if (marketService::isSuperAdmin()): ?>
+            <a href="<?php echo BASE_URL; ?>adminmaster/roles" class="btn btn-outline" style="height: 36px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: inherit;">
+                <i class="fa-solid fa-users-gear"></i>
+                Quản lý vai trò
+            </a>
+        <?php endif; ?>
+        <a href="<?php echo BASE_URL; ?>system/user_add" class="btn btn-primary" style="height: 36px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: white;">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 14px; height: 14px;"><path d="M8 2v12M2 8h12"/></svg>
+            Tạo tài khoản mới
+        </a>
+    </div>
 </div>
 
 <!-- TAB 1: DANH SÁCH TÀI KHOẢN -->

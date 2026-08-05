@@ -51,18 +51,32 @@
                                     <?php echo htmlspecialchars($m['manager_name'] ?: '—'); ?>
                                 </td>
                                 <td style="padding: 14px 16px;">
-                                    <?php if ($m['status_code'] === 'active'): ?>
-                                        <span class="status status-green">Đang Hoạt Động</span>
-                                    <?php else: ?>
-                                        <span class="status status-red">Ngừng Hoạt Động</span>
-                                    <?php endif; ?>
+                                    <?php 
+                                    $statusMapping = [];
+                                    if (!empty($statuses)) {
+                                        foreach ($statuses as $st) {
+                                            $statusMapping[$st['status_code']] = [
+                                                'name' => $st['status_name'],
+                                                'color_id' => (int)$st['status_color_id']
+                                            ];
+                                        }
+                                    }
+                                    $stInfo = $statusMapping[$m['status_code']] ?? ['name' => 'Ngừng Hoạt Động', 'color_id' => 2];
+                                    $colorClass = $stInfo['color_id'] === 1 ? 'status-green' : 'status-red';
+                                    ?>
+                                    <span class="status <?php echo $colorClass; ?>">
+                                        <?php echo htmlspecialchars($stInfo['name']); ?>
+                                    </span>
                                 </td>
                                 <td style="padding: 14px 16px; text-align: right;">
                                     <div style="display: flex; justify-content: flex-end; gap: 6px;">
+                                        <a href="<?php echo BASE_URL; ?>system/market_contract_configs/<?php echo $m['id']; ?>" class="btn btn-outline btn-sm" style="padding: 4px 8px; font-size: 11px; text-decoration: none; color: inherit; display: inline-flex; align-items: center; justify-content: center;" title="Cấu hình mẫu in hợp đồng">
+                                            <i class="fa-solid fa-print" style="margin-right: 4px;"></i> Mẫu in
+                                        </a>
                                         <a href="<?php echo BASE_URL; ?>system/market_edit/<?php echo $m['id']; ?>" class="btn btn-outline btn-sm" style="padding: 4px 8px; font-size: 11px; text-decoration: none; color: inherit; display: inline-flex; align-items: center; justify-content: center;" title="Sửa thông tin">
                                             <i class="fa-solid fa-pen" style="margin-right: 4px;"></i> Sửa
                                         </a>
-                                        <button class="btn btn-ghost btn-sm btn-open-delete-market" data-market-id="<?php echo $m['id']; ?>" data-market-name="<?php echo htmlspecialchars($m['name']); ?>" data-url="<?php echo BASE_URL; ?>api/deleteMarket" style="padding: 4px 8px; font-size: 11px; color: #EA4335; display: inline-flex; align-items: center; justify-content: center;" title="Xóa">
+                                        <button class="btn btn-ghost btn-sm btn-open-delete-market" data-market-id="<?php echo $m['id']; ?>" data-market-name="<?php echo htmlspecialchars($m['name']); ?>" data-url="<?php echo BASE_URL; ?>adminmaster/deleteMarket" style="padding: 4px 8px; font-size: 11px; color: #EA4335; display: inline-flex; align-items: center; justify-content: center;" title="Xóa">
                                             <i class="fa-solid fa-trash-can" style="margin-right: 4px;"></i> Xóa
                                         </button>
                                     </div>
@@ -148,12 +162,21 @@ $(document).ready(function() {
                                 location.reload();
                             });
                         } else {
-                            Swal.fire({ icon: 'error', title: 'Thất bại', text: data.message, background: swalBg, color: swalColor });
+                            Swal.fire({ icon: 'error', title: 'Thất bại', text: data.error || data.message || 'Thao tác thất bại.', background: swalBg, color: swalColor });
                         }
                     },
-                    error: function() {
+                    error: function(xhr) {
                         Swal.close();
-                        Swal.fire({ icon: 'error', title: 'Lỗi', text: 'Có lỗi xảy ra khi kết nối máy chủ.', background: swalBg, color: swalColor });
+                        var errorMsg = 'Có lỗi xảy ra khi kết nối máy chủ.';
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMsg = xhr.responseJSON.error;
+                        } else if (xhr.responseText) {
+                            try {
+                                var res = JSON.parse(xhr.responseText);
+                                if (res.error) errorMsg = res.error;
+                            } catch(e) {}
+                        }
+                        Swal.fire({ icon: 'error', title: 'Thất bại', text: errorMsg, background: swalBg, color: swalColor });
                     }
                 });
             }
