@@ -117,6 +117,10 @@ $htmlBg = $theme === 'dark' ? '#0f1623' : '#f5f7fb';
     <!-- Gentelella CSS chính thức -->
     <link rel="stylesheet" crossorigin href="<?php echo XC_URL; ?>/template/app/assets/css/gentelella.css">
 
+    <!-- Theme Redesign & Loading Overlay CSS -->
+    <link rel="stylesheet" crossorigin href="<?php echo XC_URL; ?>/template/app/assets/css/loading.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" crossorigin href="<?php echo XC_URL; ?>/template/app/assets/css/theme-redesign.css?v=<?php echo time(); ?>">
+
     <!-- jQuery (cần cho inline script trong các view PHP dùng $().ready / $.ajax) -->
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
     <!-- ponytail: Restore sidebar-rail state before first paint to avoid layout flash -->

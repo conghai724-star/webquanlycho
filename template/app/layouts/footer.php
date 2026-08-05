@@ -51,6 +51,8 @@ $jsBase = XC_URL . '/template/adminmaster/assets/js/dist/';
 <!-- Nạp SweetAlert2 & App Custom JS dùng chung cho toàn bộ các view PHP -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="<?php echo XC_URL; ?>/template/app/assets/js/pages/app-custom.js?v=<?php echo time(); ?>"></script>
+<!-- Nạp Loading System JS độc lập -->
+<script src="<?php echo XC_URL; ?>/template/app/assets/js/loading.js?v=<?php echo time(); ?>"></script>
 
 </body>
 </html>

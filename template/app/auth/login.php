@@ -47,6 +47,8 @@ $htmlBg = $theme === 'dark' ? '#0f1623' : '#f5f7fb';
     
     <!-- CSS chính thức của Gentelella -->
     <link rel="stylesheet" crossorigin href="<?php echo XC_URL; ?>/template/app/assets/css/gentelella.css">
+    <link rel="stylesheet" crossorigin href="<?php echo XC_URL; ?>/template/app/assets/css/loading.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" crossorigin href="<?php echo XC_URL; ?>/template/app/assets/css/theme-redesign.css?v=<?php echo time(); ?>">
     
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">    
@@ -170,5 +172,6 @@ $htmlBg = $theme === 'dark' ? '#0f1623' : '#f5f7fb';
     </div>
 </div>
 
+<script src="<?php echo XC_URL; ?>/template/app/assets/js/loading.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>

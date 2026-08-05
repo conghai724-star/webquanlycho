@@ -1,0 +1,351 @@
+/**
+ * Loading Overlay & Inline Loading Stylesheet
+ * System: Phần mềm Quản lý Chợ Smart
+ * Design: High-performance CSS keyframe animations, backdrop blur, logo ring spinner.
+ */
+
+/* ==========================================================================
+   1. FULLSCREEN OVERLAY LOADING
+   ========================================================================== */
+
+#global-loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 999999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+#global-loading-overlay.is-active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+/* Container Box */
+.loading-box {
+    background: #ffffff;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    border-radius: 16px;
+    padding: 10px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(15, 118, 110, 0.1);
+    transform: scale(0.92);
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    min-width: 220px;
+    max-width: 90vw;
+    text-align: center;
+}
+
+#global-loading-overlay.is-active .loading-box {
+    transform: scale(1);
+}
+
+/* Logo & Spinner Container (giao diện nhỏ 50%) */
+.loading-spinner-wrapper {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+/* Outer Spinning Gradient Ring */
+.loading-spinner-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2.5px solid rgba(13, 148, 136, 0.15);
+    border-top-color: #0d9488;
+    border-right-color: #0284c7;
+    animation: spinRing 1s linear infinite;
+    box-shadow: 0 0 10px rgba(13, 148, 136, 0.25);
+}
+
+/* Inner Pulsing Pulse Ring */
+.loading-spinner-pulse {
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(2, 132, 199, 0.3);
+    animation: pulseRing 1.8s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+/* Centered Rocket Logo Inside Spinner (hiệu ứng tên lửa đang bay) */
+.loading-logo {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    border-radius: 0;
+    z-index: 2;
+    filter: drop-shadow(-2px 4px 6px rgba(249, 115, 22, 0.4));
+    animation: rocketLaunchFly 0.8s ease-in-out infinite alternate;
+}
+
+/* Fallback Rocket Icon if img fails */
+.loading-logo-icon {
+    width: 26px;
+    height: 26px;
+    background: transparent;
+    color: #ffffff;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    animation: rocketLaunchFly 0.8s ease-in-out infinite alternate;
+}
+
+/* Success Icon Container & Transitions */
+.loading-success-icon {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    pointer-events: none;
+    z-index: 3;
+}
+
+#global-loading-overlay.is-success .loading-success-icon {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+}
+
+#global-loading-overlay.is-success .loading-spinner-ring,
+#global-loading-overlay.is-success .loading-spinner-pulse,
+#global-loading-overlay.is-success .loading-logo,
+#global-loading-overlay.is-success .loading-logo-icon {
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+/* SVG Animated Checkmark (kích thước nhỏ 50%) */
+.checkmark-svg {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: block;
+    stroke-width: 3.5;
+    stroke: #10b981;
+    stroke-miterlimit: 10;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.35);
+}
+
+.checkmark-circle {
+    stroke-dasharray: 166;
+    stroke-dashoffset: 166;
+    stroke-width: 3.5;
+    stroke-miterlimit: 10;
+    stroke: #10b981;
+    fill: rgba(16, 185, 129, 0.08);
+}
+
+#global-loading-overlay.is-success .checkmark-circle {
+    animation: strokeCircle 0.5s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+.checkmark-check {
+    transform-origin: 50% 50%;
+    stroke-dasharray: 48;
+    stroke-dashoffset: 48;
+    stroke: #10b981;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+#global-loading-overlay.is-success .checkmark-check {
+    animation: strokeCheck 0.4s cubic-bezier(0.65, 0, 0.45, 1) 0.25s forwards;
+}
+
+/* Context Text Message */
+.loading-text {
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    color: #0f172a;
+    margin-top: 4px;
+    letter-spacing: -0.2px;
+    transition: color 0.3s ease;
+}
+
+/* Subtitle / Progress hint */
+.loading-subtext {
+    font-size: 12px;
+    color: #64748b;
+    margin-top: 4px;
+    font-weight: 400;
+    transition: color 0.3s ease;
+}
+
+/* Success Box & Text Styling */
+#global-loading-overlay.is-success .loading-box {
+    border-color: rgba(16, 185, 129, 0.4);
+    box-shadow: 0 20px 45px -15px rgba(16, 185, 129, 0.25), 0 0 0 1px rgba(16, 185, 129, 0.2);
+}
+
+#global-loading-overlay.is-success .loading-text {
+    color: #059669;
+}
+
+/* Dynamic Dots Animation */
+.loading-dots::after {
+    content: '';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+/* ==========================================================================
+   2. INLINE BUTTON LOADING & SUCCESS STATE
+   ========================================================================== */
+
+.btn.is-loading,
+button.is-loading,
+input[type="submit"].is-loading {
+    position: relative;
+    pointer-events: none !important;
+    opacity: 0.85 !important;
+    cursor: wait !important;
+}
+
+.btn.is-loading .btn-spin-icon {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-right: 6px;
+    border: 2px solid currentColor;
+    border-top-color: transparent !important;
+    border-radius: 50%;
+    animation: spinRing 0.65s linear infinite;
+    vertical-align: middle;
+}
+
+.btn.is-success,
+button.is-success,
+input[type="submit"].is-success {
+    background-color: #10b981 !important;
+    border-color: #10b981 !important;
+    color: #ffffff !important;
+    pointer-events: none !important;
+    transition: all 0.3s ease;
+}
+
+.btn .btn-check-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 6px;
+    font-weight: bold;
+    font-size: 14px;
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* ==========================================================================
+   3. DARK MODE ADAPTATION
+   ========================================================================== */
+
+[data-theme="dark"] #global-loading-overlay {
+    background: rgba(3, 7, 18, 0.75);
+}
+
+[data-theme="dark"] .loading-box {
+    background: #1e293b;
+    border-color: rgba(51, 65, 85, 0.8);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(13, 148, 136, 0.2);
+}
+
+[data-theme="dark"] #global-loading-overlay.is-success .loading-box {
+    border-color: rgba(16, 185, 129, 0.5);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(16, 185, 129, 0.3);
+}
+
+[data-theme="dark"] .loading-text {
+    color: #f8fafc;
+}
+
+[data-theme="dark"] #global-loading-overlay.is-success .loading-text {
+    color: #34d399;
+}
+
+[data-theme="dark"] .loading-subtext {
+    color: #94a3b8;
+}
+
+/* ==========================================================================
+   4. KEYFRAME ANIMATIONS
+   ========================================================================== */
+
+@keyframes spinRing {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes pulseRing {
+    0% { transform: scale(0.95); opacity: 0.8; }
+    50% { transform: scale(1.15); opacity: 0.2; }
+    100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+@keyframes logoBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+
+@keyframes rocketLaunchFly {
+    0% {
+        transform: translate(-1px, 2px) scale(0.96) rotate(-2deg);
+        filter: drop-shadow(-2px 4px 5px rgba(249, 115, 22, 0.4));
+    }
+    35% {
+        transform: translate(1px, -1px) scale(1.04) rotate(2deg);
+    }
+    70% {
+        transform: translate(-2px, 1px) scale(0.98) rotate(-1deg);
+    }
+    100% {
+        transform: translate(2px, -4px) scale(1.08) rotate(3deg);
+        filter: drop-shadow(-5px 9px 12px rgba(249, 115, 22, 0.75));
+    }
+}
+
+@keyframes strokeCircle {
+    100% { stroke-dashoffset: 0; }
+}
+
+@keyframes strokeCheck {
+    100% { stroke-dashoffset: 0; }
+}
+
+@keyframes popIn {
+    0% { transform: scale(0); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes dots {
+    0%, 20% { content: ''; }
+    40% { content: '.'; }
+    60% { content: '..'; }
+    80%, 100% { content: '...'; }
+}
+

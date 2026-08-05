@@ -890,6 +890,16 @@ window.App = Object.assign(window.App || {}, {
         },
         // Thông báo thành công (tự đóng sau timer ms)
         success(title, text = '', timer = 1500) {
+            if (typeof Swal !== 'undefined' && typeof Swal.close === 'function') {
+                Swal.close();
+            }
+            if (typeof window.showSuccess === 'function') {
+                const overlay = document.getElementById('global-loading-overlay');
+                if (overlay && (overlay.classList.contains('is-active') || overlay.classList.contains('is-success'))) {
+                    window.showSuccess(title || 'Thành công', text, timer);
+                    return;
+                }
+            }
             return Swal.fire({
                 icon: 'success',
                 title: title,
@@ -901,6 +911,12 @@ window.App = Object.assign(window.App || {}, {
         },
         // Thông báo lỗi
         error(title, text = '') {
+            if (typeof window.hideLoading === 'function') {
+                window.hideLoading();
+            }
+            if (typeof Swal !== 'undefined' && typeof Swal.close === 'function') {
+                Swal.close();
+            }
             return Swal.fire({
                 icon: 'error',
                 title: title,
