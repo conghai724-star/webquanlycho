@@ -24,7 +24,7 @@ class adminmasterController extends baseController {
      */
     public function roles() {
         $db = database::getInstance();
-        $roles = $db->select("SELECT * FROM market_roles ORDER BY role_id ASC");
+        $roles = $db->select("SELECT r.*, ss.status_code FROM market_roles r LEFT JOIN system_statuses ss ON r.status_id = ss.status_id WHERE r.status_id != 99 ORDER BY r.role_id ASC");
 
         $this->view->app("user/roles", [
             'title' => 'Quản Lý Vai Trò',
@@ -91,8 +91,16 @@ class adminmasterController extends baseController {
         }
 
         $db = database::getInstance();
+        
+        // Kiểm tra xem vai trò có đang được gán cho nhân viên nào không
+        $userCount = $db->selectOne("SELECT COUNT(*) as cnt FROM user_markets WHERE user_market_role_id = :id", ['id' => $id]);
+        if ($userCount && (int)$userCount['cnt'] > 0) {
+            $this->roles_with_error("Không thể xóa vai trò này vì đang được gán cho " . $userCount['cnt'] . " nhân viên.");
+            return;
+        }
+
         try {
-            $db->query("DELETE FROM market_roles WHERE role_id = :id", ['id' => $id]);
+            $db->query("UPDATE market_roles SET status_id = 99 WHERE role_id = :id", ['id' => $id]);
             general::log('delete_market_role', "Xóa vai trò chợ ID: {$id}");
             header('Location: ' . BASE_URL . 'adminmaster/roles');
             exit();
@@ -103,7 +111,7 @@ class adminmasterController extends baseController {
 
     private function roles_with_error($errorMsg) {
         $db = database::getInstance();
-        $roles = $db->select("SELECT * FROM market_roles ORDER BY role_id ASC");
+        $roles = $db->select("SELECT r.*, ss.status_code FROM market_roles r LEFT JOIN system_statuses ss ON r.status_id = ss.status_id WHERE r.status_id != 99 ORDER BY r.role_id ASC");
 
         $this->view->app("user/roles", [
             'title' => 'Quản Lý Vai Trò',
@@ -111,6 +119,37 @@ class adminmasterController extends baseController {
             'error' => $errorMsg,
             'post_data' => $_POST
         ]);
+    }
+
+    /**
+     * API chuyển trạng thái vai trò (AJAX POST)
+     */
+    public function toggleRoleStatus() {
+        $this->render->abort405('POST', 'update', 'role');
+
+        $roleId = $_POST['role_id'] ?? '';
+        $newStatusCode = $_POST['status'] ?? '';
+
+        if (empty($roleId) || !in_array($newStatusCode, ['active', 'inactive'])) {
+            $this->render->apiResponse('update', 'role', false, 'Dữ liệu không hợp lệ.', 400);
+        }
+
+        $db = database::getInstance();
+        $newStatus = $db->selectOne("SELECT status_id FROM system_statuses WHERE status_domain = 'role' AND status_code = :code", ['code' => $newStatusCode]);
+        if (!$newStatus) {
+            $this->render->apiResponse('update', 'role', false, 'Trạng thái không hợp lệ.', 400);
+        }
+
+        try {
+            $db->query("UPDATE market_roles SET status_id = :sid WHERE role_id = :id", [
+                'sid' => $newStatus['status_id'],
+                'id' => $roleId
+            ]);
+            general::log('toggle_role_status', "Chuyển trạng thái vai trò ID: {$roleId} → {$newStatusCode}");
+            $this->render->apiResponse('update', 'role', true);
+        } catch (Exception $e) {
+            $this->render->abort500($e, 'update', 'role');
+        }
     }
 
     /**

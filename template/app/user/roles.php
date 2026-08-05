@@ -28,6 +28,7 @@
                             <th style="padding: 12px 16px; width: 180px;">Tên Vai Trò</th>
                             <th style="padding: 12px 16px; width: 260px;">Quyền mặc định</th>
                             <th style="padding: 12px 16px;">Mô Tả Chi Tiết</th>
+                            <th style="padding: 12px 16px; width: 100px; text-align: center;">Trạng thái</th>
                             <th style="padding: 12px 16px; width: 80px; text-align: center;">Hành động</th>
                         </tr>
                     </thead>
@@ -73,6 +74,19 @@
                                         <?php echo htmlspecialchars($role['role_description'] ?: 'Không có mô tả'); ?>
                                     </td>
                                     <td style="padding: 14px 16px; text-align: center; vertical-align: middle;">
+                                        <?php
+                                        $isActive = ($role['status_code'] ?? 'active') === 'active';
+                                        $statusLabel = $isActive ? 'Hoạt động' : 'Ngừng';
+                                        $statusBg = $isActive ? 'rgba(52,168,83,0.1)' : 'rgba(156,163,175,0.15)';
+                                        $statusColor = $isActive ? '#34A853' : '#9ca3af';
+                                        ?>
+                                        <button onclick="toggleRoleStatus(<?php echo $role['role_id']; ?>, '<?php echo $isActive ? 'inactive' : 'active'; ?>')" 
+                                                style="background: <?php echo $statusBg; ?>; color: <?php echo $statusColor; ?>; border: 1px solid <?php echo $statusColor; ?>33; padding: 2px 10px; border-radius: 10px; font-size: 11px; cursor: pointer; white-space: nowrap;" 
+                                                title="Nhấn để chuyển trạng thái">
+                                            <?php echo $statusLabel; ?>
+                                        </button>
+                                    </td>
+                                    <td style="padding: 14px 16px; text-align: center; vertical-align: middle;">
                                         <?php if ($isSystem): ?>
                                             <span style="font-size: 11px; color: var(--text-muted); font-style: italic; background-color: #f1f2f6; padding: 2px 6px; border-radius: 4px;">Hệ thống</span>
                                         <?php else: ?>
@@ -89,7 +103,7 @@
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="5" style="padding: 30px; text-align: center; color: var(--text-muted);">Chưa có vai trò nào trong hệ thống.</td>
+                                <td colspan="6" style="padding: 30px; text-align: center; color: var(--text-muted);">Chưa có vai trò nào trong hệ thống.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
@@ -143,3 +157,22 @@
     </div>
 
 </div>
+
+<script>
+function toggleRoleStatus(roleId, newStatus) {
+    $.ajax({
+        type: 'POST',
+        url: '<?php echo BASE_URL; ?>adminmaster/toggleRoleStatus',
+        data: { role_id: roleId, status: newStatus, csrf_token: '<?php echo $_SESSION["csrf_token"] ?? ""; ?>' },
+        dataType: 'json',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        success: function(data) {
+            if (data.status === 200) { window.location.reload(); }
+            else {
+                var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                Swal.fire({ icon: 'error', title: 'Lỗi', text: data.error || 'Thao tác thất bại.', background: isDark ? '#1a2332' : '#fff', color: isDark ? '#fff' : '#0f1623' });
+            }
+        }
+    });
+}
+</script>

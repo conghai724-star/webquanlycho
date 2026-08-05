@@ -266,7 +266,7 @@ Class systemController extends baseController {
         }
 
         $actorsList = $db->select("SELECT * FROM system_actors ORDER BY actor_id ASC");
-        $marketRolesList = $db->select("SELECT * FROM market_roles ORDER BY role_id ASC");
+        $marketRolesList = $db->select("SELECT * FROM market_roles WHERE status_id != 99 ORDER BY role_id ASC");
 
         $this->view->app("user/add", [
             'marketsList' => $marketsList,
@@ -344,7 +344,7 @@ Class systemController extends baseController {
         }
 
         $actorsList = $db->select("SELECT * FROM system_actors ORDER BY actor_id ASC");
-        $marketRolesList = $db->select("SELECT * FROM market_roles ORDER BY role_id ASC");
+        $marketRolesList = $db->select("SELECT * FROM market_roles WHERE status_id != 99 ORDER BY role_id ASC");
 
         $this->view->app("user/edit", [
             'user' => $user, 
@@ -496,7 +496,7 @@ Class systemController extends baseController {
             $permissions[$p['permission_user_id']][$p['permission_market_id']][$p['permission_module_code']] = 1;
         }
 
-        $marketRoles = $db->select("SELECT * FROM market_roles ORDER BY role_id ASC");
+        $marketRoles = $db->select("SELECT * FROM market_roles WHERE status_id != 99 ORDER BY role_id ASC");
 
         $this->view->app("user/permissions", [
             'staffList' => $staffList, 
@@ -589,7 +589,7 @@ Class systemController extends baseController {
         ", ['uid' => $userId, 'mid' => $marketId]), 'permission_module_code');
         sort($currentPerms);
 
-        $marketRoles = $db->select("SELECT role_id, role_permissions FROM market_roles");
+        $marketRoles = $db->select("SELECT role_id, role_permissions FROM market_roles WHERE status_id != 99");
         $matchedRoleId = null;
         foreach ($marketRoles as $r) {
             $rPerms = array_filter(explode(',', $r['role_permissions'] ?? ''));
@@ -741,10 +741,11 @@ Class systemController extends baseController {
         } else {
             // Lấy danh sách mẫu in
             $configs = $db->select("
-                SELECT c.*, m.market_name 
+                SELECT c.*, m.market_name, ss.status_code 
                 FROM market_contract_configs c
                 JOIN markets m ON c.market_id = m.market_id
-                WHERE c.market_id IN (" . implode(',', $accMarkets) . ")
+                LEFT JOIN system_statuses ss ON c.status_id = ss.status_id
+                WHERE c.market_id IN (" . implode(',', $accMarkets) . ") AND c.status_id != 99
                 ORDER BY m.market_name ASC, c.config_id ASC
             ");
             
@@ -789,7 +790,7 @@ Class systemController extends baseController {
             exit();
         }
 
-        $configs = $db->select("SELECT * FROM market_contract_configs WHERE market_id = :mId ORDER BY config_id ASC", ['mId' => $marketId]);
+        $configs = $db->select("SELECT c.*, ss.status_code FROM market_contract_configs c LEFT JOIN system_statuses ss ON c.status_id = ss.status_id WHERE c.market_id = :mId AND c.status_id != 99 ORDER BY c.config_id ASC", ['mId' => $marketId]);
 
         $this->view->app("contract_config/index", [
             'market' => $market,

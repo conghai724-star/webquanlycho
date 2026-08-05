@@ -1896,7 +1896,7 @@ class apiController extends baseController {
                             $selectedRoleId = 4; // Quản lý chợ
                         } else {
                             $selectedRoleId = (int)($marketRolesInput[$mId] ?? 2);
-                            $roleExists = $db->selectOne("SELECT 1 FROM market_roles WHERE role_id = :rid", ['rid' => $selectedRoleId]);
+                            $roleExists = $db->selectOne("SELECT 1 FROM market_roles WHERE role_id = :rid AND status_id != 99", ['rid' => $selectedRoleId]);
                             if (!$roleExists) {
                                 $selectedRoleId = 2; // Default to Nhân viên tổng hợp
                             }
@@ -2047,7 +2047,7 @@ class apiController extends baseController {
                             $selectedRoleId = 4; // Quản lý chợ
                         } else {
                             $selectedRoleId = (int)($marketRolesInput[$mId] ?? 2);
-                            $roleExists = $db->selectOne("SELECT 1 FROM market_roles WHERE role_id = :rid", ['rid' => $selectedRoleId]);
+                            $roleExists = $db->selectOne("SELECT 1 FROM market_roles WHERE role_id = :rid AND status_id != 99", ['rid' => $selectedRoleId]);
                             if (!$roleExists) {
                                 $selectedRoleId = 2; // Default to Nhân viên tổng hợp
                             }

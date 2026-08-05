@@ -33,6 +33,7 @@
                             <th>Cơ quan chủ quản</th>
                             <th>Đại diện Bên A</th>
                             <th style="width: 90px; text-align: center;">Mặc định</th>
+                            <th style="width: 110px; text-align: center;">Trạng thái</th>
                             <th style="width: 120px; text-align: center;">Thao tác</th>
                         </tr>
                     </thead>
@@ -54,6 +55,19 @@
                                     <?php else: ?>
                                         <span style="color: var(--text-secondary); font-size: 12px;">-</span>
                                     <?php endif; ?>
+                                </td>
+                                <td style="text-align: center; vertical-align: middle;">
+                                    <?php
+                                    $isActive = ($cfg['status_code'] ?? 'active') === 'active';
+                                    $statusLabel = $isActive ? 'Đang dùng' : 'Ngừng';
+                                    $statusBg = $isActive ? 'rgba(52,168,83,0.1)' : 'rgba(156,163,175,0.15)';
+                                    $statusColor = $isActive ? '#34A853' : '#9ca3af';
+                                    ?>
+                                    <button onclick="toggleConfigStatus(<?php echo $cfg['config_id']; ?>, '<?php echo $isActive ? 'inactive' : 'active'; ?>')" 
+                                            style="background: <?php echo $statusBg; ?>; color: <?php echo $statusColor; ?>; border: 1px solid <?php echo $statusColor; ?>33; padding: 2px 10px; border-radius: 10px; font-size: 11px; cursor: pointer; white-space: nowrap;" 
+                                            title="Nhấn để chuyển trạng thái">
+                                        <?php echo $statusLabel; ?>
+                                    </button>
                                 </td>
                                 <td style="text-align: center; vertical-align: middle; white-space: nowrap;">
                                     <div style="display: flex; gap: 6px; justify-content: center; align-items: center;">
@@ -113,6 +127,23 @@ function deleteConfig(configId, marketId) {
                     Swal.fire({ icon: 'error', title: 'Lỗi', text: msg, background: swalBg, color: swalColor });
                 }
             });
+        }
+    });
+}
+
+function toggleConfigStatus(configId, newStatus) {
+    $.ajax({
+        type: 'POST',
+        url: '<?php echo BASE_URL; ?>admin/toggleContractConfigStatus',
+        data: { config_id: configId, status: newStatus, csrf_token: '<?php echo $_SESSION["csrf_token"] ?? ""; ?>' },
+        dataType: 'json',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        success: function(data) {
+            if (data.status === 200) { window.location.reload(); }
+            else {
+                var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                Swal.fire({ icon: 'error', title: 'Lỗi', text: data.error || 'Thao tác thất bại.', background: isDark ? '#1a2332' : '#fff', color: isDark ? '#fff' : '#0f1623' });
+            }
         }
     });
 }

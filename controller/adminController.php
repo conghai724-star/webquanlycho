@@ -922,7 +922,7 @@ Class adminController extends baseController {
         $db = database::getInstance();
         $marketId = $contract['area_market_id'] ?? 0;
         
-        $allConfigs = $db->select("SELECT * FROM market_contract_configs WHERE market_id = :mId ORDER BY config_id ASC", ['mId' => $marketId]);
+        $allConfigs = $db->select("SELECT * FROM market_contract_configs WHERE market_id = :mId AND status_id != 99 ORDER BY config_id ASC", ['mId' => $marketId]);
         
         $configId = isset($_GET['config_id']) ? (int)$_GET['config_id'] : 0;
         $selectedConfig = null;
@@ -1265,11 +1265,53 @@ Class adminController extends baseController {
 
         try {
             $db = database::getInstance();
-            $db->query("DELETE FROM market_contract_configs WHERE config_id = :id", ['id' => $configId]);
+            $db->query("UPDATE market_contract_configs SET status_id = 99 WHERE config_id = :id", ['id' => $configId]);
             general::log('delete_contract_config', "Xóa mẫu in hợp đồng ID: {$configId}");
             $this->render->apiResponse('delete', 'contract_config', true);
         } catch (Exception $e) {
             $this->render->abort500($e, 'delete', 'contract_config');
+        }
+    }
+
+    /**
+     * API chuyển trạng thái mẫu in hợp đồng (AJAX POST)
+     */
+    public function toggleContractConfigStatus() {
+        $this->render->abort405('POST', 'update', 'contract_config');
+        $this->render->abort403(marketService::isSuperAdmin() || marketService::isAdminMarket(), 'update', 'contract_config');
+
+        $configId = $_POST['config_id'] ?? '';
+        $newStatusCode = $_POST['status'] ?? '';
+        $this->render->abort400(!empty($configId) && in_array($newStatusCode, ['active', 'inactive']), 'update', 'contract_config', 'Dữ liệu không hợp lệ.');
+
+        $db = database::getInstance();
+        $config = $db->selectOne("SELECT * FROM market_contract_configs WHERE config_id = :id", ['id' => $configId]);
+        if (!$config) {
+            $this->render->apiResponse('update', 'contract_config', false, 'Không tìm thấy cấu hình.', 404);
+        }
+
+        if (!marketService::isSuperAdmin()) {
+            $accMarkets = marketService::getAccessibleMarketIds();
+            if (!in_array((int)$config['market_id'], $accMarkets)) {
+                $this->render->apiResponse('update', 'contract_config', false, 'Không có quyền.', 403);
+            }
+        }
+
+        // Lấy status_id từ system_statuses
+        $newStatus = $db->selectOne("SELECT status_id FROM system_statuses WHERE status_domain = 'contract_config' AND status_code = :code", ['code' => $newStatusCode]);
+        if (!$newStatus) {
+            $this->render->apiResponse('update', 'contract_config', false, 'Trạng thái không hợp lệ.', 400);
+        }
+
+        try {
+            $db->query("UPDATE market_contract_configs SET status_id = :sid WHERE config_id = :id", [
+                'sid' => $newStatus['status_id'],
+                'id' => $configId
+            ]);
+            general::log('toggle_contract_config_status', "Chuyển trạng thái mẫu in ID: {$configId} → {$newStatusCode}");
+            $this->render->apiResponse('update', 'contract_config', true);
+        } catch (Exception $e) {
+            $this->render->abort500($e, 'update', 'contract_config');
         }
     }
 
@@ -1300,3 +1342,4 @@ Class adminController extends baseController {
         ];
     }
 }
+
