@@ -1072,5 +1072,49 @@ window.App = Object.assign(window.App || {}, {
         if (typeof Chart !== 'undefined') {
             window.App.dashboard.initCharts();
         }
+
+        // Tự động định dạng tiền tệ thời gian thực cho các trường nhập liệu .price-format
+        $(document).on('input', '.price-format', function() {
+            var selectionStart = this.selectionStart;
+            var oldLength = this.value.length;
+            
+            var cleanVal = this.value.replace(/\D/g, '');
+            if (cleanVal === '') {
+                this.value = '';
+                return;
+            }
+            if (cleanVal.length > 15) {
+                cleanVal = cleanVal.substring(0, 15);
+            }
+            var formatted = cleanVal.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            this.value = formatted;
+            
+            var newLength = formatted.length;
+            this.setSelectionRange(selectionStart + (newLength - oldLength), selectionStart + (newLength - oldLength));
+        });
+
+        // Tự động làm sạch dấu chấm trước khi gửi form (để backend nhận đúng kiểu số thuần túy)
+        $(document).on('submit', 'form', function() {
+            var $form = $(this);
+            var $priceInputs = $form.find('.price-format');
+            if ($priceInputs.length > 0) {
+                $priceInputs.each(function() {
+                    var $input = $(this);
+                    $input.data('formatted-val', $input.val());
+                    $input.val($input.val().replace(/\./g, ''));
+                });
+                
+                // Khôi phục lại định dạng sau khi submit hoàn tất (đề phòng AJAX submit hoặc validate lỗi)
+                setTimeout(function() {
+                    $priceInputs.each(function() {
+                        var $input = $(this);
+                        var saved = $input.data('formatted-val');
+                        if (saved !== undefined) {
+                            $input.val(saved);
+                        }
+                    });
+                }, 100);
+            }
+        });
     });
 })();

@@ -74,20 +74,65 @@
             <svg class="theme-icon-dark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
 
-        <!-- Dropdown Thông báo -->
-        <button class="tb-btn tb-notifications" type="button" title="Thông báo" aria-label="Thông báo" aria-haspopup="dialog" aria-expanded="false" onclick="alert('Không có thông báo mới!')">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 3a6 6 0 00-6 6c0 6-3 7-3 7h18s-3-1-3-7a6 6 0 00-6-6z"/><path d="M10.5 21a1.5 1.5 0 003 0"/></svg>
-        </button>
 
-        <!-- Dropdown Tin nhắn -->
-        <button class="tb-btn tb-messages" type="button" title="Tin nhắn" aria-label="Tin nhắn" aria-haspopup="dialog" aria-expanded="false" onclick="alert('Không có tin nhắn mới!')">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M2 7l10 6 10-6"/></svg>
-        </button>
 
-        <!-- Avatar người dùng -->
-        <button class="tb-avatar" type="button" aria-label="Menu tài khoản" aria-haspopup="menu" aria-expanded="false" style="background-color: var(--primary); color: white; font-weight: bold; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center;">
-            <?php echo strtoupper(substr(session::get('username', 'Q'), 0, 1)); ?>
-        </button>
+        <!-- Avatar người dùng kèm Dropdown -->
+        <div class="avatar-dropdown-wrapper" style="position: relative; display: inline-block;">
+            <button class="tb-avatar" id="avatar-btn" type="button" aria-label="Menu tài khoản" aria-haspopup="menu" aria-expanded="false" style="background-color: var(--primary); color: white; font-weight: bold; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                <?php echo strtoupper(substr(session::get('username', 'Q'), 0, 1)); ?>
+            </button>
+            <div class="avatar-dropdown-menu" id="avatar-menu" style="display: none; position: absolute; right: 0; top: calc(100% + 8px); background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 180px; z-index: 1000; padding: 6px 0;">
+                <a href="<?php echo BASE_URL; ?>admin/profile" class="avatar-dropdown-item" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; color: var(--text-color); text-decoration: none; font-size: 13px; font-weight: 500; transition: background-color 0.2s;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Thông tin cá nhân
+                </a>
+                <div style="border-top: 1px solid var(--border-color); margin: 6px 0;"></div>
+                <a href="<?php echo BASE_URL; ?>home/logout" class="avatar-dropdown-item logout-item" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; color: var(--red, #e74c3c); text-decoration: none; font-size: 13px; font-weight: 500; transition: background-color 0.2s;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                    Đăng xuất
+                </a>
+            </div>
+        </div>
+        <style>
+            .avatar-dropdown-item:hover {
+                background-color: var(--bg-surface-secondary) !important;
+            }
+            .avatar-dropdown-item.logout-item:hover {
+                background-color: rgba(231, 76, 60, 0.08) !important;
+            }
+        </style>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Theme toggle click handler
+                var themeBtn = document.querySelector('.theme-toggle');
+                if (themeBtn) {
+                    themeBtn.addEventListener('click', function() {
+                        var html = document.documentElement;
+                        var currentTheme = html.getAttribute('data-theme') || 'light';
+                        var newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                        
+                        html.setAttribute('data-theme', newTheme);
+                        html.style.background = newTheme === 'dark' ? '#0f1623' : '#f5f7fb';
+                    });
+                }
+
+                // Avatar dropdown click handler
+                var avatarBtn = document.getElementById('avatar-btn');
+                var avatarMenu = document.getElementById('avatar-menu');
+                if (avatarBtn && avatarMenu) {
+                    avatarBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        var isExpanded = avatarBtn.getAttribute('aria-expanded') === 'true';
+                        avatarBtn.setAttribute('aria-expanded', !isExpanded);
+                        avatarMenu.style.display = isExpanded ? 'none' : 'block';
+                    });
+                    document.addEventListener('click', function() {
+                        avatarBtn.setAttribute('aria-expanded', 'false');
+                        avatarMenu.style.display = 'none';
+                    });
+                }
+            });
+        </script>
     </div>
 </header>
 

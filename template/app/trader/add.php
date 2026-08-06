@@ -25,8 +25,8 @@
                 <!-- Mã tiểu thương -->
                 <div class="form-group">
                     <label class="form-label" for="trader_code" style="font-weight: 500;">Mã tiểu thương <span style="color: var(--red)">*</span></label>
-                    <input type="text" id="trader_code" name="trader_code" class="form-control" placeholder="Ví dụ: TT-0005" value="<?php echo htmlspecialchars($data['trader_code'] ?? ''); ?>" required>
-                    <small style="color: var(--text-muted); font-size: 11px; margin-top: 4px; display: block;">Mã duy nhất định danh hộ kinh doanh.</small>
+                    <input type="text" id="trader_code" name="trader_code" class="form-control" value="<?php echo htmlspecialchars($data['trader_code'] ?? ''); ?>" style="background-color: var(--bg-surface-secondary); cursor: not-allowed;" readonly required>
+                    <small style="color: var(--text-muted); font-size: 11px; margin-top: 4px; display: block;">Mã tiểu thương tự động sinh theo cấu trúc TT-[MÃ CHỢ]-[SỐ THỨ TỰ].</small>
                 </div>
 
                 <!-- Họ và tên -->
@@ -219,9 +219,8 @@ $(document).ready(function() {
         });
     }
 
-    // 2. Kiểm tra trùng mã tiểu thương thời gian thực
-    // App.utils.initRealtimeUniqueCheck('trader_code', 'api/checkExists', { getParams: val => ({ type: 'trader_code', value: val }), message: 'Mã tiểu thương này đã tồn tại trên hệ thống.' });
-    setupUniqueCheck('trader_code', 'trader_code', 'Mã tiểu thương này đã tồn tại trên hệ thống.');
+    // 2. Kiểm tra trùng mã tiểu thương thời gian thực (Đã bỏ qua vì tự động sinh mã)
+    // setupUniqueCheck('trader_code', 'trader_code', 'Mã tiểu thương này đã tồn tại trên hệ thống.');
 
     // 3. Kiểm tra trùng số CCCD thời gian thực
     // App.utils.initRealtimeUniqueCheck('cccd', 'api/checkExists', { getParams: val => ({ type: 'cccd', value: val }), message: 'Số CCCD này đã tồn tại trên hệ thống.' });

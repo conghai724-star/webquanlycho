@@ -70,7 +70,7 @@
                 <!-- Tiền cọc -->
                 <div class="form-group">
                     <label class="form-label" for="deposit" style="font-weight: 500;">Tiền đặt cọc (VNĐ) <span style="color: var(--red)">*</span></label>
-                    <input type="number" id="deposit" name="deposit" class="form-control" placeholder="Nhập số tiền đặt cọc" required>
+                    <input type="text" inputmode="numeric" id="deposit" name="deposit" class="form-control price-format" placeholder="Nhập số tiền đặt cọc" required>
                     <small style="color: var(--text-muted); font-size: 11px; margin-top: 4px; display: block;">Mặc định tự động tính bằng 2 tháng tiền thuê sạp.</small>
                 </div>
             </div>
@@ -243,9 +243,11 @@ $(document).ready(function() {
             const price = parseFloat(selectedOpt.dataset.price) || 0;
             displayInput.value = price.toLocaleString('vi-VN') + ' đ';
             depositInput.value = price * 2;
+            $(depositInput).trigger('input');
         } else {
             displayInput.value = '0';
             depositInput.value = '';
+            $(depositInput).trigger('input');
         }
     });
 });

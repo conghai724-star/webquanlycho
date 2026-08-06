@@ -89,7 +89,7 @@
                 <!-- Đơn giá thuê -->
                 <div class="form-group">
                     <label class="form-label" for="base_price" style="font-weight: 500;">Đơn giá thuê / tháng (VNĐ) <span style="color: var(--red)">*</span></label>
-                    <input type="number" min="0" id="base_price" name="base_price" class="form-control" placeholder="Nhập giá cho thuê mỗi tháng" value="<?php echo htmlspecialchars($data['stall_base_price'] ?? ''); ?>" required>
+                    <input type="text" inputmode="numeric" id="base_price" name="base_price" class="form-control price-format" placeholder="Nhập giá cho thuê mỗi tháng" value="<?php echo !empty($data['stall_base_price']) ? number_format((float)$data['stall_base_price'], 0, ',', '.') : ''; ?>" required>
                 </div>
 
                 <!-- Trạng thái -->

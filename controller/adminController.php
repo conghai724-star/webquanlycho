@@ -757,18 +757,62 @@ Class adminController extends baseController {
     public function trader_add() {
         $statuses = [];
         $business_lines = [];
+        $nextTraderCode = '';
+
+        $marketId = marketService::currentMarketId();
         try {
             $traderModel = new traderModel();
             $statuses = $traderModel->getTraderStatuses();
             $business_lines = $traderModel->getBusinessLines();
-        } catch (Exception $e) {}
+
+            $db = database::getInstance();
+            $market = $db->selectOne("SELECT market_code FROM markets WHERE market_id = :market_id", ['market_id' => $marketId]);
+            if ($market && !empty($market['market_code'])) {
+                $cleanCode = preg_replace('/[^a-zA-Z0-9]/', '', $market['market_code']);
+                $cleanCode = strtoupper($cleanCode);
+                $prefix = 'TT-' . $cleanCode;
+
+                $sqlMax = "SELECT trader_code FROM traders 
+                           WHERE trader_market_id = :market_id AND trader_code LIKE :prefix";
+                $existingTraders = $db->select($sqlMax, [
+                    'market_id' => $marketId,
+                    'prefix' => $prefix . '-%'
+                ]);
+
+                $maxNumber = 0;
+                foreach ($existingTraders as $t) {
+                    $code = $t['trader_code'];
+                    $parts = explode('-', $code);
+                    $numPart = end($parts);
+                    if (is_numeric($numPart)) {
+                        $val = (int)$numPart;
+                        if ($val > $maxNumber) {
+                            $maxNumber = $val;
+                        }
+                    }
+                }
+                $nextNumber = $maxNumber + 1;
+                $nextTraderCode = $prefix . '-' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+            }
+        } catch (Exception $e) {
+            error_log('[trader_add] EXCEPTION: ' . $e->getMessage());
+        }
 
         $statusModel = new statusModel();
         $activeTraderStatusId = $statusModel->getIdByCode('trader', 'active');
 
         $this->view('backend/trader/add', [
             'title'          => 'Thêm Tiểu Thương Mới',
-            'data'           => ['trader_code' => '', 'fullname' => '', 'phone' => '', 'cccd' => '', 'address' => '', 'business_line_id' => '', 'description' => '', 'status_id' => $activeTraderStatusId],
+            'data'           => [
+                'trader_code' => $nextTraderCode, 
+                'fullname' => '', 
+                'phone' => '', 
+                'cccd' => '', 
+                'address' => '', 
+                'business_line_id' => '', 
+                'description' => '', 
+                'status_id' => $activeTraderStatusId
+            ],
             'statuses'       => $statuses,
             'business_lines' => $business_lines
         ]);

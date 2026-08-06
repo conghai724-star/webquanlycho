@@ -296,7 +296,7 @@ if ($width === null || $length === null) {
             </tr>
             <tr style="margin: 0; padding: 0;">
                 <td class="left-header" style="padding: 0; margin: 0; line-height: 1; font-weight: normal; font-size: 14pt;">
-                    Số: <?php echo htmlspecialchars($contract['contract_number'] ?: '..... ...'); ?>/<?php echo date('Y', $sign_ts); ?>/HĐTQLC
+                    Số: <?php echo htmlspecialchars($contract['contract_number'] ?: '..... ...'); ?>
                 </td>
                 <td class="right-header" style="padding: 0; margin: 0; line-height: 1;">
                      

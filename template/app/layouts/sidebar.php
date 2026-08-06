@@ -132,13 +132,7 @@
                 </a>
             <?php endif; ?>
 
-            <!-- Thông tin cá nhân -->
-            <?php if (marketService::checkModuleAccess('profile')): ?>
-                <a class="nav-link <?php echo (isset($title) && $title === 'Thông tin cá nhân') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/profile" data-rail-label="Thông tin cá nhân">
-                    <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    <span class="nav-text">Thông tin cá nhân</span>
-                </a>
-            <?php endif; ?>
+
         </div>
         
         <!-- Nhóm quản lý sạp & tiểu thương -->
@@ -198,22 +192,13 @@
 
               <!-- Nhóm dịch vụ & tài chính -->
             <?php 
-            $showUtilities = marketService::checkModuleAccess('utilities');
             $showFinance = marketService::checkModuleAccess('finance');
             
-            if ($showUtilities || $showFinance):
+            if ($showFinance):
             ?>
                 <div class="nav-group">
                     <div class="nav-label">Vận hành & Tài chính</div>
                     
-                    <!-- Chỉ số dịch vụ -->
-                    <?php if ($showUtilities): ?>
-                        <a class="nav-link" href="<?php echo BASE_URL; ?>admin/utilities" data-rail-label="Điện & Nước">
-                            <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                            <span class="nav-text">Chỉ số Điện & Nước</span>
-                        </a>
-                    <?php endif; ?>
-
                     <!-- Thu Chi -->
                     <?php if ($showFinance): ?>
                         <?php $isIncomeMenu = isset($title) && in_array($title, ['Thu - Chi tài chính', 'Quản Lý Thu', 'Quản Lý Chi', 'Danh Mục Thu Chi', 'Báo Cáo Thu Chi'], true); ?>
@@ -317,61 +302,7 @@
         </div>
     </nav>
 
-    <!-- Thùng chứa user sidebar footer của Gentelella -->
-    <div class="sidebar-footer">
-        <div class="sidebar-user">
-            <div class="avatar" style="background-color: var(--primary); color: white; font-weight: bold; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center;">
-                <?php echo strtoupper(substr(session::get('username', 'Q'), 0, 1)); ?>
-                <span class="online"></span>
-            </div>
-            <div class="sidebar-user-info">
-                <div class="name" style="font-weight: 600; font-size: 13.5px;"><?php echo session::get('user_fullname', 'BQL Chợ'); ?></div>
-                <div class="role" style="font-size: 11px;">
-                    <?php 
-                    $roleName = 'Nhân viên';
-                    $actorCode = session::get('actor_code');
-                    if ($actorCode === 'super_market') {
-                        $roleName = 'Quản trị tối cao';
-                    } elseif ($actorCode === 'admin_market') {
-                        $roleName = 'Quản lý chợ';
-                    } else {
-                        // Admin cấp 3: Lấy vai trò cụ thể tại chợ đang hoạt động
-                        $db = database::getInstance();
-                        $activeMarketId = session::get('active_market_id');
-                        $userId = session::get('user_id');
-                        
-                        if ($activeMarketId && $userId) {
-                            $umRole = $db->selectOne("
-                                SELECT user_market_role_id 
-                                FROM user_markets 
-                                WHERE user_market_user_id = :user_id AND user_market_market_id = :market_id
-                            ", ['user_id' => $userId, 'market_id' => $activeMarketId]);
-                            
-                            if ($umRole) {
-                                $roleId = (int)$umRole['user_market_role_id'];
-                                $mRoleInfo = $db->selectOne("SELECT role_name FROM market_roles WHERE role_id = :rid", ['rid' => $roleId]);
-                                $roleName = $mRoleInfo ? $mRoleInfo['role_name'] : 'Nhân viên vận hành';
-                            } else {
-                                $roleName = 'Nhân viên vận hành';
-                            }
-                        } else {
-                            $roleName = 'Nhân viên vận hành';
-                        }
-                    }
-                    echo htmlspecialchars($roleName);
-                    ?>
-                </div>
-            </div>
-            <!-- Bấm để đổi mật khẩu -->
-            <a href="<?php echo BASE_URL; ?>admin/change_password" class="more-btn" aria-label="Đổi mật khẩu" title="Đổi mật khẩu" style="display: flex; align-items: center; justify-content: center; color: var(--text-muted); margin-right: 8px;">
-                <i class="fa-solid fa-key" style="font-size: 14px;"></i>
-            </a>
-            <!-- Bấm để đăng xuất -->
-            <a href="<?php echo BASE_URL; ?>home/logout" class="more-btn" aria-label="Đăng xuất" title="Đăng xuất" style="display: flex; align-items: center; justify-content: center; color: var(--text-muted); hover: {color: var(--red)}">
-                <i class="fa-solid fa-right-from-bracket" style="font-size: 14px;"></i>
-            </a>
-        </div>
-    </div>
+
 </aside>
 <script>
     document.addEventListener('DOMContentLoaded', function () {

@@ -130,9 +130,11 @@
                     <!-- Sửa, Lịch sử, In hợp đồng (Chỉ hiển thị nếu không phải trạng thái Khởi tạo) -->
                     <?php if ($contract['status_code'] !== 'draft'): ?>
                         <!-- Sửa hợp đồng -->
+                        <?php if ($contract['status_code'] !== 'expired' && $contract['status_code'] !== 'liquidated' && $contract['status_code'] !== 'terminated'): ?>
                         <button class="btn btn-outline btn-sm" onclick="App.contract.editContract(<?php echo $contract['contract_id']; ?>, '<?php echo htmlspecialchars($contract['contract_number'], ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars($contract['contract_name'], ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars($contract['contract_sign_date'] ?? ''); ?>', '<?php echo $contract['contract_start_date']; ?>', '<?php echo $contract['contract_end_date']; ?>', <?php echo (float)$contract['contract_deposit']; ?>, '<?php echo htmlspecialchars($contract['contract_description'] ?? '', ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars($contract['contract_file'] ?? '', ENT_QUOTES, 'UTF-8'); ?>')" style="padding: 4px 6px; color: var(--primary);" title="Sửa hợp đồng">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </button>
+                        <?php endif; ?>
 
                         <!-- Lịch sử hợp đồng -->
                         <button class="btn btn-outline btn-sm" onclick="App.contract.viewHistory(<?php echo $contract['contract_id']; ?>, '<?php echo htmlspecialchars($contract['contract_number']); ?>')" style="padding: 4px 6px; color: var(--primary);" title="Xem lịch sử chỉnh sửa">

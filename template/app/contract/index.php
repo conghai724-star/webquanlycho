@@ -200,7 +200,7 @@ $(document).ready(function() {
                          </div>
                          <div>
                              <label style="font-weight: 500; font-size: 13px;">Tiền đặt cọc (VNĐ):</label>
-                             <input type="number" id="swal-deposit" class="form-control" value="${deposit}" style="margin-top: 4px;">
+                              <input type="text" inputmode="numeric" id="swal-deposit" class="form-control price-format" value="${deposit ? deposit.toString().replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.') : ''}" style="margin-top: 4px;">
                          </div>
                          <div>
                              <label style="font-weight: 500; font-size: 13px;">Tài liệu đã đính kèm:</label>
@@ -268,7 +268,7 @@ $(document).ready(function() {
                     const sigDate = document.getElementById('swal-contract-sign-date').value;
                     const sDate = document.getElementById('swal-start-date').value;
                     const eDate = document.getElementById('swal-end-date').value;
-                    const dep = document.getElementById('swal-deposit').value;
+                    const dep = document.getElementById('swal-deposit').value.replace(/\./g, '');
                     const fileInput = document.getElementById('swal-files');
                     const remaining = Swal.remainingFiles || [];
 
@@ -823,7 +823,7 @@ $(document).ready(function() {
                          </div>
                          <div>
                              <label style="font-weight: 500; font-size: 13px;">Tiền đặt cọc (VNĐ):</label>
-                             <input type="number" id="swal-edit-deposit" class="form-control" value="${deposit}" style="margin-top: 4px;">
+                             <input type="text" inputmode="numeric" id="swal-edit-deposit" class="form-control price-format" value="${deposit ? deposit.toString().replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.') : ''}" style="margin-top: 4px;">
                          </div>
                          <div>
                              <label style="font-weight: 500; font-size: 13px;">Mô tả / Ghi chú:</label>
@@ -894,7 +894,7 @@ $(document).ready(function() {
                     const sign = document.getElementById('swal-edit-sign-date').value;
                     const start = document.getElementById('swal-edit-start-date').value;
                     const end = document.getElementById('swal-edit-end-date').value;
-                    const dep = document.getElementById('swal-edit-deposit').value;
+                    const dep = document.getElementById('swal-edit-deposit').value.replace(/\./g, '');
                     const desc = document.getElementById('swal-edit-description').value;
                     const fileInput = document.getElementById('swal-edit-files');
                     const remaining = Swal.remainingEditFiles || [];

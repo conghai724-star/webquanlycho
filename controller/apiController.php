@@ -317,7 +317,39 @@ class apiController extends baseController {
 
         try {
             $traderModel = new traderModel();
-            
+
+            // Tự động sinh mã tiểu thương theo market_code của chợ
+            $marketId = $data['trader_market_id'];
+            $db = database::getInstance();
+            $market = $db->selectOne("SELECT market_code FROM markets WHERE market_id = :market_id", ['market_id' => $marketId]);
+            if ($market && !empty($market['market_code'])) {
+                $cleanCode = preg_replace('/[^a-zA-Z0-9]/', '', $market['market_code']);
+                $cleanCode = strtoupper($cleanCode);
+                $prefix = 'TT-' . $cleanCode;
+
+                $sqlMax = "SELECT trader_code FROM traders 
+                           WHERE trader_market_id = :market_id AND trader_code LIKE :prefix";
+                $existingTraders = $db->select($sqlMax, [
+                    'market_id' => $marketId,
+                    'prefix' => $prefix . '-%'
+                ]);
+
+                $maxNumber = 0;
+                foreach ($existingTraders as $t) {
+                    $code = $t['trader_code'];
+                    $parts = explode('-', $code);
+                    $numPart = end($parts);
+                    if (is_numeric($numPart)) {
+                        $val = (int)$numPart;
+                        if ($val > $maxNumber) {
+                            $maxNumber = $val;
+                        }
+                    }
+                }
+                $nextNumber = $maxNumber + 1;
+                $data['trader_code'] = $prefix . '-' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+            }
+
             // Kiểm tra trùng lặp
             $this->render->abort400(!$traderModel->isTraderCodeExists($data['trader_code']), 'create', 'trader', 'Mã tiểu thương đã tồn tại trên hệ thống');
             $this->render->abort400(!$traderModel->isCccdExists($data['trader_cccd']), 'create', 'trader', 'Số CCCD đã tồn tại trên hệ thống');
@@ -1201,6 +1233,15 @@ class apiController extends baseController {
 
         try {
             $contractModel = new contractModel();
+
+            // Chặn sửa hợp đồng ở trạng thái thanh lý, chấm dứt, hết hạn
+            $contract = $contractModel->getById($contractId);
+            if ($contract) {
+                $statusId = (int)($contract['contract_status_id'] ?? 0);
+                if (in_array($statusId, [12, 13, 14])) {
+                    $this->render->apiResponse('update', 'contract', false, 'Hợp đồng đã ở trạng thái thanh lý, chấm dứt hoặc hết hạn, không được phép sửa.', 400);
+                }
+            }
             
             // Kiểm tra trùng số hợp đồng (loại trừ hợp đồng hiện tại)
             $this->render->abort400(!$contractModel->isContractNumberExists($data['contract_number'], $contractId), 'update', 'contract', 'Số hợp đồng này đã tồn tại trên hệ thống.');
@@ -2266,7 +2307,7 @@ class apiController extends baseController {
     }
     public function saveIncomeVoucher() {
         $this->incomeApiGuard();
-        $type=$_POST['type']??''; $amount=(float)str_replace([',',' '],['',''],$_POST['amount']??'0');
+        $type=$_POST['type']??''; $amount=(float)str_replace([',',' ', '.'],['','',''],$_POST['amount']??'0');
         if (!in_array($type,['income','expense'],true) || empty($_POST['voucher_date']) || trim($_POST['content']??'')==='' || $amount<=0) $this->response(['status'=>400,'message'=>'Ngày, nội dung và số tiền hợp lệ là bắt buộc.'],400);
         $marketId=$this->incomeApiMarketId(); $model=new incomeModel(); $voucherId=(int)($_POST['voucher_id']??0);
         $categoryId=(int)($_POST['category_id']??0);

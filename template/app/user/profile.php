@@ -220,12 +220,12 @@
                 error: function(xhr) {
                     Swal.close();
                     var msg = 'Không thể kết nối đến máy chủ.';
-                    if (xhr.responseJSON && xhr.responseJSON.message) {
-                        msg = xhr.responseJSON.message;
+                    if (xhr.responseJSON) {
+                        msg = xhr.responseJSON.error || xhr.responseJSON.message || msg;
                     }
                     Swal.fire({
                         icon: 'error',
-                        title: 'Lỗi hệ thống',
+                        title: 'Thông báo',
                         text: msg,
                         background: swalBg,
                         color: swalColor
