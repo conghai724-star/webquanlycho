@@ -25,8 +25,8 @@
                 <!-- Mã sạp -->
                 <div class="form-group">
                     <label class="form-label" for="stall_code" style="font-weight: 500;">Mã sạp <span style="color: var(--red)">*</span></label>
-                    <input type="text" id="stall_code" name="stall_code" class="form-control" placeholder="Ví dụ: SẠP-C02" value="<?php echo htmlspecialchars($data['stall_code'] ?? ''); ?>" required>
-                    <small style="color: var(--text-muted); font-size: 11px; margin-top: 4px; display: block;">Mã sạp duy nhất (Ví dụ: SẠP-A05).</small>
+                    <input type="text" id="stall_code" name="stall_code" class="form-control" value="<?php echo htmlspecialchars($data['stall_code'] ?? ''); ?>" style="background-color: var(--bg-surface-secondary); cursor: not-allowed;" readonly required>
+                    <small style="color: var(--text-muted); font-size: 11px; margin-top: 4px; display: block;">Mã sạp được tự động tạo theo mã chợ (Ví dụ: PKT-001).</small>
                 </div>
 
                 <!-- Phân khu -->
@@ -229,8 +229,8 @@ $(document).ready(function() {
         });
     }
 
-    // 2. Kiểm tra trùng mã sạp thời gian thực
-    setupUniqueCheck('stall_code', 'stall_code', 'Mã sạp này đã tồn tại trên hệ thống.');
+    // 2. Kiểm tra trùng mã sạp thời gian thực (Đã bỏ qua vì tự động sinh mã)
+    // setupUniqueCheck('stall_code', 'stall_code', 'Mã sạp này đã tồn tại trên hệ thống.');
 
     // 3. Tự động tính diện tích sạp khi nhập dài/rộng
     function calculateArea() {
@@ -244,6 +244,5 @@ $(document).ready(function() {
         }
     }
     $('#x, #y').on('input', calculateArea);
-});
-</script>
+});</script>
 

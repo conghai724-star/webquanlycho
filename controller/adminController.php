@@ -387,10 +387,41 @@ Class adminController extends baseController {
         $stallTypes = [];
 
         $marketId = marketService::currentMarketId();
+        $nextStallCode = '';
         try {
             $areas = $stallModel->getAreas($marketId);
             $statuses = $stallModel->getStallStatuses();
             $stallTypes = $categoryModel->getItems('stall_type');
+
+            $db = database::getInstance();
+            $market = $db->selectOne("SELECT market_code FROM markets WHERE market_id = :market_id", ['market_id' => $marketId]);
+            if ($market && !empty($market['market_code'])) {
+                $cleanCode = preg_replace('/[^a-zA-Z0-9]/', '', $market['market_code']);
+                $cleanCode = strtoupper($cleanCode);
+
+                $sqlMax = "SELECT stall_code FROM stalls s 
+                           JOIN areas a ON s.stall_area_id = a.area_id 
+                           WHERE a.area_market_id = :market_id AND s.stall_code LIKE :prefix";
+                $existingStalls = $db->select($sqlMax, [
+                    'market_id' => $marketId,
+                    'prefix' => $cleanCode . '-%'
+                ]);
+
+                $maxNumber = 0;
+                foreach ($existingStalls as $stall) {
+                    $code = $stall['stall_code'];
+                    $parts = explode('-', $code);
+                    $numPart = end($parts);
+                    if (is_numeric($numPart)) {
+                        $val = (int)$numPart;
+                        if ($val > $maxNumber) {
+                            $maxNumber = $val;
+                        }
+                    }
+                }
+                $nextNumber = $maxNumber + 1;
+                $nextStallCode = $cleanCode . '-' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+            }
         } catch (Exception $e) {
             error_log('[stall_add] EXCEPTION: ' . $e->getMessage());
         }
@@ -400,7 +431,16 @@ Class adminController extends baseController {
 
         $this->view('backend/stall/add', [
             'title'      => 'Khai Báo Sạp Chợ Mới',
-            'data'       => ['stall_area_id' => '', 'stall_code' => '', 'stall_type_id' => '', 'stall_area_size' => '', 'stall_base_price' => '', 'stall_status_id' => $emptyStatusId, 'stall_map_coordinate_x' => '', 'stall_map_coordinate_y' => ''],
+            'data'       => [
+                'stall_area_id' => '', 
+                'stall_code' => $nextStallCode, 
+                'stall_type_id' => '', 
+                'stall_area_size' => '', 
+                'stall_base_price' => '', 
+                'stall_status_id' => $emptyStatusId, 
+                'stall_map_coordinate_x' => '', 
+                'stall_map_coordinate_y' => ''
+            ],
             'areas'      => $areas,
             'statuses'   => $statuses,
             'stallTypes' => $stallTypes

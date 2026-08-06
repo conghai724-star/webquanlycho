@@ -30,6 +30,7 @@ class apiController extends baseController {
                 'addStall'                      => 'stall',
                 'editStall'                     => 'stall',
                 'deleteStall'                   => 'stall',
+                'getNextStallCode'              => 'stall',
                 'getAvailableStallsForTransfer' => 'stall',
                 
                 'getAvailableTraders'           => 'contract',
@@ -446,6 +447,59 @@ class apiController extends baseController {
     }
 
     /**
+     * API lấy mã sạp tự động tiếp theo theo khu vực/chợ (AJAX GET)
+     */
+    public function getNextStallCode() {
+        $this->render->abort405('GET', 'read', 'stall');
+        $areaId = $_GET['area_id'] ?? '';
+        if (!$areaId) {
+            $this->response(['status' => 400, 'message' => 'Khu vực không hợp lệ.'], 400);
+        }
+
+        $db = database::getInstance();
+        $area = $db->selectOne("
+            SELECT a.area_market_id, m.market_code 
+            FROM areas a 
+            JOIN markets m ON a.area_market_id = m.market_id 
+            WHERE a.area_id = :area_id
+        ", ['area_id' => $areaId]);
+
+        $nextCode = '';
+        if ($area && !empty($area['market_code'])) {
+            $cleanCode = preg_replace('/[^a-zA-Z0-9]/', '', $area['market_code']);
+            $cleanCode = strtoupper($cleanCode);
+
+            $sqlMax = "SELECT stall_code FROM stalls s 
+                       JOIN areas a ON s.stall_area_id = a.area_id 
+                       WHERE a.area_market_id = :market_id AND s.stall_code LIKE :prefix";
+            $existingStalls = $db->select($sqlMax, [
+                'market_id' => $area['area_market_id'],
+                'prefix' => $cleanCode . '-%'
+            ]);
+
+            $maxNumber = 0;
+            foreach ($existingStalls as $stall) {
+                $code = $stall['stall_code'];
+                $parts = explode('-', $code);
+                $numPart = end($parts);
+                if (is_numeric($numPart)) {
+                    $val = (int)$numPart;
+                    if ($val > $maxNumber) {
+                        $maxNumber = $val;
+                    }
+                }
+            }
+            $nextNumber = $maxNumber + 1;
+            $nextCode = $cleanCode . '-' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+        }
+
+        $this->response([
+            'status' => 200,
+            'next_code' => $nextCode
+        ]);
+    }
+
+    /**
      * API thêm sạp mới (AJAX POST)
      */
     public function addStall() {
@@ -490,6 +544,46 @@ class apiController extends baseController {
 
         try {
             $stallModel = new stallModel();
+
+            // Tự động sinh mã sạp theo market_code của chợ
+            $db = database::getInstance();
+            $area = $db->selectOne("
+                SELECT a.area_market_id, m.market_code 
+                FROM areas a 
+                JOIN markets m ON a.area_market_id = m.market_id 
+                WHERE a.area_id = :area_id
+            ", ['area_id' => $data['stall_area_id']]);
+
+            if ($area && !empty($area['market_code'])) {
+                // Loại bỏ tất cả ký tự không phải chữ và số (ví dụ: P.KT -> PKT)
+                $cleanCode = preg_replace('/[^a-zA-Z0-9]/', '', $area['market_code']);
+                $cleanCode = strtoupper($cleanCode);
+
+                // Lấy tất cả sạp hiện có của chợ có mã sạp khớp tiền tố
+                $sqlMax = "SELECT stall_code FROM stalls s 
+                           JOIN areas a ON s.stall_area_id = a.area_id 
+                           WHERE a.area_market_id = :market_id AND s.stall_code LIKE :prefix";
+                $existingStalls = $db->select($sqlMax, [
+                    'market_id' => $area['area_market_id'],
+                    'prefix' => $cleanCode . '-%'
+                ]);
+
+                $maxNumber = 0;
+                foreach ($existingStalls as $stall) {
+                    $code = $stall['stall_code'];
+                    $parts = explode('-', $code);
+                    $numPart = end($parts);
+                    if (is_numeric($numPart)) {
+                        $val = (int)$numPart;
+                        if ($val > $maxNumber) {
+                            $maxNumber = $val;
+                        }
+                    }
+                }
+                $nextNumber = $maxNumber + 1;
+                $data['stall_code'] = $cleanCode . '-' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+            }
+
             $this->render->abort400(!$stallModel->isStallCodeExists($data['stall_code']), 'create', 'stall', 'Mã sạp đã tồn tại trên hệ thống');
 
             $stallModel->create($data);
