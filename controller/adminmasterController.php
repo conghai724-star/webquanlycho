@@ -37,6 +37,7 @@ class adminmasterController extends baseController {
      */
     public function role_save() {
         $db = database::getInstance();
+        $roleId = trim($_POST['role_id'] ?? '');
         $name = trim($_POST['role_name'] ?? '');
         $description = trim($_POST['role_description'] ?? '');
         $modules = $_POST['role_modules'] ?? [];
@@ -46,31 +47,98 @@ class adminmasterController extends baseController {
             return;
         }
 
-        // Kiểm tra trùng tên vai trò
-        $exists = $db->selectOne("SELECT 1 FROM market_roles WHERE role_name = :name", ['name' => $name]);
-        if ($exists) {
-            $this->roles_with_error("Tên vai trò '{$name}' đã tồn tại.");
-            return;
-        }
-
         // Ghép mảng các module được chọn thành chuỗi phân cách bằng dấu phẩy
         $permissions = implode(',', array_filter($modules));
 
-        try {
-            $db->query("
-                INSERT INTO market_roles (role_name, role_description, role_permissions)
-                VALUES (:name, :description, :permissions)
-            ", [
+        if ($roleId > 0) {
+            // Kiểm tra trùng tên với vai trò khác
+            $exists = $db->selectOne("SELECT 1 FROM market_roles WHERE role_name = :name AND role_id != :id", [
                 'name' => $name,
-                'description' => $description,
-                'permissions' => $permissions
+                'id' => $roleId
             ]);
+            if ($exists) {
+                $this->roles_with_error("Tên vai trò '{$name}' đã tồn tại.");
+                return;
+            }
 
-            general::log('create_market_role', "Thêm vai trò chợ mới: {$name} (Quyền: {$permissions})");
-            header('Location: ' . BASE_URL . 'adminmaster/roles');
-            exit();
-        } catch (Exception $e) {
-            $this->roles_with_error("Lỗi khi thêm vai trò vào cơ sở dữ liệu: " . $e->getMessage());
+            try {
+                $db->query("
+                    UPDATE market_roles 
+                    SET role_name = :name, role_description = :description, role_permissions = :permissions 
+                    WHERE role_id = :id
+                ", [
+                    'name' => $name,
+                    'description' => $description,
+                    'permissions' => $permissions,
+                    'id' => $roleId
+                ]);
+
+                // Đồng bộ lại quyền (user_market_permissions) cho tất cả nhân viên đang mang vai trò này
+                $usersWithRole = $db->select("
+                    SELECT user_market_user_id, user_market_market_id 
+                    FROM user_markets 
+                    WHERE user_market_role_id = :role_id
+                ", ['role_id' => $roleId]);
+
+                if (!empty($usersWithRole)) {
+                    $permsArray = array_filter(explode(',', $permissions));
+                    foreach ($usersWithRole as $userAssignment) {
+                        $uid = $userAssignment['user_market_user_id'];
+                        $mid = $userAssignment['user_market_market_id'];
+
+                        // Xóa các quyền cũ của nhân viên này tại chợ này
+                        $db->query("
+                            DELETE FROM user_market_permissions 
+                            WHERE permission_user_id = :uid AND permission_market_id = :mid
+                        ", [
+                            'uid' => $uid,
+                            'mid' => $mid
+                        ]);
+
+                        // Ghi nhận quyền mới
+                        foreach ($permsArray as $permCode) {
+                            $db->query("
+                                INSERT INTO user_market_permissions (permission_user_id, permission_market_id, permission_module_code) 
+                                VALUES (:uid, :mid, :mod)
+                            ", [
+                                'uid' => $uid,
+                                'mid' => $mid,
+                                'mod' => $permCode
+                            ]);
+                        }
+                    }
+                }
+
+                general::log('edit_market_role', "Sửa vai trò chợ ID {$roleId}: {$name} (Quyền: {$permissions})");
+                header('Location: ' . BASE_URL . 'adminmaster/roles');
+                exit();
+            } catch (Exception $e) {
+                $this->roles_with_error("Lỗi khi cập nhật vai trò: " . $e->getMessage());
+            }
+        } else {
+            // Kiểm tra trùng tên vai trò
+            $exists = $db->selectOne("SELECT 1 FROM market_roles WHERE role_name = :name", ['name' => $name]);
+            if ($exists) {
+                $this->roles_with_error("Tên vai trò '{$name}' đã tồn tại.");
+                return;
+            }
+
+            try {
+                $db->query("
+                    INSERT INTO market_roles (role_name, role_description, role_permissions)
+                    VALUES (:name, :description, :permissions)
+                ", [
+                    'name' => $name,
+                    'description' => $description,
+                    'permissions' => $permissions
+                ]);
+
+                general::log('create_market_role', "Thêm vai trò chợ mới: {$name} (Quyền: {$permissions})");
+                header('Location: ' . BASE_URL . 'adminmaster/roles');
+                exit();
+            } catch (Exception $e) {
+                $this->roles_with_error("Lỗi khi thêm vai trò vào cơ sở dữ liệu: " . $e->getMessage());
+            }
         }
     }
 
@@ -82,12 +150,6 @@ class adminmasterController extends baseController {
         if (!$id) {
             header('Location: ' . BASE_URL . 'adminmaster/roles');
             exit();
-        }
-
-        // Không cho phép xóa các vai trò mặc định (2, 5, 6, 7)
-        if (in_array((int)$id, [2, 5, 6, 7])) {
-            $this->roles_with_error("Không thể xóa vai trò mặc định của hệ thống.");
-            return;
         }
 
         $db = database::getInstance();

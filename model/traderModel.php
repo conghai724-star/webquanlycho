@@ -179,7 +179,9 @@ class traderModel {
      * Lấy danh sách toàn bộ ngành hàng
      */
     public function getBusinessLines() {
-        $sql = "SELECT * FROM business_lines ORDER BY line_name ASC";
+        $sql = "SELECT * FROM business_lines";
+        $sql = marketService::applyScope($sql, '', 'line_market_id');
+        $sql .= " ORDER BY line_name ASC";
         return $this->db->select($sql);
     }
 

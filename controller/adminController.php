@@ -13,6 +13,71 @@ Class adminController extends baseController {
                 header('Location: ' . BASE_URL . 'login');
                 exit();
             }
+
+            // Phân quyền chi tiết cho tài khoản nhân viên thường (actor_code == 'admin')
+            if ($this->helper->get('actor_code') === 'admin') {
+                // Bản đồ ánh xạ Action -> Module Code tương ứng
+                $actionModuleMap = [
+                    'index'                 => 'dashboard',
+                    'dashboard'             => 'dashboard',
+                    'profile'               => 'profile',
+                    'change_password'       => 'profile',
+                    
+                    'stalls'                => 'stall',
+                    'stall_add'             => 'stall',
+                    'stall_edit'            => 'stall',
+                    'map_editor'            => 'stall',
+                    
+                    'map_tree'              => 'map_tree',
+                    
+                    'traders'               => 'trader',
+                    'trader_add'            => 'trader',
+                    'trader_edit'           => 'trader',
+                    'trader_export_excel'   => 'trader',
+                    'trader_export_pdf'     => 'trader',
+                    
+                    'contracts'             => 'contract',
+                    'contract_add'          => 'contract',
+                    'contract_print'        => 'contract',
+                    
+                    'utilities'             => 'utilities',
+                    'utility_add'           => 'utilities',
+                    
+                    'bills'                 => 'finance',
+                    'bill_add'              => 'finance',
+                    'transactions'          => 'finance',
+                    'transaction_add'       => 'finance',
+                    'income'                => 'finance',
+                    'expense'               => 'finance',
+                    'income_categories'     => 'finance',
+                    'income_report'         => 'finance',
+                    'export_s07x'           => 'finance',
+                    
+                    'foodsafety'            => 'foodsafety',
+                    'foodsafety_add'        => 'foodsafety',
+                    'foodsafety_edit'       => 'foodsafety',
+                    
+                    'categories'            => 'category',
+                ];
+
+                if (isset($actionModuleMap[$action])) {
+                    $requiredModule = $actionModuleMap[$action];
+                    if (!marketService::checkModuleAccess($requiredModule)) {
+                        // Nếu gọi qua AJAX, trả về JSON 403, ngược lại hiển thị trang lỗi 403
+                        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+                            header('Content-Type: application/json');
+                            http_response_code(403);
+                            echo json_encode(['error' => 'Bạn không có quyền truy cập chức năng này.']);
+                        } else {
+                            http_response_code(403);
+                            $this->view->app('errors/403', [
+                                'title' => '403 Forbidden - Truy cập bị từ chối'
+                            ]);
+                        }
+                        exit();
+                    }
+                }
+            }
         }
     }
 

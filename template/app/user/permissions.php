@@ -2,11 +2,17 @@
 // ponytail: Cấu hình phân quyền động được tải trực tiếp từ DB (bảng market_roles)
 $permissionConfig = [
     'modules' => [
-        'trader'     => ['name' => 'Tiểu thương', 'icon' => 'fa-users'],
-        'stall'      => ['name' => 'Sạp chợ', 'icon' => 'fa-store'],
-        'contract'   => ['name' => 'Hợp đồng', 'icon' => 'fa-file-signature'],
-        'finance'    => ['name' => 'Tài chính', 'icon' => 'fa-wallet'],
-        'foodsafety' => ['name' => 'An toàn TP', 'icon' => 'fa-shield-halved']
+        'dashboard'  => ['name' => 'Trang chủ (Dashboard)', 'icon' => 'fa-chart-pie'],
+        'profile'    => ['name' => 'Thông tin cá nhân', 'icon' => 'fa-user-gear'],
+        'stall'      => ['name' => 'Quản lý Sạp chợ', 'icon' => 'fa-store'],
+        'map_tree'   => ['name' => 'Sơ đồ Cây sạp chợ', 'icon' => 'fa-sitemap'],
+        'trader'     => ['name' => 'Quản lý Tiểu thương', 'icon' => 'fa-users'],
+        'contract'   => ['name' => 'Hợp đồng Thuê sạp', 'icon' => 'fa-file-signature'],
+        'utilities'  => ['name' => 'Chỉ số Điện & Nước', 'icon' => 'fa-bolt-lightning'],
+        'finance'    => ['name' => 'Thu - Chi tài chính', 'icon' => 'fa-wallet'],
+        'foodsafety' => ['name' => 'An toàn thực phẩm', 'icon' => 'fa-shield-halved'],
+        'logs'       => ['name' => 'Nhật ký hoạt động', 'icon' => 'fa-clock-rotate-left'],
+        'category'   => ['name' => 'Quản lý Danh mục', 'icon' => 'fa-list']
     ],
     'roles' => []
 ];

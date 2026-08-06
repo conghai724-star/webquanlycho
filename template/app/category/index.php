@@ -331,6 +331,7 @@ $(document).ready(function() {
     window.App = window.App || {};
     window.App.category = {
         switchTab: function(tabName) {
+            localStorage.setItem('active_category_tab', tabName);
             $('input[name="category-tab"][value="' + tabName + '"]').prop('checked', true);
             $('.category-section').hide();
             $('#cat-' + tabName).show();
@@ -452,6 +453,14 @@ $(document).ready(function() {
             }
         }
     };
+
+    // Khôi phục tab hoạt động gần nhất từ localStorage
+    const savedTab = localStorage.getItem('active_category_tab');
+    if (savedTab && ['area', 'stall_type', 'business_line', 'document_type'].includes(savedTab)) {
+        window.App.category.switchTab(savedTab);
+    } else {
+        window.App.category.switchTab('area');
+    }
 
     function getModalFields(type, data = null) {
         let html = '';

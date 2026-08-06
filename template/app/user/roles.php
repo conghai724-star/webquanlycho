@@ -35,16 +35,22 @@
                     <tbody>
                         <?php 
                         $modulesMapping = [
-                            'trader' => 'Tiểu thương',
-                            'stall' => 'Sạp chợ',
-                            'contract' => 'Hợp đồng',
-                            'finance' => 'Tài chính',
-                            'foodsafety' => 'An toàn TP'
+                            'dashboard' => 'Trang chủ (Dashboard)',
+                            'profile' => 'Thông tin cá nhân',
+                            'stall' => 'Quản lý Sạp chợ',
+                            'map_tree' => 'Sơ đồ Cây sạp chợ',
+                            'trader' => 'Quản lý Tiểu thương',
+                            'contract' => 'Hợp đồng Thuê sạp',
+                            'utilities' => 'Chỉ số Điện & Nước',
+                            'finance' => 'Thu - Chi tài chính',
+                            'foodsafety' => 'An toàn thực phẩm',
+                            'logs' => 'Nhật ký hoạt động',
+                            'category' => 'Quản lý Danh mục'
                         ];
                         
                         if (!empty($roles)): 
                             foreach ($roles as $role): 
-                                $isSystem = in_array((int)$role['role_id'], [2, 5, 6, 7]);
+                                $isSystem = false;
                         ?>
                                 <tr style="border-bottom: 1px solid var(--border-color);">
                                     <td style="padding: 14px 16px; color: var(--text-muted);">
@@ -86,18 +92,21 @@
                                             <?php echo $statusLabel; ?>
                                         </button>
                                     </td>
-                                    <td style="padding: 14px 16px; text-align: center; vertical-align: middle;">
-                                        <?php if ($isSystem): ?>
-                                            <span style="font-size: 11px; color: var(--text-muted); font-style: italic; background-color: #f1f2f6; padding: 2px 6px; border-radius: 4px;">Hệ thống</span>
-                                        <?php else: ?>
-                                            <a href="<?php echo BASE_URL; ?>adminmaster/role_delete/<?php echo $role['role_id']; ?>" 
-                                               class="btn btn-sm btn-ghost" 
-                                               onclick="return confirm('Bạn có chắc chắn muốn xóa vai trò này?');" 
-                                               style="color: #EA4335; padding: 4px 8px; font-size: 11px; text-decoration: none; display: inline-block;" 
-                                               title="Xóa">
-                                                <i class="fa-solid fa-trash-can"></i> Xóa
-                                            </a>
-                                        <?php endif; ?>
+                                    <td style="padding: 14px 16px; text-align: center; vertical-align: middle; white-space: nowrap;">
+                                        <a href="javascript:void(0)" 
+                                           onclick='editRole(<?php echo json_encode($role, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)' 
+                                           class="btn btn-sm btn-ghost" 
+                                           style="color: #4285F4; padding: 4px 8px; font-size: 11px; text-decoration: none; display: inline-block; margin-right: 4px;" 
+                                           title="Sửa">
+                                            <i class="fa-solid fa-pen-to-square"></i> Sửa
+                                        </a>
+                                        <a href="<?php echo BASE_URL; ?>adminmaster/role_delete/<?php echo $role['role_id']; ?>" 
+                                           class="btn btn-sm btn-ghost" 
+                                           onclick="return confirm('Bạn có chắc chắn muốn xóa vai trò này?');" 
+                                           style="color: #EA4335; padding: 4px 8px; font-size: 11px; text-decoration: none; display: inline-block;" 
+                                           title="Xóa">
+                                            <i class="fa-solid fa-trash-can"></i> Xóa
+                                        </a>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -112,14 +121,15 @@
         </div>
     </div>
 
-    <!-- CỘT 2: THÊM VAI TRÒ MỚI -->
+    <!-- CỘT 2: THÊM / SỬA VAI TRÒ -->
     <div class="card">
         <div class="card-header" style="border-bottom: 1px solid var(--border-color); padding: 16px 20px;">
-            <div class="card-title" style="font-size: 16px; font-weight: 600; margin: 0;">Thêm Vai Trò Mới</div>
+            <div class="card-title" id="form-role-title" style="font-size: 16px; font-weight: 600; margin: 0;">Thêm Vai Trò Mới</div>
         </div>
         <div class="card-body" style="padding: 20px;">
             <form id="form-add-role" action="<?php echo BASE_URL; ?>adminmaster/role_save" method="POST" data-native-submit="true">
                 <?php csrf_field(); ?>
+                <input type="hidden" id="role_id" name="role_id" value="">
                 
                 <!-- Tên vai trò -->
                 <div class="form-group" style="margin-bottom: 16px;">
@@ -147,9 +157,12 @@
                     <textarea id="role_description" name="role_description" class="form-control" rows="4" placeholder="Nhập các trách nhiệm của vai trò này..." style="resize: vertical; min-height: 80px;"><?php echo htmlspecialchars($post_data['role_description'] ?? ''); ?></textarea>
                 </div>
 
-                <div style="display: flex; justify-content: flex-end;">
-                    <button type="submit" class="btn btn-primary" style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 38px;">
-                        <i class="fa-solid fa-plus"></i> Lưu Vai Trò
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" id="btn-cancel-edit" class="btn btn-outline" style="display: none; width: 40%; height: 38px;" onclick="cancelEditRole()">
+                        Hủy
+                    </button>
+                    <button type="submit" id="btn-submit-role" class="btn btn-primary" style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 38px;">
+                        <i class="fa-solid fa-plus" id="icon-submit-role"></i> <span id="text-submit-role">Lưu Vai Trò</span>
                     </button>
                 </div>
             </form>
@@ -174,5 +187,48 @@ function toggleRoleStatus(roleId, newStatus) {
             }
         }
     });
+}
+
+function editRole(role) {
+    // Cập nhật tiêu đề và trạng thái form
+    $('#form-role-title').text('Sửa Vai Trò: ' + role.role_name);
+    $('#role_id').val(role.role_id);
+    $('#role_name').val(role.role_name);
+    $('#role_description').val(role.role_description);
+    
+    // Uncheck tất cả checkboxes trước
+    $('input[name="role_modules[]"]').prop('checked', false);
+    
+    // Check các module thuộc vai trò này
+    if (role.role_permissions) {
+        var perms = role.role_permissions.split(',');
+        perms.forEach(function(permCode) {
+            $('input[name="role_modules[]"][value="' + permCode.trim() + '"]').prop('checked', true);
+        });
+    }
+    
+    // Hiện nút Hủy và đổi text nút submit
+    $('#btn-cancel-edit').show();
+    $('#btn-submit-role').css('width', '60%');
+    $('#text-submit-role').text('Cập nhật');
+    $('#icon-submit-role').removeClass('fa-plus').addClass('fa-save');
+    
+    // Cuộn mượt đến form sửa
+    document.getElementById('form-add-role').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelEditRole() {
+    // Reset form về trạng thái Thêm mới
+    $('#form-role-title').text('Thêm Vai Trò Mới');
+    $('#role_id').val('');
+    $('#role_name').val('');
+    $('#role_description').val('');
+    $('input[name="role_modules[]"]').prop('checked', false);
+    
+    // Ẩn nút Hủy và phục hồi width nút submit
+    $('#btn-cancel-edit').hide();
+    $('#btn-submit-role').css('width', '100%');
+    $('#text-submit-role').text('Lưu Vai Trò');
+    $('#icon-submit-role').removeClass('fa-save').addClass('fa-plus');
 }
 </script>

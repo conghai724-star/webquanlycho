@@ -202,7 +202,7 @@ class stallModel {
     /**
      * Lấy danh sách sạp khả dụng để chuyển đổi
      */
-    public function getAvailableStallsForTransfer($excludeId = null) {
+    public function getAvailableStallsForTransfer($excludeId = null, $marketId = null) {
         $sql = "SELECT s.stall_id, s.stall_code, a.area_name, ss.status_name, ss.status_code AS status_code,
                        t.trader_fullname AS trader_name
                 FROM stalls s
@@ -210,7 +210,7 @@ class stallModel {
                 LEFT JOIN system_statuses ss ON s.stall_status_id = ss.status_id
                 LEFT JOIN contracts c ON c.contract_stall_id = s.stall_id AND c.contract_status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'contract' AND status_code = 'draft')
                 LEFT JOIN traders t ON c.contract_trader_id = t.trader_id
-                WHERE s.stall_id NOT IN (
+                WHERE (ss.status_code = 'empty' OR c.contract_id IS NOT NULL) AND s.stall_id NOT IN (
                     SELECT DISTINCT contract_stall_id 
                     FROM contracts 
                     WHERE contract_status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'contract' AND status_code = 'active')
@@ -220,6 +220,11 @@ class stallModel {
         if ($excludeId !== null) {
             $sql .= " AND s.stall_id != :exclude_id";
             $params['exclude_id'] = $excludeId;
+        }
+
+        if ($marketId !== null && (int)$marketId > 0) {
+            $sql .= " AND a.area_market_id = :market_id";
+            $params['market_id'] = $marketId;
         }
 
         $sql .= " ORDER BY a.area_name ASC, s.stall_code ASC";

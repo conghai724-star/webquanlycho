@@ -25,6 +25,17 @@ Class systemController extends baseController {
             exit();
         }
 
+        // Kiểm tra quyền truy cập log đối với nhân viên thường
+        if ($this->helper->get('actor_code') === 'admin' && $action === 'logs') {
+            if (!marketService::checkModuleAccess('logs')) {
+                http_response_code(403);
+                $this->view->app('errors/403', [
+                    'title' => '403 Forbidden - Truy cập bị từ chối'
+                ]);
+                exit();
+            }
+        }
+
         // Chỉ cho phép super_market (Super Admin) quản lý chợ (ngoại trừ cấu hình in hợp đồng được phép cho admin_market)
         if (strpos($action, 'market') === 0 && strpos($action, 'market_contract_') !== 0) {
             if (!$this->helper->isSuperAdmin()) {
@@ -918,61 +929,70 @@ Class systemController extends baseController {
             'delete_voucher' => 'Xóa phiếu thu chi'
         ];
 
-        // Xây dựng câu SQL truy vấn chính
-        $baseSql = " FROM system_logs l
-                    LEFT JOIN users u ON l.log_user_id = u.user_id
-                    LEFT JOIN system_actors sa ON u.user_actor_id = sa.actor_id
-                    LEFT JOIN user_markets um ON u.user_id = um.user_market_user_id
-                    WHERE 1=1";
+        // Xây dựng câu SQL truy vấn chính và thực hiện truy vấn nếu có bộ lọc hoặc trang
+        $hasFilter = isset($_GET['q']) || isset($_GET['action_type']) || isset($_GET['page']);
 
-        $params = [];
+        if (!$hasFilter) {
+            $logs = [];
+            $totalRecords = 0;
+            $totalPages = 0;
+            $page = 1;
+        } else {
+            $baseSql = " FROM system_logs l
+                        LEFT JOIN users u ON l.log_user_id = u.user_id
+                        LEFT JOIN system_actors sa ON u.user_actor_id = sa.actor_id
+                        LEFT JOIN user_markets um ON u.user_id = um.user_market_user_id
+                        WHERE 1=1";
 
-        $actorCode = $this->helper->get('actor_code');
-        $currentUserId = $this->helper->get('user_id');
+            $params = [];
 
-        // Ràng buộc quyền xem nhật ký theo cấp độ tài khoản
-        if ($actorCode === 'admin') {
-            // Admin cấp 3: chỉ xem logs của chính mình
-            $baseSql .= " AND l.log_user_id = :current_id";
-            $params['current_id'] = $currentUserId;
-        } elseif (!$isSuper) {
-            // Admin cấp 2: xem logs bản thân + nhân viên thuộc chợ mình quản lý
-            $baseSql .= " AND (
-                l.log_user_id = :manager_id
-                OR um.user_market_market_id IN (
-                    SELECT user_market_market_id FROM user_markets WHERE user_market_user_id = :manager_id
-                )
-            )";
-            $params['manager_id'] = $currentUserId;
+            $actorCode = $this->helper->get('actor_code');
+            $currentUserId = $this->helper->get('user_id');
+
+            // Ràng buộc quyền xem nhật ký theo cấp độ tài khoản
+            if ($actorCode === 'admin') {
+                // Admin cấp 3: chỉ xem logs của chính mình
+                $baseSql .= " AND l.log_user_id = :current_id";
+                $params['current_id'] = $currentUserId;
+            } elseif (!$isSuper) {
+                // Admin cấp 2: xem logs bản thân + nhân viên thuộc chợ mình quản lý
+                $baseSql .= " AND (
+                    l.log_user_id = :manager_id
+                    OR um.user_market_market_id IN (
+                        SELECT user_market_market_id FROM user_markets WHERE user_market_user_id = :manager_id
+                    )
+                )";
+                $params['manager_id'] = $currentUserId;
+            }
+
+            // Lọc theo Loại thao tác
+            if ($actionType !== '') {
+                $baseSql .= " AND l.log_action_type = :action_type";
+                $params['action_type'] = $actionType;
+            }
+
+            // Tìm kiếm theo từ khóa (tên, mô tả)
+            if ($search !== '') {
+                $baseSql .= " AND (u.user_username LIKE :search OR u.user_fullname LIKE :search OR l.log_action_description LIKE :search OR l.log_ip_address LIKE :search)";
+                $params['search'] = "%{$search}%";
+            }
+
+            // Đếm tổng số dòng
+            $countResult = $db->selectOne("SELECT COUNT(DISTINCT l.log_id) AS total" . $baseSql, $params);
+            $totalRecords = (int)($countResult['total'] ?? 0);
+
+            // Phân trang
+            $limit = 15;
+            $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+            if ($page < 1) $page = 1;
+            $totalPages = ceil($totalRecords / $limit);
+            if ($page > $totalPages && $totalPages > 0) $page = $totalPages;
+            $offset = ($page - 1) * $limit;
+
+            // Truy vấn danh sách
+            $sql = "SELECT DISTINCT l.*, u.user_username AS username, u.user_fullname AS fullname, sa.actor_name" . $baseSql . " ORDER BY l.log_id DESC LIMIT $offset, $limit";
+            $logs = empty($params) ? $db->select($sql) : $db->select($sql, $params);
         }
-
-        // Lọc theo Loại thao tác
-        if ($actionType !== '') {
-            $baseSql .= " AND l.log_action_type = :action_type";
-            $params['action_type'] = $actionType;
-        }
-
-        // Tìm kiếm theo từ khóa (tên, mô tả)
-        if ($search !== '') {
-            $baseSql .= " AND (u.user_username LIKE :search OR u.user_fullname LIKE :search OR l.log_action_description LIKE :search OR l.log_ip_address LIKE :search)";
-            $params['search'] = "%{$search}%";
-        }
-
-        // Đếm tổng số dòng
-        $countResult = $db->selectOne("SELECT COUNT(DISTINCT l.log_id) AS total" . $baseSql, $params);
-        $totalRecords = (int)($countResult['total'] ?? 0);
-
-        // Phân trang
-        $limit = 15;
-        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-        if ($page < 1) $page = 1;
-        $totalPages = ceil($totalRecords / $limit);
-        if ($page > $totalPages && $totalPages > 0) $page = $totalPages;
-        $offset = ($page - 1) * $limit;
-
-        // Truy vấn danh sách
-        $sql = "SELECT DISTINCT l.*, u.user_username AS username, u.user_fullname AS fullname, sa.actor_name" . $baseSql . " ORDER BY l.log_id DESC LIMIT $offset, $limit";
-        $logs = empty($params) ? $db->select($sql) : $db->select($sql, $params);
 
         $this->view->app("user/logs", [
             'title' => 'Nhật ký hoạt động',
@@ -982,7 +1002,8 @@ Class systemController extends baseController {
             'selectedActionType' => $actionType,
             'page' => $page,
             'totalPages' => $totalPages,
-            'totalRecords' => $totalRecords
+            'totalRecords' => $totalRecords,
+            'hasFilter' => $hasFilter
         ]);
     }
 }

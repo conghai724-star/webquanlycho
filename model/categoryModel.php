@@ -59,6 +59,12 @@ class categoryModel {
         $sql = "SELECT * FROM `{$table}`";
         if ($categoryKey === 'area') {
             $sql = marketService::applyScope($sql, '', 'area_market_id');
+        } elseif ($categoryKey === 'stall_type') {
+            $sql = marketService::applyScope($sql, '', 'stall_type_market_id');
+        } elseif ($categoryKey === 'business_line') {
+            $sql = marketService::applyScope($sql, '', 'line_market_id');
+        } elseif ($categoryKey === 'document_type') {
+            $sql = marketService::applyScope($sql, '', 'doc_type_market_id');
         }
         $sql .= " ORDER BY {$orderBy}";
         return $this->db->select($sql);
@@ -74,6 +80,12 @@ class categoryModel {
         $sql = "SELECT * FROM `{$table}` WHERE `{$primaryKeyColumn}` = :id";
         if ($categoryKey === 'area') {
             $sql = marketService::applyScope($sql, '', 'area_market_id');
+        } elseif ($categoryKey === 'stall_type') {
+            $sql = marketService::applyScope($sql, '', 'stall_type_market_id');
+        } elseif ($categoryKey === 'business_line') {
+            $sql = marketService::applyScope($sql, '', 'line_market_id');
+        } elseif ($categoryKey === 'document_type') {
+            $sql = marketService::applyScope($sql, '', 'doc_type_market_id');
         }
         return $this->db->selectOne($sql, ['id' => $id]);
     }
@@ -89,6 +101,21 @@ class categoryModel {
                 $data['area_market_id'] = marketService::currentMarketId();
             }
             marketService::checkWritePermission($data['area_market_id']);
+        } elseif ($categoryKey === 'stall_type') {
+            if (empty($data['stall_type_market_id'])) {
+                $data['stall_type_market_id'] = marketService::currentMarketId();
+            }
+            marketService::checkWritePermission($data['stall_type_market_id']);
+        } elseif ($categoryKey === 'business_line') {
+            if (empty($data['line_market_id'])) {
+                $data['line_market_id'] = marketService::currentMarketId();
+            }
+            marketService::checkWritePermission($data['line_market_id']);
+        } elseif ($categoryKey === 'document_type') {
+            if (empty($data['doc_type_market_id'])) {
+                $data['doc_type_market_id'] = marketService::currentMarketId();
+            }
+            marketService::checkWritePermission($data['doc_type_market_id']);
         }
 
         $fields = array_keys($data);
@@ -117,6 +144,33 @@ class categoryModel {
             // Nếu muốn cập nhật market_id mới, kiểm tra quyền đối với chợ mới
             if (isset($data['area_market_id'])) {
                 marketService::checkWritePermission($data['area_market_id']);
+            }
+        } elseif ($categoryKey === 'stall_type') {
+            $oldItem = $this->getItemById('stall_type', $id);
+            if (!$oldItem) {
+                throw new Exception("Loại sạp không tồn tại hoặc bạn không có quyền truy cập.");
+            }
+            marketService::checkWritePermission($oldItem['stall_type_market_id']);
+            if (isset($data['stall_type_market_id'])) {
+                marketService::checkWritePermission($data['stall_type_market_id']);
+            }
+        } elseif ($categoryKey === 'business_line') {
+            $oldItem = $this->getItemById('business_line', $id);
+            if (!$oldItem) {
+                throw new Exception("Ngành hàng không tồn tại hoặc bạn không có quyền truy cập.");
+            }
+            marketService::checkWritePermission($oldItem['line_market_id']);
+            if (isset($data['line_market_id'])) {
+                marketService::checkWritePermission($data['line_market_id']);
+            }
+        } elseif ($categoryKey === 'document_type') {
+            $oldItem = $this->getItemById('document_type', $id);
+            if (!$oldItem) {
+                throw new Exception("Loại giấy tờ không tồn tại hoặc bạn không có quyền truy cập.");
+            }
+            marketService::checkWritePermission($oldItem['doc_type_market_id']);
+            if (isset($data['doc_type_market_id'])) {
+                marketService::checkWritePermission($data['doc_type_market_id']);
             }
         }
 
@@ -152,6 +206,12 @@ class categoryModel {
                 throw new Exception("Không thể xóa khu vực này vì đang có sạp chợ trực thuộc.");
             }
         } elseif ($categoryKey === 'stall_type') {
+            $oldItem = $this->getItemById('stall_type', $id);
+            if (!$oldItem) {
+                throw new Exception("Loại sạp không tồn tại hoặc bạn không có quyền truy cập.");
+            }
+            marketService::checkWritePermission($oldItem['stall_type_market_id']);
+
             // Kiểm tra xem có sạp nào đang dùng loại sạp này không
             $sqlCheck = "SELECT COUNT(*) as count FROM stalls WHERE stall_type_id = :id";
             $res = $this->db->selectOne($sqlCheck, ['id' => $id]);
@@ -159,6 +219,12 @@ class categoryModel {
                 throw new Exception("Không thể xóa loại sạp này vì đang có sạp chợ sử dụng.");
             }
         } elseif ($categoryKey === 'business_line') {
+            $oldItem = $this->getItemById('business_line', $id);
+            if (!$oldItem) {
+                throw new Exception("Ngành hàng không tồn tại hoặc bạn không có quyền truy cập.");
+            }
+            marketService::checkWritePermission($oldItem['line_market_id']);
+
             // Kiểm tra xem có tiểu thương nào thuộc ngành hàng này không
             $sqlCheck = "SELECT COUNT(*) as count FROM traders WHERE trader_business_line_id = :id AND trader_status_id != 99";
             $res = $this->db->selectOne($sqlCheck, ['id' => $id]);
@@ -166,6 +232,12 @@ class categoryModel {
                 throw new Exception("Không thể xóa ngành hàng này vì đang có tiểu thương đăng ký kinh doanh.");
             }
         } elseif ($categoryKey === 'document_type') {
+            $oldItem = $this->getItemById('document_type', $id);
+            if (!$oldItem) {
+                throw new Exception("Loại giấy tờ không tồn tại hoặc bạn không có quyền truy cập.");
+            }
+            marketService::checkWritePermission($oldItem['doc_type_market_id']);
+
             // Kiểm tra xem có giấy tờ nào thuộc loại giấy tờ này không
             $sqlCheck = "SELECT COUNT(*) as count FROM trader_attp WHERE attp_doc_type_id = :id AND attp_status_id != 99";
             $res = $this->db->selectOne($sqlCheck, ['id' => $id]);
@@ -187,6 +259,23 @@ class categoryModel {
         
         $sql = "SELECT COUNT(*) as count FROM `{$table}` WHERE `{$field}` = :value";
         $params = ['value' => $value];
+
+        // Bổ sung lọc theo market_id tương ứng
+        $marketId = marketService::currentMarketId();
+        if ($categoryKey === 'area') {
+            $sql .= " AND area_market_id = :market_id";
+            $params['market_id'] = $marketId;
+        } elseif ($categoryKey === 'stall_type') {
+            $sql .= " AND stall_type_market_id = :market_id";
+            $params['market_id'] = $marketId;
+        } elseif ($categoryKey === 'business_line') {
+            $sql .= " AND line_market_id = :market_id";
+            $params['market_id'] = $marketId;
+        } elseif ($categoryKey === 'document_type') {
+            $sql .= " AND doc_type_market_id = :market_id";
+            $params['market_id'] = $marketId;
+        }
+
         if ($excludeId !== null) {
             $sql .= " AND `{$primaryKeyColumn}` != :excludeId";
             $params['excludeId'] = $excludeId;

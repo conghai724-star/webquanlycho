@@ -9,7 +9,10 @@ spl_autoload_register(function ($className) {
         __SITE_PATH . '/model/' . $className . '.php',
         __SITE_PATH . '/model/' . strtolower($className) . '.php',
         __SITE_PATH . '/model/' . strtolower($className) . '.class.php',
+        __SITE_PATH . '/application/' . $className . '.class.php',
         __SITE_PATH . '/application/' . strtolower($className) . '.class.php',
+        __SITE_PATH . '/application/' . $className . '.php',
+        __SITE_PATH . '/application/' . strtolower($className) . '.php',
     ];
 
     foreach ($candidates as $file) {

@@ -131,9 +131,14 @@
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="5" style="text-align: center; padding: 40px; color: #7f8c8d;">
-                                <i class="fa-regular fa-folder-open" style="font-size: 48px; margin-bottom: 12px; color: #bdc3c7;"></i>
-                                <p style="font-size: 16px; margin: 0;">Không tìm thấy nhật ký hoạt động nào phù hợp.</p>
+                            <td colspan="5" style="text-align: center; padding: 50px 20px; color: #7f8c8d;">
+                                <i class="fa-solid fa-magnifying-glass" style="font-size: 48px; margin-bottom: 12px; color: #bdc3c7;"></i>
+                                <?php if (isset($hasFilter) && !$hasFilter): ?>
+                                    <p style="font-size: 15px; margin: 0; font-weight: 500; color: var(--text-heading);">Nhập từ khóa tìm kiếm hoặc chọn loại thao tác để xem nhật ký hoạt động.</p>
+                                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Tìm kiếm theo tên tài khoản, tên nhân viên, nội dung hoạt động hoặc IP kết nối.</p>
+                                <?php else: ?>
+                                    <p style="font-size: 15px; margin: 0; font-weight: 500;">Không tìm thấy nhật ký hoạt động nào phù hợp.</p>
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endif; ?>

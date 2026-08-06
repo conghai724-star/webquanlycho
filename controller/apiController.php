@@ -4,24 +4,72 @@
  */
 class apiController extends baseController {
 
-    // public function __construct() {
-    //     // Một số API công khai cho phép khách vãng lai truy cập (Sơ đồ cây sạp chợ)
-    //     $publicActions = ['getStallTree', 'getStallDetails', 'changeMarketScope'];
-        
-    //     $url = $_GET['url'] ?? '';
-    //     $parts = explode('/', rtrim($url, '/'));
-    //     $action = $parts[1] ?? 'index';
+    public function __construct($registry) {
+        parent::__construct($registry);
 
-    //     if (in_array($action, $publicActions)) {
-    //         return;
-    //     }
+        $action = isset($this->registry->router->action) ? $this->registry->router->action : '';
 
-    //     // Chỉ cho phép truy cập API khi đã đăng nhập với quyền admin (user_group = 1 hoặc 2)
-    //     $group = session::get('user_group');
-    //     if (!session::isLoggedIn() || ($group != 1 && $group != 2)) {
-    //         $this->response(['error' => 'Bạn không có quyền thực hiện hành động này.'], 403);
-    //     }
-    // }
+        // Một số API công khai hoặc chỉ check login chung
+        $publicActions = ['login', 'checkSession'];
+        if (in_array($action, $publicActions)) {
+            return;
+        }
+
+        // Bắt buộc đăng nhập cho toàn bộ các API còn lại
+        if (!$this->helper->isLoggedIn()) {
+            $this->response(['error' => 'Unauthorized'], 401);
+        }
+
+        // Phân quyền chi tiết cho tài khoản nhân viên thường (actor_code == 'admin')
+        if ($this->helper->get('actor_code') === 'admin') {
+            $actionModuleMap = [
+                'addTrader'                     => 'trader',
+                'editTrader'                    => 'trader',
+                'deleteTrader'                  => 'trader',
+                
+                'addStall'                      => 'stall',
+                'editStall'                     => 'stall',
+                'deleteStall'                   => 'stall',
+                'getAvailableStallsForTransfer' => 'stall',
+                
+                'getAvailableTraders'           => 'contract',
+                'assignStall'                   => 'contract',
+                'transferStall'                 => 'contract',
+                'addContract'                   => 'contract',
+                'editContract'                  => 'contract',
+                'deleteContract'                => 'contract',
+                
+                'addUtility'                    => 'utilities',
+                'editUtility'                   => 'utilities',
+                
+                'addBill'                       => 'finance',
+                'editBill'                      => 'finance',
+                'deleteBill'                    => 'finance',
+                'recordPayment'                 => 'finance',
+                'addIncome'                     => 'finance',
+                'editIncome'                    => 'finance',
+                'deleteIncome'                  => 'finance',
+                'addExpense'                    => 'finance',
+                'editExpense'                   => 'finance',
+                'deleteExpense'                 => 'finance',
+                
+                'addFoodSafety'                 => 'foodsafety',
+                'editFoodSafety'                => 'foodsafety',
+                'deleteFoodSafety'              => 'foodsafety',
+                
+                'addCategory'                   => 'category',
+                'editCategory'                  => 'category',
+                'deleteCategory'                => 'category',
+            ];
+            
+            if (isset($actionModuleMap[$action])) {
+                $requiredModule = $actionModuleMap[$action];
+                if (!marketService::checkModuleAccess($requiredModule)) {
+                    $this->response(['error' => 'Bạn không có quyền thực hiện thao tác này.'], 403);
+                }
+            }
+        }
+    }
 
     /**
      * Phương thức index bắt buộc của baseController
@@ -82,7 +130,9 @@ class apiController extends baseController {
 		}
 
 		if (!$passwordOk) {
+			$_SESSION['user_id'] = $row['user_id'];
 			general::log('login_failed', "Đăng nhập thất bại. Sai mật khẩu cho tài khoản: {$username}");
+			unset($_SESSION['user_id']);
 			$result["status"] = "500";
 			$result['message'] = 'Thông tin tài khoản hoặc mật khẩu không chính xác';
 			echo json_encode($result);
@@ -91,7 +141,9 @@ class apiController extends baseController {
 
 		// Chỉ cho phép đăng nhập nếu có vai trò phù hợp (admin, admin_market, super_market)
 		if (!in_array($row['actor_code'] ?? 'admin', ['admin', 'admin_market', 'super_market'])) {
+			$_SESSION['user_id'] = $row['user_id'];
 			general::log('login_failed', "Đăng nhập thất bại. Tài khoản không có quyền truy cập trang quản trị: {$username}");
+			unset($_SESSION['user_id']);
 			$result["status"] = "500";
 			$result['message'] = 'Tài khoản không có quyền truy cập trang quản trị này';
 			echo json_encode($result);
@@ -550,8 +602,9 @@ class apiController extends baseController {
     public function getAvailableStallsForTransfer() {
         try {
             $excludeId = $_GET['exclude_id'] ?? null;
+            $marketId = $_SESSION['active_market_id'] ?? null;
             $stallModel = new stallModel();
-            $stalls = $stallModel->getAvailableStallsForTransfer($excludeId);
+            $stalls = $stallModel->getAvailableStallsForTransfer($excludeId, $marketId);
             $this->response($stalls);
         } catch (Exception $e) {
             $this->response(['error' => $e->getMessage()], 500);

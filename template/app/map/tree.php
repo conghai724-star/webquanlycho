@@ -214,20 +214,6 @@ $activeMarketId = marketService::currentMarketId();
         <h2 style="margin: 0; font-size: 20px; font-weight: 600; color: var(--text-heading);">Sơ đồ Cây sạp chợ</h2>
         <p style="color: var(--text-muted); font-size: 13px; margin: 4px 0 0;">Tra cứu danh sách sạp trực quan theo mô hình phân cấp Khu - Dãy - Lô.</p>
     </div>
-    
-    <!-- Bộ chọn chợ cho Super Admin hoặc nhân viên có quyền truy cập nhiều chợ -->
-    <?php if (count($accessibleMarkets) > 1): ?>
-        <div style="display: flex; align-items: center; gap: 8px;">
-            <label style="font-weight: 500; font-size: 13px; margin: 0; color: var(--text-heading);">Chọn Chợ:</label>
-            <select id="market-scope-selector" class="form-control" style="width: 220px; height: 35px; font-size: 13px;" onchange="changeMarketScope(this.value)">
-                <?php foreach ($accessibleMarkets as $m): ?>
-                    <option value="<?php echo $m['id']; ?>" <?php echo $m['id'] == $activeMarketId ? 'selected' : ''; ?>>
-                        <?php echo htmlspecialchars($m['name']); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-    <?php endif; ?>
 </div>
 
 <div class="tree-map-container">
