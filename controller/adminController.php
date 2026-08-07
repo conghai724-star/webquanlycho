@@ -501,13 +501,14 @@ Class adminController extends baseController {
         $emptyStalls = [];
         
         try {
+            $marketId = marketService::currentMarketId();
             $traderModel = new traderModel();
             // Lấy tiểu thương hoạt động
-            $traders = $traderModel->getAllTraders('', '', 'active');
+            $traders = $traderModel->getAllTraders('', '', 'active', $marketId);
             
             $stallModel = new stallModel();
             // Lấy các sạp trống
-            $emptyStalls = $stallModel->getAll(null, 'empty');
+            $emptyStalls = $stallModel->getAll(null, 'empty', null, $marketId);
         } catch (Exception $e) {
             error_log('[contract_add] EXCEPTION: ' . $e->getMessage());
         }
