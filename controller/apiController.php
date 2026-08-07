@@ -547,12 +547,17 @@ class apiController extends baseController {
             $area_size = (float)$x * (float)$y;
         }
 
+        $basePrice = $_POST['base_price'] ?? '';
+        if (is_string($basePrice)) {
+            $basePrice = str_replace('.', '', $basePrice);
+        }
+
         $data = [
             'stall_area_id'       => $_POST['area_id'] ?? '',
             'stall_code'          => $_POST['stall_code'] ?? '',
             'stall_type_id'       => $_POST['stall_type_id'] ?? '',
             'stall_area_size'     => $area_size,
-            'stall_base_price'    => $_POST['base_price'] ?? '',
+            'stall_base_price'    => $basePrice,
             'stall_status_id'     => $_POST['status'] ?: $emptyStatusId,
             'stall_map_coordinate_x' => is_numeric($x) ? (float)$x : null,
             'stall_map_coordinate_y' => is_numeric($y) ? (float)$y : null
@@ -642,12 +647,17 @@ class apiController extends baseController {
             $area_size = (float)$x * (float)$y;
         }
 
+        $basePrice = $_POST['base_price'] ?? '';
+        if (is_string($basePrice)) {
+            $basePrice = str_replace('.', '', $basePrice);
+        }
+
         $data = [
             'stall_area_id'       => $_POST['area_id'] ?? '',
             'stall_code'          => $_POST['stall_code'] ?? '',
             'stall_type_id'       => $_POST['stall_type_id'] ?? '',
             'stall_area_size'     => $area_size,
-            'stall_base_price'    => $_POST['base_price'] ?? '',
+            'stall_base_price'    => $basePrice,
             'stall_status_id'     => $_POST['status'] ?: $emptyStatusId,
             'stall_map_coordinate_x' => is_numeric($x) ? (float)$x : null,
             'stall_map_coordinate_y' => is_numeric($y) ? (float)$y : null
@@ -941,6 +951,11 @@ class apiController extends baseController {
     public function addContract() {
         $this->render->abort405('POST', 'create', 'contract');
 
+        $deposit = $_POST['deposit'] ?? $_POST['contract_deposit'] ?? 0;
+        if (is_string($deposit)) {
+            $deposit = str_replace('.', '', $deposit);
+        }
+
         $data = [
             'contract_trader_id'     => $_POST['trader_id'] ?? $_POST['contract_trader_id'] ?? '',
             'contract_stall_id'      => $_POST['stall_id'] ?? $_POST['contract_stall_id'] ?? '',
@@ -950,7 +965,7 @@ class apiController extends baseController {
             'contract_sign_date'     => $_POST['contract_sign_date'] ?? $_POST['sign_date'] ?? '',
             'contract_start_date'    => $_POST['start_date'] ?? $_POST['contract_start_date'] ?? '',
             'contract_end_date'      => $_POST['end_date'] ?? $_POST['contract_end_date'] ?? '',
-            'contract_deposit'       => $_POST['deposit'] ?? $_POST['contract_deposit'] ?? 0,
+            'contract_deposit'       => $deposit,
         ];
 
         // Xác thực dữ liệu
@@ -1023,12 +1038,17 @@ class apiController extends baseController {
         $this->render->abort400(['contract_id', 'contract_number', 'contract_sign_date', 'contract_start_date', 'contract_end_date', 'contract_deposit'], 'update', 'contract');
 
         $contractId = $_POST['contract_id'];
+        $deposit = $_POST['contract_deposit'] ?? 0;
+        if (is_string($deposit)) {
+            $deposit = str_replace('.', '', $deposit);
+        }
+
         $data = [
             'contract_number'     => $_POST['contract_number'],
             'contract_sign_date'  => $_POST['contract_sign_date'],
             'contract_start_date' => $_POST['contract_start_date'],
             'contract_end_date'   => $_POST['contract_end_date'],
-            'contract_deposit'    => $_POST['contract_deposit']
+            'contract_deposit'    => $deposit
         ];
 
         try {
@@ -1212,13 +1232,18 @@ class apiController extends baseController {
         $this->render->abort400('contract_id', 'update', 'contract');
 
         $contractId = $_POST['contract_id'];
+        $deposit = $_POST['contract_deposit'] ?? $_POST['deposit'] ?? 0;
+        if (is_string($deposit)) {
+            $deposit = str_replace('.', '', $deposit);
+        }
+
         $data = [
             'contract_number'     => $_POST['contract_number'] ?? '',
             'contract_name'       => $_POST['contract_name'] ?? $_POST['name'] ?? '',
             'contract_sign_date'  => $_POST['contract_sign_date'] ?? $_POST['sign_date'] ?? '',
             'contract_start_date' => $_POST['contract_start_date'] ?? $_POST['start_date'] ?? '',
             'contract_end_date'   => $_POST['contract_end_date'] ?? $_POST['end_date'] ?? '',
-            'contract_deposit'    => $_POST['contract_deposit'] ?? $_POST['deposit'] ?? 0,
+            'contract_deposit'    => $deposit,
             'contract_description'=> $_POST['contract_description'] ?? $_POST['description'] ?? '',
         ];
 
