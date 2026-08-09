@@ -51,8 +51,8 @@
                         <option value="">-- Chọn sạp đang trống --</option>
                         <?php if (!empty($emptyStalls)): ?>
                             <?php foreach ($emptyStalls as $stall): ?>
-                                <option value="<?php echo $stall['stall_id']; ?>" data-price="<?php echo $stall['stall_base_price']; ?>">
-                                    <?php echo htmlspecialchars($stall['stall_code']); ?> (<?php echo htmlspecialchars($stall['area_name']); ?> - <?php echo number_format($stall['stall_area_size'], 1); ?> m² - <?php echo number_format($stall['stall_base_price'], 0, ',', '.'); ?> đ/tháng)
+                                <option value="<?php echo $stall['stall_id']; ?>" data-price="<?php echo $stall['stall_base_price']; ?>" data-area="<?php echo $stall['stall_area_size']; ?>">
+                                    <?php echo htmlspecialchars($stall['stall_code']); ?> (<?php echo htmlspecialchars($stall['area_name']); ?> - <?php echo number_format($stall['stall_area_size'], 1); ?> m² - <?php echo number_format($stall['stall_base_price'], 0, ',', '.'); ?> đ/m²)
                                 </option>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -240,9 +240,12 @@ $(document).ready(function() {
         if (!displayInput || !depositInput) return;
 
         if (selectedOpt && selectedOpt.value) {
-            const price = parseFloat(selectedOpt.dataset.price) || 0;
-            displayInput.value = price.toLocaleString('vi-VN') + ' đ';
-            depositInput.value = price * 2;
+            const unitPrice = parseFloat(selectedOpt.dataset.price) || 0;
+            const area = parseFloat(selectedOpt.dataset.area) || 0;
+            const monthlyRent = area > 0 ? Math.round(unitPrice * area) : unitPrice;
+
+            displayInput.value = monthlyRent.toLocaleString('vi-VN') + ' đ/tháng' + (area > 0 ? ' (' + unitPrice.toLocaleString('vi-VN') + ' đ/m²)' : '');
+            depositInput.value = monthlyRent * 2;
             $(depositInput).trigger('input');
         } else {
             displayInput.value = '0';

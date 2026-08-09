@@ -22,11 +22,20 @@ if (!empty($stalls)):
             </td>
             <!-- Diện tích -->
             <td style="padding: 14px 16px; font-weight: 600; color: var(--text-heading);">
-                <?php echo htmlspecialchars($stall['stall_area_size']); ?> m²
+                <?php echo htmlspecialchars((float)$stall['stall_area_size']); ?> m²
             </td>
-            <!-- Đơn giá thuê -->
-            <td style="padding: 14px 16px; font-weight: 600; color: var(--primary);">
+            <!-- Giá / m² -->
+            <td style="padding: 14px 16px; color: var(--text-muted);">
                 <?php echo number_format($stall['stall_base_price'], 0, ',', '.'); ?> đ
+            </td>
+            <!-- Đơn giá thuê / tháng -->
+            <td style="padding: 14px 16px; font-weight: 600; color: var(--primary);">
+                <?php 
+                $area = (float)($stall['stall_area_size'] ?? 0);
+                $unitPrice = (float)($stall['stall_base_price'] ?? 0);
+                $monthlyRent = $area > 0 ? round($unitPrice * $area) : $unitPrice;
+                echo number_format($monthlyRent, 0, ',', '.'); 
+                ?> đ
             </td>
             <!-- Tiểu thương -->
             <td style="padding: 14px 16px;">
@@ -104,7 +113,7 @@ if (!empty($stalls)):
 else: 
 ?>
     <tr>
-        <td colspan="8" style="padding: 30px; text-align: center; color: var(--text-muted);">
+        <td colspan="9" style="padding: 30px; text-align: center; color: var(--text-muted);">
             Không có dữ liệu sạp.
         </td>
     </tr>

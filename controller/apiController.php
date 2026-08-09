@@ -796,7 +796,7 @@ class apiController extends baseController {
                 'contract_number' => 'HĐ-GAN-' . date('Ymd') . '-' . rand(100, 999),
                 'contract_start_date' => date('Y-m-d'),
                 'contract_end_date' => date('Y-m-d', strtotime('+1 year')),
-                'contract_deposit' => $stall['stall_base_price'] * 2,
+                'contract_deposit' => ((float)($stall['stall_area_size'] ?? 0) > 0 ? (float)$stall['stall_base_price'] * (float)$stall['stall_area_size'] : (float)$stall['stall_base_price']) * 2,
                 'contract_status_id' => $draftStatusId
             ];
 

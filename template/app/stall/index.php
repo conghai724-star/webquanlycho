@@ -117,13 +117,14 @@ $emptyPercent = $totalStalls > 0 ? round(($emptyStalls / $totalStalls) * 100) : 
             <table class="table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
                 <thead>
                     <tr style="text-align: left; background-color: var(--bg-surface-secondary); border-bottom: 1px solid var(--border-color);">
-                        <th style="padding: 12px 16px; width: 120px;">Mã sạp</th>
-                        <th style="padding: 12px 16px; width: 160px;">Phân khu</th>
-                        <th style="padding: 12px 16px; width: 160px;">Vị trí cụ thể</th>
-                        <th style="padding: 12px 16px; width: 110px;">Diện tích</th>
-                        <th style="padding: 12px 16px; width: 160px;">Đơn giá thuê / tháng</th>
+                        <th style="padding: 12px 16px; width: 110px;">Mã sạp</th>
+                        <th style="padding: 12px 16px; width: 150px;">Phân khu</th>
+                        <th style="padding: 12px 16px; width: 140px;">Vị trí cụ thể</th>
+                        <th style="padding: 12px 16px; width: 95px;">Diện tích</th>
+                        <th style="padding: 12px 16px; width: 115px;">Giá / m²</th>
+                        <th style="padding: 12px 16px; width: 150px;">Đơn giá thuê / tháng</th>
                         <th style="padding: 12px 16px;">Tiểu thương thuê</th>
-                        <th style="padding: 12px 16px; width: 120px;">Trạng thái</th>
+                        <th style="padding: 12px 16px; width: 110px;">Trạng thái</th>
                         <th style="padding: 12px 16px; text-align: right; width: 130px;">Thao tác</th>
                     </tr>
                 </thead>

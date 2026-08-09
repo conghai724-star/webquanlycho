@@ -46,7 +46,15 @@
                 <?php echo $warningBadge ?: '<span style="color: var(--text-muted); font-size: 11px;">-</span>'; ?>
             </td>
             <td style="padding: 14px 16px; font-weight: 600; color: var(--primary);">
-                <?php echo number_format($contract['price'], 0, ',', '.'); ?> đ
+                <?php 
+                $areaSize = (float)($contract['stall_area_size'] ?? 0);
+                $unitPrice = (float)($contract['price'] ?? 0);
+                $monthlyRent = $areaSize > 0 ? round($unitPrice * $areaSize) : $unitPrice;
+                echo number_format($monthlyRent, 0, ',', '.'); 
+                ?> đ
+                <?php if ($areaSize > 0): ?>
+                    <br><small style="color: var(--text-muted); font-size: 11px; font-weight: normal;"><?php echo number_format($unitPrice, 0, ',', '.'); ?> đ/m²</small>
+                <?php endif; ?>
             </td>
             <td style="padding: 14px 16px; color: var(--text-muted);">
                 <?php echo number_format($contract['contract_deposit'], 0, ',', '.'); ?> đ

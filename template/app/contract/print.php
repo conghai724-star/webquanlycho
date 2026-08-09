@@ -132,8 +132,16 @@ $end_ts = strtotime($contract['contract_end_date']);
 $sign_ts = !empty($contract['contract_sign_date']) ? strtotime($contract['contract_sign_date']) : $start_ts;
 $months = calculateMonths($contract['contract_start_date'], $contract['contract_end_date']);
 
-$price_per_m2 = $contract['stall_area_size'] > 0 ? round($contract['price'] / $contract['stall_area_size']) : 0;
-$total_amount = round($contract['price'] * $months);
+$area_size = (float)($contract['stall_area_size'] ?? 0);
+$price_per_m2 = (float)($contract['price'] ?? 0);
+
+if ($area_size > 0) {
+    $monthly_rent = round($price_per_m2 * $area_size);
+    $total_amount = round($monthly_rent * $months);
+} else {
+    $monthly_rent = $price_per_m2;
+    $total_amount = round($monthly_rent * $months);
+}
 
 $total_amount_words = ucfirst(trim(translateNumberToWords($total_amount))) . ' đồng chẵn';
 
@@ -326,27 +334,27 @@ if ($width === null || $length === null) {
 
         <div class="section-title"><?php echo nl2br(htmlspecialchars($selectedConfig['rep_a_header'] ?? '')); ?></div>
         <?php if (!empty($selectedConfig['rep_a_name_1'])): ?>
-            <div class="p-ind">1. Ông (Bà): <?php echo htmlspecialchars($selectedConfig['rep_a_name_1']); ?>;        Chức vụ: <?php echo htmlspecialchars($selectedConfig['rep_a_position_1']); ?>;</div>
+            <div class="p-ind" style="text-align: left;">1. Ông (Bà): <?php echo htmlspecialchars($selectedConfig['rep_a_name_1']); ?>;        Chức vụ: <?php echo htmlspecialchars($selectedConfig['rep_a_position_1']); ?>;</div>
         <?php endif; ?>
         <?php if (!empty($selectedConfig['rep_a_name_2'])): ?>
-            <div class="p-ind">2. Ông (Bà): <?php echo htmlspecialchars($selectedConfig['rep_a_name_2']); ?>;        Chức vụ: <?php echo htmlspecialchars($selectedConfig['rep_a_position_2']); ?>.</div>
+            <div class="p-ind" style="text-align: left;">2. Ông (Bà): <?php echo htmlspecialchars($selectedConfig['rep_a_name_2']); ?>;        Chức vụ: <?php echo htmlspecialchars($selectedConfig['rep_a_position_2']); ?>.</div>
         <?php endif; ?>
-        <div class="p-ind">Địa chỉ: <?php echo htmlspecialchars($selectedConfig['rep_a_address']); ?></div>
+        <div class="p-ind" style="text-align: left;">Địa chỉ: <?php echo htmlspecialchars($selectedConfig['rep_a_address']); ?></div>
         <?php if (!empty($selectedConfig['rep_a_phone']) || !empty($selectedConfig['rep_a_fax'])): ?>
-            <div class="p-ind">
+            <div class="p-ind" style="text-align: left;">
                 <?php if (!empty($selectedConfig['rep_a_phone'])): ?>Điện thoại: <?php echo htmlspecialchars($selectedConfig['rep_a_phone']); ?><?php endif; ?>
                 <?php if (!empty($selectedConfig['rep_a_fax'])): ?>    Fax: <?php echo htmlspecialchars($selectedConfig['rep_a_fax']); ?><?php endif; ?>
             </div>
         <?php endif; ?>
         <?php if (!empty($selectedConfig['rep_a_bank_account'])): ?>
-            <div class="p-ind">Tài khoản: <?php echo htmlspecialchars($selectedConfig['rep_a_bank_account']); ?><?php if (!empty($selectedConfig['rep_a_bank_name'])): ?> Tại: <?php echo htmlspecialchars($selectedConfig['rep_a_bank_name']); ?><?php endif; ?></div>
+            <div class="p-ind" style="text-align: left;">Tài khoản: <?php echo htmlspecialchars($selectedConfig['rep_a_bank_account']); ?><?php if (!empty($selectedConfig['rep_a_bank_name'])): ?> Tại: <?php echo htmlspecialchars($selectedConfig['rep_a_bank_name']); ?><?php endif; ?></div>
         <?php endif; ?>
 
         <div class="section-title">Đại diện người thuê sử dụng mặt bằng (gọi tắt là Bên B):</div>
-        <div class="p-ind">Ông (Bà): <?php echo mb_strtoupper(htmlspecialchars($contract['trader_name'] ?? ''), 'UTF-8'); ?></div>
-        <div class="p-ind">Địa chỉ thường trú: <?php echo htmlspecialchars(($contract['trader_address'] ?? '') ?: '....................................................................................'); ?></div>
-        <div class="p-ind">Điện thoại: <?php echo htmlspecialchars($contract['trader_phone'] ?? ''); ?></div>
-        <div class="p-ind">Căn cước công dân số: <?php echo htmlspecialchars(($contract['trader_cccd'] ?? '') ?: '....................................................................................'); ?></div>
+        <div class="p-ind" style="text-align: left;">Ông (Bà): <strong><?php echo mb_strtoupper(htmlspecialchars($contract['trader_name'] ?? ''), 'UTF-8'); ?></strong></div>
+        <div class="p-ind" style="text-align: left;">Địa chỉ thường trú: <?php echo !empty($contract['trader_address']) ? htmlspecialchars($contract['trader_address']) : '..........................................................................................'; ?></div>
+        <div class="p-ind" style="text-align: left;">Điện thoại: <?php echo !empty($contract['trader_phone']) ? htmlspecialchars($contract['trader_phone']) : '....................................................................................................'; ?></div>
+        <div class="p-ind" style="text-align: left;">Căn cước công dân số: <?php echo !empty($contract['trader_cccd']) ? htmlspecialchars($contract['trader_cccd']) : '................................................................................'; ?></div>
 
         <div class="p-ind">
             Sau khi hai bên bàn bạc và đi đến thống nhất về nội dung thu tiền dịch vụ sử dụng diện tích bán hàng và thu gom, vận chuyển rác thải năm <?php echo date('Y', $sign_ts); ?> gồm có các điều khoản như sau:
@@ -361,7 +369,13 @@ if ($width === null || $length === null) {
         <div class="p-ind"><strong>2.1 Giá dịch vụ:</strong></div>
         <div class="p-ind">Thực hiện theo giá dịch vụ của cơ quan có thẩm quyền ban hành theo từng thời điểm, khi thay đổi vị trí hoặc tăng, giảm diện tích mặt bằng thì hai bên sẽ thống nhất điều chỉnh giá thuê mặt bằng theo thực tế và các quy định hiện hành của Nhà nước:</div>
         <div class="p-ind">- Dịch vụ sử dụng diện tích bán hàng:</div>
-        <div class="p-ind"><?php echo number_format($price_per_m2, 0, ',', '.'); ?> đồng/m² x <?php echo htmlspecialchars((float)$contract['stall_area_size']); ?> m² x <?php echo $months; ?> tháng = <?php echo number_format($total_amount, 0, ',', '.'); ?> đồng.</div>
+        <div class="p-ind">
+            <?php if ($area_size > 0): ?>
+                <?php echo number_format($price_per_m2, 0, ',', '.'); ?> đồng/m² x <?php echo htmlspecialchars((float)$area_size); ?> m² x <?php echo $months; ?> tháng = <?php echo number_format($total_amount, 0, ',', '.'); ?> đồng.
+            <?php else: ?>
+                <?php echo number_format($monthly_rent, 0, ',', '.'); ?> đồng/tháng x <?php echo $months; ?> tháng = <?php echo number_format($total_amount, 0, ',', '.'); ?> đồng.
+            <?php endif; ?>
+        </div>
         <div class="p-ind">(Bằng chữ: <em><?php echo $total_amount_words; ?></em>);</div>
         <div class="p-ind"><strong>Tổng giá trị hợp đồng: <?php echo number_format($total_amount, 0, ',', '.'); ?> đồng</strong> (Bằng chữ: <em><?php echo $total_amount_words; ?></em>)</div>
         

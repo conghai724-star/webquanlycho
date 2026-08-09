@@ -15,7 +15,7 @@ class contractModel {
     public function getAll($status = null, $search = null, $marketId = null) {
         $this->autoUpdateExpiryStatus();
         $sql = "SELECT c.*, t.trader_fullname AS trader_name, t.trader_phone AS trader_phone, t.trader_address AS trader_address,
-                       s.stall_code, s.stall_base_price AS price, a.area_name, st.stall_type_name AS stall_type,
+                       s.stall_code, s.stall_base_price AS price, s.stall_area_size, a.area_name, st.stall_type_name AS stall_type,
                        ss.status_code AS status_code, ss.status_name, sc.color_class,
                        DATEDIFF(c.contract_end_date, CURRENT_DATE) AS days_remaining
                 FROM contracts c
