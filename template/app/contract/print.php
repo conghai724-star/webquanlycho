@@ -235,20 +235,20 @@ if ($width === null || $length === null) {
 
         .paper .p-ind { text-indent: 1cm; }
 
-        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-        .header-table td { vertical-align: top; padding: 0; }
-        .left-header { width: 60mm; text-align: center; font-size: 13pt; font-weight: bold; line-height: 1.15; }
-        .right-header { text-align: center; font-size: 13pt; line-height: 1.15; }
+        .header-table { width: calc(100% + 20mm); margin-left: -10mm; margin-right: -10mm; border-collapse: collapse; padding: 0; margin-bottom: 0; }
+        .header-table td { vertical-align: middle; padding: 0 4px; margin: 0; }
+        .left-header { width: 42%; text-align: center; font-size: 13pt; line-height: 1.15; white-space: nowrap; }
+        .right-header { width: 58%; text-align: center; font-size: 13pt; line-height: 1.15; white-space: nowrap; }
         .right-header .national-title { font-weight: bold; font-size: 13pt; text-transform: uppercase; }
         .national-subtitle { font-weight: bold; font-size: 14pt; }
-        .line-dec { width: 60px; margin: 4px auto 0 auto; border-bottom: 1px solid #000; }
-        .line-dec-long { width: 155px; margin: 4px auto 0 auto; border-bottom: 1px solid #000; }
-        .paper .doc-title { text-align: center; font-weight: bold; font-size: 14pt; margin-top: 14pt; margin-bottom: 0; text-transform: uppercase; line-height: 1.15; }
-        .paper .doc-subtitle { text-align: center; font-weight: bold; font-size: 14pt; margin-top: 0; margin-bottom: 0; text-transform: uppercase; line-height: 1.15; }
+        .line-dec { width: 65px; margin: 3px auto 0 auto; border-bottom: 1px solid #000; }
+        .line-dec-long { width: 175px; margin: 3px auto 0 auto; border-bottom: 1px solid #000; }
+        .paper .doc-title { text-align: center; font-weight: bold; font-size: 14pt; margin-top: 0; margin-bottom: 2pt; text-transform: uppercase; line-height: 1.15; }
+        .paper .doc-subtitle { text-align: center; font-weight: bold; font-size: 14pt; margin-top: 0; margin-bottom: 2pt; text-transform: uppercase; line-height: 1.15; }
         .section-title { font-weight: bold; margin-top: 3pt; margin-bottom: 3pt; text-indent: 1cm; }
         .indent-block { margin-left: 20px; margin-top: 3pt; margin-bottom: 3pt; }
-        .signature-table { width: 100%; margin-top: 6pt; border-collapse: collapse; }
-        .signature-table td { width: 50%; text-align: center; vertical-align: top; font-size: 14pt; line-height: 1.15; }
+        .signature-table { width: 100%; margin: 6pt auto 0 auto; border-collapse: collapse; padding: 0; }
+        .signature-table td { width: 50%; text-align: center; vertical-align: middle; font-size: 14pt; line-height: 1.15; padding: 0; margin: 0; }
         .signature-table td div { text-align: center; }
         .signature-title { font-weight: bold; }
 
@@ -277,6 +277,9 @@ if ($width === null || $length === null) {
             <?php endif; ?>
         </span>
         <div style="display: flex; gap: 8px;">
+            <a href="<?php echo BASE_URL; ?>admin/contract_export_docx/<?php echo $contract['contract_id']; ?><?php echo !empty($selectedConfig['config_id']) ? '?config_id=' . $selectedConfig['config_id'] : ''; ?>" class="btn-print" style="background-color: #2b579a; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" title="Tải hợp đồng về định dạng Microsoft Word (.docx)">
+                📄 Xuất file Word (.docx)
+            </a>
             <button onclick="window.print()" class="btn-print">🖨 In hợp đồng</button>
             <button onclick="window.close()" class="btn-print" style="background-color: #5f6368;">Đóng</button>
         </div>
@@ -285,21 +288,21 @@ if ($width === null || $length === null) {
     <div class="paper">
         <table class="header-table" style="margin-bottom: 0;">
             <tr style="margin: 0; padding: 0;">
-                <td class="left-header" style="padding: 0; margin: 0; line-height: 1;">
-                    <?php echo nl2br(htmlspecialchars($selectedConfig['gov_agency_1'] ?? '')); ?>
+                <td class="left-header" style="padding: 0; margin: 0; line-height: 1; font-weight: normal;">
+                    <?php echo htmlspecialchars(trim(preg_replace('/\s+/', ' ', $selectedConfig['gov_agency_1'] ?? ''))); ?>
                 </td>
                 <td class="right-header" style="padding: 0; margin: 0; line-height: 1;">
                     <span class="national-title">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</span>
                 </td>
             </tr>
             <tr style="margin: 0; padding: 0;">
-                <td class="left-header" style="padding: 0; margin: 0; line-height: 1;">
-                    <?php echo nl2br(htmlspecialchars($selectedConfig['gov_agency_2'] ?? '')); ?>
-                    <div class="line-dec" style="margin: 2pt auto 0 auto;"></div>
+                <td class="left-header" style="padding: 0; margin: 0; line-height: 1; font-weight: bold;">
+                    <?php echo htmlspecialchars(trim(preg_replace('/\s+/', ' ', $selectedConfig['gov_agency_2'] ?? ''))); ?>
+                    <div class="line-dec"></div>
                 </td>
                 <td class="right-header" style="padding: 0; margin: 0; line-height: 1;">
                     <span class="national-subtitle">Độc lập - Tự do - Hạnh phúc</span>
-                    <div class="line-dec-long" style="margin: 2pt auto 0 auto;"></div>
+                    <div class="line-dec-long"></div>
                 </td>
             </tr>
             <tr style="margin: 0; padding: 0;">
@@ -307,10 +310,13 @@ if ($width === null || $length === null) {
                     Số: <?php echo htmlspecialchars($contract['contract_number'] ?: '..... ...'); ?>
                 </td>
                 <td class="right-header" style="padding: 0; margin: 0; line-height: 1;">
-                     
+                    &nbsp;
                 </td>
             </tr>
         </table>
+
+        <!-- Enter bảng: 1 dòng cách -->
+        <div style="height: 14pt; margin: 0; padding: 0;"></div>
 
         <div class="doc-title">HỢP ĐỒNG DỊCH VỤ</div>
         <div class="doc-subtitle">SỬ DỤNG DIỆN TÍCH BÁN HÀNG <?php echo nl2br(htmlspecialchars($selectedConfig['contract_title_suffix'] ?? '')); ?></div>
@@ -410,17 +416,17 @@ if ($width === null || $length === null) {
 
         <table class="signature-table">
             <tr>
-                <td style="width: 50%;">
-                    <div style="margin-top: 0; margin-bottom: 0; line-height: 1; text-align: center;">
+                <td style="width: 50%; vertical-align: top;">
+                    <div style="margin-top: 4pt; margin-bottom: 0; line-height: 1.15; text-align: center;">
                         <span class="signature-title">ĐẠI DIỆN BÊN B</span>
-                        <div style="margin-top: 4pt; margin-bottom: 0; font-style: italic; font-size: 11pt; text-align: center;">(Ký, ghi rõ họ tên)</div>
                     </div>
+                    <div style="margin-top: 0; margin-bottom: 0; font-style: italic; font-size: 11pt; text-align: center; line-height: 1.15;">(Ký, ghi rõ họ tên)</div>
                 </td>
-                <td style="width: 50%;">
-                    <div style="margin-top: 0; margin-bottom: 0; line-height: 1; text-align: center;">
+                <td style="width: 50%; vertical-align: top;">
+                    <div style="margin-top: 0; margin-bottom: 0; line-height: 1.15; text-align: center;">
                         <span class="signature-title">ĐẠI DIỆN BÊN A</span>
-                        <div style="margin-top: 0; margin-bottom: 0; font-weight: bold; text-transform: uppercase; text-align: center;"><?php echo htmlspecialchars(mb_strtoupper($selectedConfig['rep_a_position_1'] ?? '', 'UTF-8')); ?></div>
                     </div>
+                    <div style="margin-top: 0; margin-bottom: 0; font-weight: bold; text-transform: uppercase; text-align: center; line-height: 1.15;"><?php echo htmlspecialchars(mb_strtoupper($selectedConfig['rep_a_position_1'] ?? '', 'UTF-8')); ?></div>
                 </td>
             </tr>
         </table>

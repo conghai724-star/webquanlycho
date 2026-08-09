@@ -26,6 +26,7 @@ include __SITE_PATH . '/application/' . 'session.class.php';
  include __SITE_PATH . '/application/' . 'shop.class.php';
  include __SITE_PATH . '/application/' . 'erp.class.php';
  include __SITE_PATH . '/application/' . 'pdf.class.php';
+ include __SITE_PATH . '/application/' . 'docxExport.class.php';
  include __SITE_PATH . '/application/' . 'render.class.php';
 
  /*** include the router class ***/

@@ -1123,6 +1123,76 @@ Class adminController extends baseController {
         exit();
     }
 
+    public function contract_export_docx($contract_id) {
+        if (is_array($contract_id)) {
+            $contract_id = reset($contract_id);
+        }
+        if (!$contract_id) {
+            header('Location: ' . BASE_URL . 'admin/contracts');
+            exit();
+        }
+
+        $contractModel = new contractModel();
+        $contract = $contractModel->getById($contract_id);
+        if (!$contract) {
+            header('Location: ' . BASE_URL . 'admin/contracts');
+            exit();
+        }
+
+        $db = database::getInstance();
+        $marketId = $contract['area_market_id'] ?? 0;
+        
+        $allConfigs = $db->select("SELECT * FROM market_contract_configs WHERE market_id = :mId AND status_id != 99 ORDER BY config_id ASC", ['mId' => $marketId]);
+        
+        $configId = isset($_GET['config_id']) ? (int)$_GET['config_id'] : 0;
+        $selectedConfig = null;
+        
+        if ($configId > 0) {
+            foreach ($allConfigs as $cfg) {
+                if ((int)$cfg['config_id'] === $configId) {
+                    $selectedConfig = $cfg;
+                    break;
+                }
+            }
+        }
+        
+        if (!$selectedConfig && !empty($allConfigs)) {
+            foreach ($allConfigs as $cfg) {
+                if ((int)$cfg['is_default'] === 1) {
+                    $selectedConfig = $cfg;
+                    break;
+                }
+            }
+            if (!$selectedConfig) {
+                $selectedConfig = $allConfigs[0];
+            }
+        }
+        
+        if (!$selectedConfig) {
+            $selectedConfig = [
+                'gov_agency_1' => 'UBND PHƯỜNG KON TUM',
+                'gov_agency_2' => 'PHÒNG KT,HT&ĐT',
+                'contract_title_suffix' => 'TẠI CÁC CHỢ HẠNG 3 PHƯỜNG KON TUM',
+                'rep_a_header' => 'Đại diện Tổ quản lý các chợ hạng 3 trên địa bàn phường Kon Tum - Trưởng phòng Kinh tế, Hạ tầng và Đô thị (gọi tắt là Bên A):',
+                'rep_a_name_1' => 'Phan Thành Trung',
+                'rep_a_position_1' => 'Tổ trưởng',
+                'rep_a_name_2' => 'Trương Thảo Linh',
+                'rep_a_position_2' => 'Tài chính - Kế Toán',
+                'rep_a_address' => '342 Nguyễn Huệ, phường Kon Tum, tỉnh Kon Tum',
+                'rep_a_phone' => '',
+                'rep_a_fax' => '',
+                'rep_a_bank_account' => '',
+                'rep_a_bank_name' => '',
+                'payment_due_day' => '10',
+                'payment_grace_period' => '10',
+                'legal_grounds' => "Căn cứ Bộ Luật dân sự ngày 24 tháng 11 năm 2015;\nCăn cứ Nghị định số 60/2024/NĐ-CP ngày 05 tháng 6 năm 2024 của Chính phủ về phát triển và quản lý chợ;\nCăn cứ Quyết định số 131/QĐ-UBND ngày 06/8/2025 của UBND phường Kon Tum về việc thành lập Tổ quản lý các chợ hạng 3 trên địa bàn phường Kon Tum;\nCăn cứ nhu cầu sử dụng diện tích bán hàng của hộ kinh doanh và xét khả năng đáp ứng của đơn vị."
+            ];
+        }
+
+        docxExport::exportContract($contract, $selectedConfig);
+        exit();
+    }
+
     protected function view($templatePath, $data = []) {
         // Giải nén mảng thành các biến độc lập
         extract($data);

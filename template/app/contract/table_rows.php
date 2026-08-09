@@ -153,6 +153,11 @@
                         <a href="<?php echo BASE_URL; ?>admin/contract_print/<?php echo $contract['contract_id']; ?>" target="_blank" class="btn btn-outline btn-sm" style="padding: 4px 6px; color: var(--primary); display: inline-flex; align-items: center;" title="In hợp đồng theo mẫu">
                             <i class="fa-solid fa-print"></i>
                         </a>
+
+                        <!-- Xuất file Word (.docx) -->
+                        <a href="<?php echo BASE_URL; ?>admin/contract_export_docx/<?php echo $contract['contract_id']; ?>" class="btn btn-outline btn-sm" style="padding: 4px 6px; color: #2b579a; display: inline-flex; align-items: center;" title="Xuất file Word (.docx)">
+                            <i class="fa-solid fa-file-word"></i>
+                        </a>
                     <?php endif; ?>
 
                     <!-- Xóa mềm (Mọi trạng thái đều có thể xóa/ẩn đi) -->
