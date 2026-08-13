@@ -374,7 +374,11 @@
                 if (!isNaN(lat) && !isNaN(lng)) {
                     center = [lat, lng];
                     
-                    const iconClass = `category-item-gps cat-${item.element_type === 'security-room' ? 'security' : item.element_type}`;
+                    let typeSuffix = item.element_type;
+                    if (typeSuffix === 'security-room') typeSuffix = 'security';
+                    else if (typeSuffix === 'utility') typeSuffix = 'wc';
+                    
+                    const iconClass = `category-item-gps cat-${typeSuffix}`;
                     const customHtml = `<div class="${iconClass}" style="padding:0; border:none; background:none; transform:scale(1.1);"><i style="width:26px; height:26px; font-size:11px;">${getIconForUtility(item.element_type)}</i></div>`;
 
                     const utilityIcon = L.divIcon({
