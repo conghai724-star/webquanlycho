@@ -307,8 +307,8 @@ $market = $marketModel->getById($marketId);
             <!-- THẺ GÁN TỌA ĐỘ NHANH 1 BƯỚC -->
             <?php
             $unmappedAreas = [];
-            if (!empty($unmappedStalls)) {
-                foreach ($unmappedStalls as $st) {
+            if (!empty($stalls)) {
+                foreach ($stalls as $st) {
                     if (!empty($st['area_name'])) {
                         $unmappedAreas[$st['area_name']] = true;
                     }
@@ -418,13 +418,13 @@ $market = $marketModel->getById($marketId);
 
             <!-- DANH SÁCH SẠP CHƯA GÁN -->
             <div style="font-weight: 700; font-size: 12px; margin: 20px 0 10px; color: var(--text-muted, #64748b); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; justify-content: space-between;">
-                <span>Sạp chưa có tọa độ</span>
+                <span id="unmapped-title">Sạp chưa có tọa độ</span>
                 <span style="background: rgba(15, 118, 110, 0.1); color: var(--primary, #0f766e); padding: 2px 6px; border-radius: 10px; font-size: 10px;" id="unmapped-count"><?php echo count($unmappedStalls); ?></span>
             </div>
 
             <div id="unmapped-stalls-list" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; padding: 4px;">
-                <?php if (!empty($unmappedStalls)): ?>
-                    <?php foreach ($unmappedStalls as $stall): ?>
+                <?php if (!empty($stalls)): ?>
+                    <?php foreach ($stalls as $stall): ?>
                         <div class="unmapped-stall-item" 
                              data-stall-id="<?php echo $stall['stall_id']; ?>" 
                              data-stall-code="<?php echo htmlspecialchars($stall['stall_code']); ?>" 
@@ -438,7 +438,7 @@ $market = $marketModel->getById($marketId);
                                     <i class="fa-solid fa-store" style="margin-right: 6px; color: var(--primary, #0f766e);"></i>
                                     <strong style="font-size: 12px;"><?php echo htmlspecialchars($stall['stall_code']); ?></strong>
                                 </div>
-                                <span style="font-size: 10px; color: var(--text-muted, #64748b);"><?php echo $stall['stall_area_size']; ?> m²</span>
+                                <span style="font-size: 10px; color: var(--text-muted, #64748b);"><?php echo $stall['area_size']; ?> m²</span>
                             </div>
                             
                             <div style="font-size: 10px; color: var(--text-muted, #64748b); padding-left: 18px; line-height: 1.4;">
@@ -449,8 +449,6 @@ $market = $marketModel->getById($marketId);
                             </div>
                         </div>
                     <?php endforeach; ?>
-                <?php else: ?>
-                    <p style="font-size: 12px; color: var(--text-muted, #64748b); text-align: center; margin-top: 10px;">Đã đưa tất cả sạp lên bản đồ!</p>
                 <?php endif; ?>
             </div>
         </div>
@@ -1691,6 +1689,36 @@ $market = $marketModel->getById($marketId);
 
             // Kích hoạt sự kiện change để đồng bộ trạng thái khóa/mở khóa sạp
             qbStallCode.dispatchEvent(new Event('change'));
+
+            // === Đồng bộ danh sách cột trái #unmapped-stalls-list ===
+            const unmappedTitle = document.getElementById('unmapped-title');
+            if (unmappedTitle) {
+                unmappedTitle.textContent = showMappedOnly ? 'Sạp đã có tọa độ' : 'Sạp chưa có tọa độ';
+            }
+
+            const leftListItems = document.querySelectorAll('#unmapped-stalls-list .unmapped-stall-item');
+            let visibleCount = 0;
+            leftListItems.forEach(item => {
+                const stallId = item.getAttribute('data-stall-id');
+                const area = (item.getAttribute('data-area-name') || '').toLowerCase();
+                const code = (item.getAttribute('data-stall-code') || '').toLowerCase();
+                const trader = (item.getAttribute('data-trader-name') || '').toLowerCase();
+
+                const mArea = !selectedArea || area === selectedArea;
+                const mSearch = !searchQuery || code.includes(searchQuery) || trader.includes(searchQuery);
+                const isMapped = mappedIds.includes(String(stallId));
+                const mState = showMappedOnly ? isMapped : !isMapped;
+
+                if (mArea && mSearch && mState) {
+                    item.style.display = '';
+                    visibleCount++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            const unmappedCountEl = document.getElementById('unmapped-count');
+            if (unmappedCountEl) unmappedCountEl.textContent = visibleCount;
         }
 
         if (qbFilterArea) {
