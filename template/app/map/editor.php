@@ -920,25 +920,6 @@ $market = $marketModel->getById($marketId);
             });
         }
 
-        // ===== TOGGLE ẨN/HIỆN PANEL & BỘ LỌC =====
-        const editorContainer = document.querySelector('.map-editor-container');
-        const mapLegend = document.getElementById('map-legend');
-
-        document.getElementById('btn-toggle-left').addEventListener('click', function() {
-            editorContainer.classList.toggle('hide-left');
-            setTimeout(() => map.invalidateSize(), 350);
-            this.classList.toggle('active');
-        });
-        document.getElementById('btn-toggle-right').addEventListener('click', function() {
-            editorContainer.classList.toggle('hide-right');
-            setTimeout(() => map.invalidateSize(), 350);
-            this.classList.toggle('active');
-        });
-        document.getElementById('btn-toggle-legend').addEventListener('click', function() {
-            mapLegend.style.display = mapLegend.style.display === 'none' ? '' : 'none';
-            this.classList.toggle('active');
-        });
-
         // Thiết lập bộ sự kiện form thuộc tính & gán nhanh
         setupEventBindings();
     }
