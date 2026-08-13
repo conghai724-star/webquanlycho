@@ -945,6 +945,9 @@ $market = $marketModel->getById($marketId);
                     });
                 }
                 updateUnmappedStallsBadge();
+                if (typeof filterQuickBindStalls === 'function') {
+                    filterQuickBindStalls();
+                }
             },
             error: function () {
                 showToast('Không thể tải dữ liệu sơ đồ chợ từ máy chủ.', 'danger');
