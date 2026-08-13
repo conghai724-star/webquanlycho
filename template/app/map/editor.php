@@ -2,44 +2,58 @@
 /**
  * View template: Thiết lập Sơ đồ chợ tương tác (Admin Map Editor)
  */
+include_once __SITE_PATH . '/model/marketModel.php';
+$marketModel = new marketModel();
+$marketId = marketService::currentMarketId();
+$market = $marketModel->getById($marketId);
 ?>
 
-<!-- Nạp FontAwesome nếu chưa có (Sidebar đã nạp nhưng đảm bảo) -->
+<!-- Nạp FontAwesome và các thư viện Leaflet CSS/JS -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<!-- Nạp thư viện thông báo SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
-    /* Tổng thể Editor layout */
+    /* Bố cục Editor */
     .map-editor-container {
         display: grid;
-        grid-template-columns: 280px 1fr 300px;
+        grid-template-columns: 340px 1fr 300px;
         height: calc(100vh - 120px);
-        margin: -15px; /* Phủ kín phần nội dung chính */
-        background-color: var(--card-bg);
-        border: 1px solid var(--border-color);
+        margin: -15px;
+        background-color: var(--card-bg, #ffffff);
+        border: 1px solid var(--border-color, #e2e8f0);
         border-radius: 8px;
         overflow: hidden;
+        transition: grid-template-columns 0.3s ease;
     }
+    .map-editor-container.hide-left { grid-template-columns: 0px 1fr 300px; }
+    .map-editor-container.hide-right { grid-template-columns: 340px 1fr 0px; }
+    .map-editor-container.hide-left.hide-right { grid-template-columns: 0px 1fr 0px; }
+    .map-editor-container .editor-panel { transition: opacity 0.3s ease, overflow 0s; }
+    .map-editor-container.hide-left > .editor-panel:first-child { opacity: 0; overflow: hidden; pointer-events: none; }
+    .map-editor-container.hide-right > .editor-panel-right { opacity: 0; overflow: hidden; pointer-events: none; }
 
-    /* Các cột Panel */
     .editor-panel {
         display: flex;
         flex-direction: column;
-        background-color: var(--card-bg);
-        border-right: 1px solid var(--border-color);
+        background-color: var(--card-bg, #ffffff);
+        border-right: 1px solid var(--border-color, #e2e8f0);
         height: 100%;
         overflow: hidden;
     }
 
     .editor-panel-right {
         border-right: none;
-        border-left: 1px solid var(--border-color);
+        border-left: 1px solid var(--border-color, #e2e8f0);
     }
 
     .panel-header {
         padding: 12px 16px;
-        font-weight: 600;
+        font-weight: 700;
         font-size: 14px;
-        border-bottom: 1px solid var(--border-color);
+        border-bottom: 1px solid var(--border-color, #e2e8f0);
         background-color: rgba(0, 0, 0, 0.02);
         display: flex;
         align-items: center;
@@ -52,26 +66,22 @@
         padding: 16px;
     }
 
-    /* Vùng Canvas chính */
     .editor-canvas-area {
         display: flex;
         flex-direction: column;
         height: 100%;
-        background-color: var(--html-bg);
         position: relative;
-        overflow: hidden;
     }
 
-    /* Menu công cụ phía trên Canvas */
     .canvas-toolbar {
         height: 50px;
-        background-color: var(--card-bg);
-        border-bottom: 1px solid var(--border-color);
+        background-color: var(--card-bg, #ffffff);
+        border-bottom: 1px solid var(--border-color, #e2e8f0);
         display: flex;
         align-items: center;
         justify-content: space-between;
         padding: 0 16px;
-        z-index: 10;
+        z-index: 1000;
     }
 
     .toolbar-group {
@@ -80,888 +90,477 @@
         gap: 8px;
     }
 
-    /* Canvas cuộn và thu phóng */
-    .canvas-viewport {
+    #map-canvas-editor {
         flex: 1;
-        overflow: auto;
-        position: relative;
-        cursor: grab;
-    }
-    .canvas-viewport:active {
-        cursor: grabbing;
-    }
-
-    .canvas-grid {
-        width: 2400px;
-        height: 1800px;
-        background-color: var(--card-bg);
-        background-image: 
-            linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
-        background-size: 20px 20px; /* Kích thước ô lưới snap */
-        position: relative;
-        transform-origin: 0 0;
-        transition: transform 0.1s ease-out;
-    }
-
-    [data-theme="dark"] .canvas-grid {
-        background-image: 
-            linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
-    }
-
-    /* Các khối vẽ (Map Elements) */
-    .map-element {
-        position: absolute;
-        border: 2px solid #555;
-        background-color: rgba(200, 200, 200, 0.8);
-        box-sizing: border-box;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 11px;
-        color: #222;
-        cursor: move;
-        user-select: none;
-        border-radius: 4px;
-        padding: 4px;
-        text-align: center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-        transform-origin: center center;
-    }
-
-    .map-element.selected {
-        border: 2px dashed var(--primary) !important;
-        box-shadow: 0 0 0 3px rgba(26, 187, 156, 0.25);
-    }
-
-    .map-element i {
-        display: block;
-        font-size: var(--icon-size, 1.5em);
-        line-height: 1;
-        margin-bottom: 4px;
-    }
-
-    .map-element strong {
-        display: block;
-        font-size: 0.72em;
-        line-height: 1.08;
-        letter-spacing: 0.01em;
-    }
-
-    .map-element.is-icon-only {
-        overflow: visible;
-        padding: 0;
-        background: transparent !important;
-        border-color: transparent !important;
-        box-shadow: none;
-    }
-
-    .map-element.is-icon-only i {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        width: 1em;
-        height: 1em;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0;
-        font-size: var(--icon-size, 100px);
-        transform: translate(-50%, -50%) scale(var(--icon-stretch-x, 1), var(--icon-stretch-y, 1));
-        transform-origin: center center;
-    }
-
-    .map-element.is-icon-only.map-element-stall strong {
-        position: absolute;
-        left: 50%;
-        bottom: -18px;
-        transform: translateX(-50%);
-        width: max-content;
-        max-width: 160px;
-        color: #0d47a1;
-        font-size: 12px;
-        line-height: 1.1;
-        white-space: nowrap;
-        text-shadow: 0 1px 2px #fff;
-    }
-
-    /* Trạng thái sạp trên sơ đồ */
-    .map-element-stall {
-        background-color: #ffffff;
-        border-color: #b0bec5;
-    }
-    .map-element-stall.status-green, .map-element-stall.status-rented {
-        background-color: #e8f5e9;
-        border-color: #2e7d32;
-        color: #1b5e20;
-    }
-    .map-element-stall.status-white, .map-element-stall.status-empty {
-        background-color: #e3f2fd;
-        border-color: #1565c0;
-        color: #0d47a1;
-    }
-    .map-element-stall.status-yellow, .map-element-stall.status-repairing {
-        background-color: #fffde7;
-        border-color: #fbc02d;
-        color: #f57f17;
-    }
-    .map-element-stall.status-red, .map-element-stall.status-locked {
-        background-color: #ffebee;
-        border-color: #c62828;
-        color: #b71c1c;
-    }
-
-    /* Các khối tiện ích trang trí */
-    .map-element-gate {
-        background-color: #ffe0b2;
-        border-color: #ef6c00;
-        color: #e65100;
-    }
-    .map-element-door {
-        background-color: #d7ccc8;
-        border-color: #4e342e;
-        color: #3e2723;
-    }
-    .map-element-street {
-        background-color: #eceff1;
-        border-color: #cfd8dc;
-        color: #37474f;
-        border-radius: 0;
-        border-style: dotted;
-    }
-    .map-element-utility {
-        background-color: #e1bee7;
-        border-color: #6a1b9a;
-        color: #4a148c;
-    }
-    .map-element-office {
-        background-color: #e0f7fa;
-        border-color: #00838f;
-        color: #006064;
-    }
-
-    .map-element-street-straight,
-    .map-element-fence {
-        overflow: hidden;
-        padding: 0;
-        box-shadow: none;
-        border-radius: 2px;
-    }
-
-    .map-element-street-svg,
-    .map-element-fence-svg {
-        position: absolute;
-        overflow: visible;
-        pointer-events: none;
-        z-index: 1;
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        padding: 0 !important;
-    }
-    
-    .map-element-street-svg.selected,
-    .map-element-fence-svg.selected {
-        border: none !important;
-        box-shadow: none !important;
-    }
-    
-    .map-element-street-svg polyline,
-    .map-element-fence-svg polyline {
-        cursor: pointer;
-        pointer-events: auto;
-    }
-    
-    .map-element-street-svg .street-bg,
-    .map-element-fence-svg .fence-bg {
-        stroke-linecap: round;
-        stroke-linejoin: round;
-    }
-    
-    .map-element-street-svg .street-line,
-    .map-element-fence-svg .fence-line,
-    .map-element-fence-svg .fence-core {
-        stroke-linecap: round;
-        stroke-linejoin: round;
-    }
-
-    .map-element-street-svg .street-line {
-        stroke-dasharray: 10 15;
-        stroke: rgba(255, 255, 255, 0.85);
-        opacity: 0.95;
-    }
-
-    .map-element-street-svg.selected .street-bg,
-    .map-element-fence-svg.selected .fence-bg {
-        stroke: #475569 !important; /* highlight color on select */
-    }
-    
-    /* Waypoint handle style */
-    .waypoint-handle {
-        position: absolute;
-        width: 14px;
-        height: 14px;
-        background-color: #2196f3;
-        border: 2px solid #ffffff;
-        border-radius: 50%;
-        margin-left: -7px;
-        margin-top: -7px;
-        cursor: move;
-        z-index: 1000;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        transition: transform 0.1s ease, background-color 0.1s ease;
-    }
-    
-    .waypoint-handle:hover {
-        transform: scale(1.1);
-        background-color: #0d47a1;
-    }
-    
-    /* Container cho mũi tên bẻ hướng */
-    .waypoint-arrows {
-        position: absolute;
-        display: none;
-        gap: 6px;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        pointer-events: none;
-        z-index: 1001;
-    }
-    
-    .waypoint-handle:hover .waypoint-arrows,
-    .midpoint-handle:hover .waypoint-arrows {
-        display: flex;
-        pointer-events: auto;
-    }
-    
-    .waypoint-arrow {
-        position: absolute;
-        width: 22px;
-        height: 22px;
-        background-color: #ffffff;
-        border: 1.5px solid #2196f3;
-        color: #2196f3;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        font-weight: bold;
-        cursor: pointer;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        transition: all 0.15s ease;
-        pointer-events: auto;
-        margin-left: -11px;
-        margin-top: -11px;
-    }
-    
-    .waypoint-arrow:hover {
-        background-color: #2196f3;
-        color: #ffffff;
-    }
-    
-    .waypoint-arrow.arrow-right {
-        transform: translate(16px, 0);
-    }
-    .waypoint-arrow.arrow-left {
-        transform: translate(-16px, 0);
-    }
-    .waypoint-arrow.arrow-down {
-        transform: translate(0, 16px);
-    }
-    .waypoint-arrow.arrow-up {
-        transform: translate(0, -16px);
-    }
-    
-    .waypoint-arrow.arrow-right:hover {
-        transform: translate(16px, 0) scale(1.25);
-    }
-    .waypoint-arrow.arrow-left:hover {
-        transform: translate(-16px, 0) scale(1.25);
-    }
-    .waypoint-arrow.arrow-down:hover {
-        transform: translate(0, 16px) scale(1.25);
-    }
-    .waypoint-arrow.arrow-up:hover {
-        transform: translate(0, -16px) scale(1.25);
-    }
-    
-    .waypoint-handle.waypoint-selected {
-        background-color: #f44336;
-        transform: scale(1.3);
-    }
-    
-    /* Nút mờ ở giữa các đoạn thẳng */
-    .midpoint-handle {
-        position: absolute;
-        width: 10px;
-        height: 10px;
-        background-color: #2196f3;
-        border: 2px solid #ffffff;
-        border-radius: 50%;
-        margin-left: -5px;
-        margin-top: -5px;
-        cursor: pointer;
-        z-index: 999;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-        opacity: 0.55;
-        transition: opacity 0.15s ease, transform 0.15s ease;
-    }
-    
-    .midpoint-handle:hover {
-        opacity: 1;
-        transform: scale(1.3);
-        background-color: #0d47a1;
-    }
-
-    .map-element-fence {
-        background:
-            repeating-linear-gradient(90deg, #ddc9b0 0 8px, #f3eadf 8px 16px);
-        border-color: #bfa98d;
-        color: transparent;
-        border-style: dashed;
-    }
-
-    .map-element-fence::before {
-        content: "";
-        position: absolute;
-        left: 6px;
-        right: 6px;
-        top: 50%;
-        height: 3px;
-        transform: translateY(-50%);
-        background: rgba(109, 83, 44, 0.55);
-        border-radius: 999px;
-        box-shadow:
-            0 -8px 0 0 rgba(109, 83, 44, 0.28),
-            0 8px 0 0 rgba(109, 83, 44, 0.28);
-    }
-
-    .map-element-security-room {
-        background:
-            linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.04)),
-            linear-gradient(135deg, rgba(12,17,29,0.04), rgba(12,17,29,0.00));
-        border-style: solid;
-        border-color: #94a3b8;
-        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18);
-    }
-
-    .map-element-security-room::before {
-        content: "";
-        position: absolute;
-        inset: 12px 10px auto;
-        height: 2px;
-        background: rgba(255,255,255,0.72);
-        border-radius: 999px;
-    }
-
-    .map-element-security-room::after {
-        content: "";
-        position: absolute;
-        left: 12px;
-        right: 12px;
-        bottom: 10px;
-        height: 18px;
-        border-radius: 4px;
-        border: 1px solid rgba(255,255,255,0.35);
-        background: rgba(255,255,255,0.12);
-    }
-
-    .map-element-street-straight,
-    .map-element-fence {
-        overflow: hidden;
-        padding: 0;
-        box-shadow: none;
-        border-radius: 2px;
-    }
-
-    .map-element-fence {
-        background:
-            repeating-linear-gradient(90deg, #ddc9b0 0 8px, #f3eadf 8px 16px);
-        border-color: #bfa98d;
-        color: transparent;
-        border-style: dashed;
-    }
-
-    .map-element-fence::before {
-        content: "";
-        position: absolute;
-        left: 6px;
-        right: 6px;
-        top: 50%;
-        height: 3px;
-        transform: translateY(-50%);
-        background: rgba(109, 83, 44, 0.55);
-        border-radius: 999px;
-        box-shadow:
-            0 -8px 0 0 rgba(109, 83, 44, 0.28),
-            0 8px 0 0 rgba(109, 83, 44, 0.28);
-    }
-
-    .map-element-security-room {
-        background:
-            linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.04)),
-            linear-gradient(135deg, rgba(12,17,29,0.04), rgba(12,17,29,0.00));
-        border-style: solid;
-        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18);
-    }
-
-    .map-element-security-room::before {
-        content: "";
-        position: absolute;
-        inset: 12px 10px auto;
-        height: 2px;
-        background: rgba(255,255,255,0.72);
-        border-radius: 999px;
-    }
-
-    .map-element-security-room::after {
-        content: "";
-        position: absolute;
-        left: 12px;
-        right: 12px;
-        bottom: 10px;
-        height: 18px;
-        border-radius: 4px;
-        border: 1px solid rgba(255,255,255,0.35);
-        background: rgba(255,255,255,0.12);
-    }
-
-    .map-element.is-icon-only,
-    .map-element-gate,
-    .map-element-door,
-    .map-element-utility,
-    .map-element-office,
-    .map-element-security-room {
-        background: transparent;
-        border-color: transparent;
-        box-shadow: none;
-    }
-
-    .map-element-gate { color: #e65100; }
-    .map-element-door { color: #3e2723; }
-    .map-element-utility { color: #4a148c; }
-    .map-element-office { color: #006064; }
-    .map-element-security-room { color: #1e293b; }
-
-    .map-element-security-room::before,
-    .map-element-security-room::after {
-        display: none;
-    }
-
-    /* Nút kéo thả ở Toolbox */
-    .toolbox-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 10px 12px;
-        background: var(--html-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        margin-bottom: 10px;
-        cursor: grab;
-        user-select: none;
-        transition: all 0.2s;
-        font-size: 13px;
-        font-weight: 500;
-    }
-
-    .toolbox-item:hover {
-        border-color: var(--primary);
-        background: rgba(26, 187, 156, 0.05);
-        transform: translateY(-1px);
-    }
-
-    .toolbox-item i {
-        font-size: 16px;
-        width: 20px;
-        text-align: center;
-    }
-
-    .toolbox-preview {
-        width: 24px;
-        height: 18px;
-        border-radius: 4px;
-        flex: 0 0 auto;
-        position: relative;
-        overflow: hidden;
-        border: 1px solid rgba(0,0,0,0.06);
-        background: #eef2f7;
-    }
-
-    .toolbox-preview.street-straight::before {
-        content: "";
-        position: absolute;
-        left: 2px;
-        right: 2px;
-        top: 50%;
-        height: 4px;
-        transform: translateY(-50%);
-        border-radius: 999px;
-        background: rgba(255,255,255,0.9);
-        box-shadow: 0 -5px 0 rgba(255,255,255,0.5), 0 5px 0 rgba(255,255,255,0.5);
-    }
-
-    .toolbox-preview.fence {
-        background: repeating-linear-gradient(90deg, #e9ddc9 0 4px, #f8f1e6 4px 8px);
-    }
-
-    .toolbox-preview.fence::before {
-        content: "";
-        position: absolute;
-        left: 2px;
-        right: 2px;
-        top: 50%;
-        height: 2px;
-        transform: translateY(-50%);
-        background: rgba(96, 76, 44, 0.8);
-    }
-
-    .toolbox-preview.security-room {
-        background: linear-gradient(180deg, #dbeafe, #cbd5e1);
-    }
-
-    .toolbox-preview.security-room::before {
-        content: "";
-        position: absolute;
-        left: 4px;
-        right: 4px;
-        top: 4px;
-        height: 2px;
-        background: rgba(255,255,255,0.85);
-        border-radius: 999px;
-    }
-
-    .toolbox-preview.security-room::after {
-        content: "";
-        position: absolute;
-        left: 5px;
-        right: 5px;
-        bottom: 3px;
-        height: 6px;
-        border: 1px solid rgba(255,255,255,0.55);
-        border-radius: 3px;
-    }
-
-    .toolbox-preview {
-        width: 24px;
-        height: 18px;
-        border-radius: 4px;
-        flex: 0 0 auto;
-        position: relative;
-        overflow: hidden;
-        border: 1px solid rgba(0,0,0,0.06);
-        background: #eef2f7;
-    }
-
-    .toolbox-preview.street-straight::before {
-        content: "";
-        position: absolute;
-        left: 2px;
-        right: 2px;
-        top: 50%;
-        height: 4px;
-        transform: translateY(-50%);
-        border-radius: 999px;
-        background: rgba(255,255,255,0.9);
-        box-shadow: 0 -5px 0 rgba(255,255,255,0.5), 0 5px 0 rgba(255,255,255,0.5);
-    }
-
-    .toolbox-preview.fence {
-        background: repeating-linear-gradient(90deg, #e9ddc9 0 4px, #f8f1e6 4px 8px);
-    }
-
-    .toolbox-preview.fence::before {
-        content: "";
-        position: absolute;
-        left: 2px;
-        right: 2px;
-        top: 50%;
-        height: 2px;
-        transform: translateY(-50%);
-        background: rgba(96, 76, 44, 0.8);
-    }
-
-    .toolbox-preview.security-room {
-        background: linear-gradient(180deg, #dbeafe, #cbd5e1);
-    }
-
-    .toolbox-preview.security-room::before {
-        content: "";
-        position: absolute;
-        left: 4px;
-        right: 4px;
-        top: 4px;
-        height: 2px;
-        background: rgba(255,255,255,0.85);
-        border-radius: 999px;
-    }
-
-    .toolbox-preview.security-room::after {
-        content: "";
-        position: absolute;
-        left: 5px;
-        right: 5px;
-        bottom: 3px;
-        height: 6px;
-        border: 1px solid rgba(255,255,255,0.55);
-        border-radius: 3px;
-    }
-
-    /* Danh sách sạp chưa gán */
-    .unmapped-search {
-        padding: 6px 10px;
-        font-size: 12px;
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
         width: 100%;
-        margin-bottom: 12px;
-        background: var(--card-bg);
-        color: var(--text-color);
+        height: 100%;
+        background-color: #f1f5f9;
+        z-index: 1;
     }
 
-    .unmapped-stall-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 8px 10px;
-        background: var(--html-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        margin-bottom: 6px;
-        font-size: 12px;
-        cursor: grab;
-        user-select: none;
-    }
-
-    .unmapped-stall-item:hover {
-        border-color: var(--primary);
-        background: rgba(26, 187, 156, 0.05);
-    }
-
-    /* Panel Thuộc tính */
+    /* Form gán nhanh & Thuộc tính */
     .property-group {
-        margin-bottom: 14px;
+        margin-bottom: 12px;
     }
 
     .property-group label {
         display: block;
         font-size: 12px;
-        font-weight: 500;
+        font-weight: 600;
         margin-bottom: 5px;
-        color: var(--text-muted);
+        color: var(--text-muted, #64748b);
     }
 
     .property-input {
         width: 100%;
+        height: 34px;
         padding: 6px 10px;
         font-size: 13px;
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        background: var(--html-bg);
-        color: var(--text-color);
-    }
-
-    .property-input:focus {
-        border-color: var(--primary);
+        border: 1px solid var(--border-color, #e2e8f0);
+        border-radius: 6px;
+        background: var(--html-bg, #f8fafc);
+        color: var(--text-color, #0f172a);
         outline: none;
+        box-sizing: border-box;
+    }
+    .property-input:focus {
+        border-color: var(--primary, #0f766e);
     }
 
-    /* Các nút điều khiển zoom */
-    .zoom-badge {
+    /* Danh sách sạp chưa gán */
+    .unmapped-stall-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        margin-bottom: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .unmapped-stall-item:hover {
+        background-color: rgba(15, 118, 110, 0.08);
+        border-color: var(--primary, #0f766e);
+    }
+
+    .unmapped-search {
+        width: 100%;
+        height: 32px;
+        padding: 6px 10px;
         font-size: 12px;
-        font-weight: 600;
-        padding: 4px 8px;
-        background-color: var(--html-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        min-width: 48px;
-        text-align: center;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        margin-bottom: 10px;
+        box-sizing: border-box;
     }
 
-    /* Nút lưu góc xoay hoặc điều chỉnh kích thước trực tiếp */
-    .resize-handle {
-        position: absolute;
-        width: 10px;
-        height: 10px;
-        background-color: var(--primary);
-        border: 1px solid #fff;
-        border-radius: 50%;
-        z-index: 5;
-        display: none;
+    /* Thẻ gán nhanh 1 bước */
+    .quick-bind-card {
+        background-color: rgba(15, 118, 110, 0.03);
+        border: 1px dashed var(--primary, #0f766e);
+        border-radius: 8px;
+        padding: 14px;
+        margin-bottom: 20px;
     }
 
-    .resize-handle.handle-n { top: -4px; left: 50%; width: 28px; height: 8px; transform: translateX(-50%); cursor: n-resize; }
-    .resize-handle.handle-e { top: 50%; right: -4px; width: 8px; height: 28px; transform: translateY(-50%); cursor: e-resize; }
-    .resize-handle.handle-s { bottom: -4px; left: 50%; width: 28px; height: 8px; transform: translateX(-50%); cursor: s-resize; }
-    .resize-handle.handle-w { top: 50%; left: -4px; width: 8px; height: 28px; transform: translateY(-50%); cursor: w-resize; }
-
-    .rotate-handle {
-        position: absolute;
-        width: 12px;
-        height: 12px;
-        left: 50%;
-        top: -26px;
-        transform: translateX(-50%);
-        border-radius: 50%;
+    /* Các nút công cụ vẽ sạp */
+    .draw-tool-btn {
+        width: 100%;
+        height: 38px;
+        border: 1px solid #cbd5e1;
         background: #ffffff;
-        border: 2px solid var(--primary);
-        z-index: 6;
-        display: none;
-        cursor: grab;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        padding: 0 12px;
+        gap: 10px;
+        font-weight: 600;
+        font-size: 13px;
+        color: #475569;
+        cursor: pointer;
+        margin-bottom: 8px;
+        transition: all 0.2s;
+    }
+    .draw-tool-btn:hover, .draw-tool-btn.active {
+        background-color: var(--primary, #0f766e);
+        color: #ffffff;
+        border-color: var(--primary, #0f766e);
     }
 
-    .rotate-handle::after {
-        content: "";
+    /* Nhãn sạp trên map */
+    .leaflet-stall-label-editor {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        font-weight: 800;
+        font-size: 9px;
+        color: #1e293b;
+        text-align: center;
+        text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
+    }
+
+    .badge-status {
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+    .badge-status.rented { background-color: #dcfce7; color: #15803d; }
+    .badge-status.empty { background-color: #dbeafe; color: #1d4ed8; }
+    .badge-status.repairing { background-color: #ffedd5; color: #c2410c; }
+    .badge-status.locked { background-color: #fee2e2; color: #dc2626; }
+    .permanently-hidden { display: none !important; }
+
+    /* Bảng chú giải màu sạp trên bản đồ */
+    .map-legend {
         position: absolute;
-        left: 50%;
-        top: 100%;
-        width: 2px;
+        bottom: 12px;
+        left: 12px;
+        z-index: 1000;
+        background: rgba(255,255,255,0.92);
+        backdrop-filter: blur(6px);
+        border-radius: 8px;
+        padding: 10px 14px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        border: 1px solid rgba(0,0,0,0.08);
+        font-size: 11px;
+    }
+    .map-legend-title {
+        font-weight: 800;
+        font-size: 11px;
+        color: #334155;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        cursor: move;
+        user-select: none;
+    }
+    .map-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 3px;
+        color: #475569;
+        font-weight: 500;
+    }
+    .map-legend-swatch {
+        width: 14px;
         height: 14px;
-        transform: translateX(-50%);
-        background: var(--primary);
+        border-radius: 3px;
+        border: 1.5px solid rgba(0,0,0,0.15);
+        flex-shrink: 0;
+    }
+    
+    /* Trạng thái nút toggle đang được kích hoạt */
+    .btn.active {
+        background-color: var(--primary, #0f766e) !important;
+        color: #ffffff !important;
+        border-color: var(--primary, #0f766e) !important;
     }
 
-    .map-element.selected .resize-handle,
-    .map-element.selected .rotate-handle {
-        display: block;
+    /* Floating Controls góc trên bên phải */
+    .map-floating-controls {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
     }
-
-    /* Badge trạng thái sạp trong panel thuộc tính */
-    .badge-status-rented { background-color: #e8f5e9; color: #1b5e20; border: 1px solid #c8e6c9; }
-    .badge-status-empty { background-color: #e3f2fd; color: #0d47a1; border: 1px solid #bbdefb; }
-    .badge-status-repairing { background-color: #fffde7; color: #f57f17; border: 1px solid #fff9c4; }
-    .badge-status-locked { background-color: #ffebee; color: #b71c1c; border: 1px solid #ffcdd2; }
+    .control-btn-gps {
+        width: 36px;
+        height: 36px;
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        cursor: pointer;
+        color: #475569;
+        transition: all 0.2s;
+    }
+    .control-btn-gps:hover {
+        background-color: #f1f5f9;
+        color: #0f172a;
+    }
+    .control-btn-gps.active {
+        border-color: var(--primary, #0f766e) !important;
+        color: var(--primary, #0f766e) !important;
+        background-color: #ffffff !important;
+    }
 </style>
 
 <div class="map-editor-container">
-    <!-- PANEL TRÁI: HỘP CÔNG CỤ -->
+    <!-- PANEL TRÁI: Công cụ vẽ & Gán nhanh 1 bước -->
     <div class="editor-panel">
         <div class="panel-header">
             <span><i class="fa-solid fa-toolbox"></i> Hộp Công Cụ</span>
         </div>
         <div class="panel-content">
-            <!-- Các phần tử vẽ cơ bản -->
-            <div style="font-weight: 600; font-size: 12px; margin-bottom: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Phần tử cơ bản</div>
-            
-            <div class="toolbox-item" data-type="stall" draggable="true">
-                <i class="fa-solid fa-store" style="color: #1565c0;"></i>
-                <span>Sạp Chợ (Stall)</span>
-            </div>
-            <div class="toolbox-item" data-type="street" draggable="true">
-                <span class="toolbox-preview street-straight"></span>
-                <span>Đường đi</span>
-            </div>
-            <div class="toolbox-item" data-type="gate" draggable="true">
-                <i class="fa-solid fa-archway" style="color: #ef6c00;"></i>
-                <span>Cổng chợ</span>
-            </div>
-            <div class="toolbox-item" data-type="door" draggable="true">
-                <i class="fa-solid fa-door-open" style="color: #4e342e;"></i>
-                <span>Cửa ra vào</span>
-            </div>
-            <div class="toolbox-item" data-type="utility" draggable="true">
-                <i class="fa-solid fa-restroom" style="color: #6a1b9a;"></i>
-                <span>Khu Vệ sinh / Tiện ích</span>
-            </div>
-            <div class="toolbox-item" data-type="fence" draggable="true">
-                <span class="toolbox-preview fence"></span>
-                <span>Hàng rào</span>
-            </div>
-            <div class="toolbox-item" data-type="security-room" draggable="true">
-                <span class="toolbox-preview security-room"></span>
-                <span>Phòng bảo vệ</span>
-            </div>
-            <div class="toolbox-item" data-type="office" draggable="true">
-                <i class="fa-solid fa-building-user" style="color: #00838f;"></i>
-                <span>Văn phòng BQL</span>
+            <!-- THẺ GÁN TỌA ĐỘ NHANH 1 BƯỚC -->
+            <!-- THẺ GÁN TỌA ĐỘ NHANH 1 BƯỚC -->
+            <?php
+            $unmappedAreas = [];
+            if (!empty($unmappedStalls)) {
+                foreach ($unmappedStalls as $st) {
+                    if (!empty($st['area_name'])) {
+                        $unmappedAreas[$st['area_name']] = true;
+                    }
+                }
+            }
+            $unmappedAreas = array_keys($unmappedAreas);
+            sort($unmappedAreas);
+            ?>
+
+            <div class="quick-bind-card">
+                <div style="font-weight: 700; font-size: 13px; color: var(--primary, #0f766e); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+                    <span><i class="fa-solid fa-bolt"></i> Gán Tọa Độ Nhanh</span>
+                    <label style="margin: 0; display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; color: #475569; cursor: pointer;">
+                        <input type="checkbox" id="qb-toggle-mapped" style="width: 14px; height: 14px; cursor: pointer; margin: 0;">
+                        <span>Tìm sạp đã gán</span>
+                    </label>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div class="property-group">
+                        <label for="qb-filter-area">Lọc theo Khu</label>
+                        <select id="qb-filter-area" class="property-input" style="font-size: 12px; padding: 5px 8px;">
+                            <option value="">-- Tất cả --</option>
+                            <?php foreach ($unmappedAreas as $area): ?>
+                                <option value="<?php echo htmlspecialchars($area); ?>"><?php echo htmlspecialchars($area); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="property-group">
+                        <label for="qb-search-input">Tìm sạp nhanh</label>
+                        <input type="text" id="qb-search-input" class="property-input" placeholder="Nhập mã sạp, tên tiểu thương..." style="font-size: 12px; padding: 5px 8px;">
+                    </div>
+                </div>
+
+                <div class="property-group">
+                    <label for="qb-stall-code">Sạp cần gán <span style="color: var(--red, #ef4444)">*</span></label>
+                    <select id="qb-stall-code" class="property-input">
+                        <option value="">-- Chọn Sạp --</option>
+                        <?php foreach ($stalls as $st): ?>
+                            <option value="<?php echo htmlspecialchars($st['stall_code']); ?>" 
+                                    data-stall-id="<?php echo $st['stall_id']; ?>"
+                                    data-area-name="<?php echo htmlspecialchars($st['area_name'] ?? ''); ?>"
+                                    data-trader-name="<?php echo htmlspecialchars($st['trader_name'] ?? ''); ?>">
+                                <?php echo htmlspecialchars($st['stall_code']); ?> 
+                                (Khu: <?php echo htmlspecialchars($st['area_name'] ?? 'Chưa rõ'); ?>
+                                <?php if (!empty($st['trader_name'])): ?> - TT: <?php echo htmlspecialchars($st['trader_name']); ?><?php endif; ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="property-group">
+                    <label for="qb-gps-data">Dán tọa độ / Link Google Maps</label>
+                    <input type="text" id="qb-gps-data" class="property-input" placeholder="VD: 15.122174, 108.802315 hoặc link Google Maps...">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div class="property-group">
+                        <label for="qb-width">Rộng (m)</label>
+                        <input type="number" id="qb-width" class="property-input" step="0.1" value="3.0">
+                    </div>
+                    <div class="property-group">
+                        <label for="qb-length">Dài (m)</label>
+                        <input type="number" id="qb-length" class="property-input" step="0.1" value="3.0">
+                    </div>
+                </div>
+
+                <div class="property-group">
+                    <label for="qb-rotation">Góc xoay (Độ)</label>
+                    <input type="number" id="qb-rotation" class="property-input" min="0" max="359" value="0">
+                </div>
+
+                <button class="btn btn-primary btn-block btn-sm" id="btn-quick-bind-run" style="width:100%;">
+                    <i class="fa-solid fa-location-crosshairs"></i> Ghi nhận & Định vị sạp
+                </button>
             </div>
 
-            <!-- Danh sách sạp chưa gán lên sơ đồ -->
-            <div style="font-weight: 600; font-size: 12px; margin: 20px 0 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; justify-content: space-between;">
-                <span>Sạp chưa có trên sơ đồ</span>
-                <span style="background: rgba(26, 187, 156, 0.1); color: var(--primary); padding: 2px 6px; border-radius: 10px; font-size: 10px;" id="unmapped-count"><?php echo count($unmappedStalls); ?></span>
+            <!-- CÔNG CỤ VẼ MỚI -->
+            <div style="font-weight: 700; font-size: 12px; margin-bottom: 10px; color: var(--text-muted, #64748b); text-transform: uppercase; letter-spacing: 0.5px;">Vẽ phần tử mới</div>
+            <button class="draw-tool-btn" id="tool-draw-stall" data-tool="stall">
+                <i class="fa-solid fa-store" style="color: #3b82f6;"></i>
+                <span>Vẽ sạp mới (Stall)</span>
+            </button>
+            <button class="draw-tool-btn" id="tool-draw-street" data-tool="street">
+                <i class="fa-solid fa-road" style="color: #64748b;"></i>
+                <span>Vẽ Lối đi (Street)</span>
+            </button>
+            <button class="draw-tool-btn" id="tool-draw-fence" data-tool="fence">
+                <i class="fa-solid fa-bars" style="color: #d97706;"></i>
+                <span>Vẽ Hàng rào (Fence)</span>
+            </button>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;">
+                <button class="draw-tool-btn" id="tool-place-wc" data-tool="utility" style="padding:0 4px; font-size: 11px;">
+                    <i class="fa-solid fa-restroom" style="color: #0ea5e9;"></i>
+                    <span>Đặt WC</span>
+                </button>
+                <button class="draw-tool-btn" id="tool-place-office" data-tool="office" style="padding:0 4px; font-size: 11px;">
+                    <i class="fa-solid fa-building-user" style="color: #8b5cf6;"></i>
+                    <span>Đặt BQL</span>
+                </button>
+                <button class="draw-tool-btn" id="tool-place-security" data-tool="security-room" style="padding:0 4px; font-size: 11px;">
+                    <i class="fa-solid fa-shield-halved" style="color: #475569;"></i>
+                    <span>Đặt Bảo vệ</span>
+                </button>
             </div>
-            <input type="text" id="unmapped-search" class="unmapped-search" placeholder="Tìm nhanh sạp...">
-            <div id="unmapped-stalls-list" style="max-height: 250px; overflow-y: auto; padding-right: 4px;">
+
+            <!-- DANH SÁCH SẠP CHƯA GÁN -->
+            <div style="font-weight: 700; font-size: 12px; margin: 20px 0 10px; color: var(--text-muted, #64748b); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; justify-content: space-between;">
+                <span>Sạp chưa có tọa độ</span>
+                <span style="background: rgba(15, 118, 110, 0.1); color: var(--primary, #0f766e); padding: 2px 6px; border-radius: 10px; font-size: 10px;" id="unmapped-count"><?php echo count($unmappedStalls); ?></span>
+            </div>
+
+            <div id="unmapped-stalls-list" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; padding: 4px;">
                 <?php if (!empty($unmappedStalls)): ?>
                     <?php foreach ($unmappedStalls as $stall): ?>
-                        <div class="unmapped-stall-item" data-stall-id="<?php echo $stall['stall_id']; ?>" data-stall-code="<?php echo htmlspecialchars($stall['stall_code']); ?>" draggable="true">
-                            <div>
-                                <i class="fa-solid fa-store" style="margin-right: 6px; color: var(--primary);"></i>
-                                <strong style="font-size: 12px;"><?php echo htmlspecialchars($stall['stall_code']); ?></strong>
+                        <div class="unmapped-stall-item" 
+                             data-stall-id="<?php echo $stall['stall_id']; ?>" 
+                             data-stall-code="<?php echo htmlspecialchars($stall['stall_code']); ?>" 
+                             data-area-name="<?php echo htmlspecialchars($stall['area_name'] ?? ''); ?>" 
+                             data-trader-name="<?php echo htmlspecialchars($stall['trader_name'] ?? ''); ?>" 
+                             onclick="selectUnmappedStall('<?php echo htmlspecialchars($stall['stall_code']); ?>')"
+                             style="flex-direction: column; align-items: flex-start; gap: 4px; padding: 8px 10px; height: auto;">
+                            
+                            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                                <div>
+                                    <i class="fa-solid fa-store" style="margin-right: 6px; color: var(--primary, #0f766e);"></i>
+                                    <strong style="font-size: 12px;"><?php echo htmlspecialchars($stall['stall_code']); ?></strong>
+                                </div>
+                                <span style="font-size: 10px; color: var(--text-muted, #64748b);"><?php echo $stall['stall_area_size']; ?> m²</span>
                             </div>
-                            <span style="font-size: 10px; color: var(--text-muted);"><?php echo $stall['stall_area_size']; ?> m²</span>
+                            
+                            <div style="font-size: 10px; color: var(--text-muted, #64748b); padding-left: 18px; line-height: 1.4;">
+                                <div><i class="fa-solid fa-layer-group" style="font-size:9px; width:12px;"></i> Khu: <?php echo htmlspecialchars($stall['area_name'] ?? 'Chưa rõ'); ?></div>
+                                <?php if (!empty($stall['trader_name'])): ?>
+                                    <div style="color: #0f766e; font-weight: 500;"><i class="fa-solid fa-user" style="font-size:9px; width:12px;"></i> TT: <?php echo htmlspecialchars($stall['trader_name']); ?></div>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <p style="font-size: 12px; color: var(--text-muted); text-align: center; margin-top: 10px;">Đã đưa tất cả sạp lên bản đồ!</p>
+                    <p style="font-size: 12px; color: var(--text-muted, #64748b); text-align: center; margin-top: 10px;">Đã đưa tất cả sạp lên bản đồ!</p>
                 <?php endif; ?>
             </div>
         </div>
     </div>
 
-    <!-- CANVAS CHÍNH (VÙNG LÀM VIỆC) -->
+    <!-- CANVAS CHÍNH: Bản đồ vệ tinh thực tế -->
     <div class="editor-canvas-area">
-        <!-- Thanh công cụ Canvas -->
         <div class="canvas-toolbar">
             <div class="toolbar-group">
-                <button class="btn btn-outline btn-sm" id="btn-zoom-out" title="Thu nhỏ"><i class="fa-solid fa-minus"></i></button>
-                <span class="zoom-badge" id="zoom-value">100%</span>
-                <button class="btn btn-outline btn-sm" id="btn-zoom-in" title="Phóng to"><i class="fa-solid fa-plus"></i></button>
-                <button class="btn btn-outline btn-sm" id="btn-zoom-reset" title="Thu phóng mặc định"><i class="fa-solid fa-rotate-left"></i></button>
-                <span style="border-left: 1px solid var(--border-color); height: 20px; margin: 0 4px;"></span>
-                <label style="font-size: 12px; display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
-                    <input type="checkbox" id="chk-snap-grid" checked> Snap to Grid (20px)
-                </label>
+                <span style="font-weight: 700; font-size: 13.5px; color: var(--primary, #0f766e);"><i class="fa-solid fa-map-location-dot"></i> Thiết kế bản đồ số chợ (GPS Vệ Tinh)</span>
             </div>
 
-            <div class="toolbar-group">
-                <button class="btn btn-outline btn-sm" id="btn-clear-map" style="color: var(--red);"><i class="fa-solid fa-trash-can"></i> Xóa Bản Đồ</button>
+            <div class="toolbar-group" style="gap: 4px;">
+                <button class="btn btn-default btn-sm" id="btn-toggle-left" type="button" title="Ẩn/Hiện panel trái" style="border:1px solid #cbd5e1; padding:4px 8px;"><i class="fa-solid fa-table-columns"></i></button>
+                <button class="btn btn-default btn-sm" id="btn-toggle-right" type="button" title="Ẩn/Hiện panel phải" style="border:1px solid #cbd5e1; padding:4px 8px;"><i class="fa-solid fa-table-columns fa-flip-horizontal"></i></button>
+                <button class="btn btn-default btn-sm" id="btn-toggle-legend" type="button" title="Ẩn/Hiện bộ lọc" style="border:1px solid #cbd5e1; padding:4px 8px;"><i class="fa-solid fa-filter"></i></button>
+                <span style="border-left:1px solid #e2e8f0; height:20px;"></span>
+                <button class="btn btn-default btn-sm" id="btn-toggle-map-type" type="button" style="border: 1px solid var(--border-color, #cbd5e1);"><i class="fa-solid fa-layer-group"></i> Bản đồ vệ tinh</button>
+                <button class="btn btn-outline btn-sm" id="btn-clear-map" style="color: var(--red, #ef4444);"><i class="fa-solid fa-trash-can"></i> Xóa Hết</button>
                 <button class="btn btn-primary btn-sm" id="btn-save-map"><i class="fa-solid fa-floppy-disk"></i> Lưu Bản Đồ</button>
             </div>
         </div>
 
-        <!-- Viewport cuộn -->
-        <div class="canvas-viewport" id="canvas-viewport">
-            <div class="canvas-grid" id="canvas-grid">
-                <!-- Các phần tử vẽ động sẽ được render ở đây qua JS -->
+        <!-- Div chứa bản đồ địa lý -->
+        <div id="map-canvas-editor" style="position: relative;">
+            <!-- Floating Controls -->
+            <div class="map-floating-controls">
+                <button class="selector-btn-gps control-btn-gps active" id="btn-filter-all-admin" title="Hiển thị tất cả sạp" type="button" style="border:1px solid #cbd5e1; padding:0;"><i class="fa-solid fa-border-all"></i></button>
+                <button id="btn-zoom-in-admin" class="control-btn-gps" title="Phóng to" type="button" style="border:1px solid #cbd5e1; padding:0;"><i class="fa-solid fa-plus"></i></button>
+                <button id="btn-zoom-out-admin" class="control-btn-gps" title="Thu nhỏ" type="button" style="border:1px solid #cbd5e1; padding:0;"><i class="fa-solid fa-minus"></i></button>
+                <button id="btn-reset-map-admin" class="control-btn-gps" title="Căn giữa" type="button" style="border:1px solid #cbd5e1; padding:0;"><i class="fa-solid fa-crosshairs"></i></button>
             </div>
         </div>
     </div>
 
-    <!-- PANEL PHẢI: THUỘC TÍNH PHẦN TỬ -->
+    <!-- PANEL PHẢI: CHI TIẾT THUỘC TÍNH PHẦN TỬ ĐANG CHỌN -->
     <div class="editor-panel editor-panel-right">
         <div class="panel-header">
             <span><i class="fa-solid fa-sliders"></i> Thuộc Tính</span>
         </div>
+
+        <!-- Bảng lọc & chú giải sạp trên bản đồ (Chuyển sang bên phải, ngoài map) -->
+        <div id="map-legend" style="border-bottom: 1px solid var(--border-color, #e2e8f0); padding: 12px 16px; background-color: rgba(0, 0, 0, 0.01);">
+            <div style="font-weight: 700; font-size: 13px; color: var(--primary, #0f766e); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                <i class="fa-solid fa-filter"></i> Lọc & Chú giải sạp
+            </div>
+            
+            <!-- Bộ lọc Khu vực -->
+            <div style="margin-bottom: 6px;">
+                <select id="map-filter-area" style="width:100%; font-size:12px; padding:6px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer;">
+                    <option value="">-- Tất cả Khu vực --</option>
+                    <?php if (!empty($areas)): foreach ($areas as $a): ?>
+                        <option value="<?php echo htmlspecialchars($a['area_name']); ?>"><?php echo htmlspecialchars($a['area_name']); ?></option>
+                    <?php endforeach; endif; ?>
+                </select>
+            </div>
+            
+            <!-- Bộ lọc Ngành hàng -->
+            <div style="margin-bottom: 8px;">
+                <select id="map-filter-business" style="width:100%; font-size:12px; padding:6px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer;">
+                    <option value="">-- Tất cả Ngành hàng --</option>
+                    <?php if (!empty($businessLines)): foreach ($businessLines as $bl): ?>
+                        <option value="<?php echo htmlspecialchars($bl['line_name']); ?>"><?php echo htmlspecialchars($bl['line_name']); ?></option>
+                    <?php endforeach; endif; ?>
+                </select>
+            </div>
+            
+            <button id="btn-clear-map-filter" style="width:100%; font-size:11px; padding:4px 0; border:1px solid #cbd5e1; border-radius:6px; background:#f8fafc; cursor:pointer; color:#64748b; margin-bottom:8px; font-weight:600;" type="button">
+                <i class="fa-solid fa-xmark"></i> Xóa bộ lọc
+            </button>
+            
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 8px; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 11px;">
+                <div style="display:flex; align-items:center; gap:4px; color:#475569;"><span style="width:12px; height:12px; border-radius:3px; border:1px solid #22c55e; background:#dcfce7; display:inline-block; flex-shrink:0;"></span> Đã thuê</div>
+                <div style="display:flex; align-items:center; gap:4px; color:#475569;"><span style="width:12px; height:12px; border-radius:3px; border:1px solid #3b82f6; background:#dbeafe; display:inline-block; flex-shrink:0;"></span> Trống</div>
+                <div style="display:flex; align-items:center; gap:4px; color:#475569;"><span style="width:12px; height:12px; border-radius:3px; border:1px solid #f97316; background:#ffedd5; display:inline-block; flex-shrink:0;"></span> Bảo trì</div>
+                <div style="display:flex; align-items:center; gap:4px; color:#475569;"><span style="width:12px; height:12px; border-radius:3px; border:1px solid #ef4444; background:#fee2e2; display:inline-block; flex-shrink:0;"></span> Khóa</div>
+            </div>
+        </div>
+
         <div class="panel-content" id="property-panel-content">
-            <div style="text-align: center; color: var(--text-muted); padding: 40px 10px;" id="no-selection-msg">
+            <div style="text-align: center; color: var(--text-muted, #64748b); padding: 40px 10px;" id="no-selection-msg">
                 <i class="fa-solid fa-mouse-pointer" style="font-size: 32px; margin-bottom: 12px; opacity: 0.5;"></i>
                 <p style="font-size: 13px;">Click chọn một phần tử trên sơ đồ để thiết lập thông số.</p>
             </div>
 
             <div id="selection-form" style="display: none;">
+                <!-- Lock Position Option -->
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; background: rgba(239, 68, 68, 0.05); padding: 8px 12px; border-radius: 6px; border: 1px dashed rgba(239, 68, 68, 0.3);">
+                    <span style="font-size: 12px; font-weight: 700; color: #475569;"><i class="fa-solid fa-location-dot"></i> Vị trí phần tử:</span>
+                    <label style="margin: 0; display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; font-weight: 700; color: var(--red, #ef4444);">
+                        <input type="checkbox" id="prop-lock-position" checked style="width: 16px; height: 16px; cursor: pointer; margin: 0;">
+                        <span id="prop-lock-text">Đang khóa di chuyển</span>
+                    </label>
+                </div>
+
                 <!-- Loại phần tử -->
-                <div class="property-group">
+                <div class="property-group permanently-hidden">
                     <label>Loại phần tử</label>
                     <input type="text" id="prop-type-name" class="property-input" readonly style="background: rgba(0,0,0,0.03); font-weight: bold;">
                 </div>
 
                 <!-- Tên / Nhãn hiển thị -->
-                <div class="property-group">
+                <div class="property-group permanently-hidden">
                     <label for="prop-name">Tên hiển thị / Nhãn</label>
-                    <input type="text" id="prop-name" class="property-input" placeholder="Ví dụ: Lối đi số 1">
+                    <input type="text" id="prop-name" class="property-input" placeholder="Ví dụ: Cổng số 1">
                 </div>
 
                 <!-- Chọn Sạp (Nếu là sạp) -->
-                <div class="property-group" id="group-stall-binding" style="display: none;">
-                    <label for="prop-stall-id">Liên kết Sạp chợ thật <span style="color: var(--red)">*</span></label>
+                <div class="property-group permanently-hidden" id="group-stall-binding">
+                    <label for="prop-stall-id">Liên kết Sạp chợ thật <span style="color: var(--red, #ef4444)">*</span></label>
                     <select id="prop-stall-id" class="property-input">
                         <option value="">-- Chọn Sạp chưa gán --</option>
                         <?php foreach ($stalls as $st): ?>
@@ -970,44 +569,30 @@
                     </select>
                 </div>
 
-                <!-- Tọa độ X, Y -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div class="property-group">
-                        <label for="prop-x">Tọa độ X (px)</label>
-                        <input type="number" id="prop-x" class="property-input" step="20">
-                    </div>
-                    <div class="property-group">
-                        <label for="prop-y">Tọa độ Y (px)</label>
-                        <input type="number" id="prop-y" class="property-input" step="20">
+                <!-- GPS Coordinates -->
+                <div class="property-group permanently-hidden">
+                    <label>Tọa độ GPS (Center Lat, Lng)</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <input type="number" id="prop-lat" class="property-input" step="0.000001" placeholder="Vĩ độ">
+                        <input type="number" id="prop-lng" class="property-input" step="0.000001" placeholder="Kinh độ">
                     </div>
                 </div>
 
-                <!-- Độ rộng đường đi (Nếu là đường đi) -->
-                <div class="property-group" id="group-stroke-width" style="display: none;">
-                    <label for="prop-stroke-width">Độ rộng đường (px)</label>
-                    <input type="number" id="prop-stroke-width" class="property-input" min="10" max="100" step="2" value="24">
-                    <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px; line-height: 1.4;">
-                        * Kéo thả nút tròn mờ ở giữa các đoạn để bẻ hướng rẽ.<br>
-                        * Kéo thả trực tiếp đường/hàng rào để di chuyển.<br>
-                        * Nhấp đúp vào nút tròn xanh để xóa góc rẽ.
-                    </p>
-                </div>
-
-                <!-- Chiều rộng & Chiều cao -->
-                <div id="group-size-dimensions" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <!-- Chiều rộng & Chiều dài thực tế (mét) -->
+                <div class="permanently-hidden" id="group-stall-dimensions">
                     <div class="property-group">
-                        <label for="prop-w">Chiều rộng (px)</label>
-                        <input type="number" id="prop-w" class="property-input" min="20" step="20">
+                        <label for="prop-w-m">Chiều rộng sạp (m)</label>
+                        <input type="number" id="prop-w-m" class="property-input" step="0.1" value="3.0">
                     </div>
                     <div class="property-group">
-                        <label for="prop-h">Chiều cao (px)</label>
-                        <input type="number" id="prop-h" class="property-input" min="20" step="20">
+                        <label for="prop-h-m">Chiều dài sạp (m)</label>
+                        <input type="number" id="prop-h-m" class="property-input" step="0.1" value="3.0">
                     </div>
                 </div>
 
                 <!-- Góc xoay -->
-                <div class="property-group" id="group-rotation-container">
-                    <label for="prop-rotation">Góc xoay (Độ)</label>
+                <div class="property-group permanently-hidden" id="group-rotation-container">
+                    <label for="prop-rotation">Góc xoay sạp (Độ)</label>
                     <input type="number" id="prop-rotation" class="property-input" min="0" max="359" step="1" value="0">
                 </div>
 
@@ -1020,89 +605,104 @@
                     </div>
                 </div>
 
-                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0;">
+                <hr style="border: 0; border-top: 1px solid var(--border-color, #e2e8f0); margin: 20px 0;">
 
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                    <button class="btn btn-outline btn-block" id="btn-delete-element" style="color: var(--red); border-color: rgba(211, 47, 47, 0.3); background: rgba(211, 47, 47, 0.02);">
-                        <i class="fa-solid fa-trash"></i> Xóa Phần Tử Này
-                    </button>
-                </div>
+                <button class="btn btn-outline btn-block" id="btn-delete-element" style="width:100%; color: var(--red, #ef4444); border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.02);">
+                    <i class="fa-solid fa-trash"></i> Xóa Phần Tử Này
+                </button>
 
-                <!-- Mục hiển thị thông tin sạp chi tiết khi chọn sạp -->
-                <div id="stall-info-panel" style="margin-top: 20px; border-top: 1px dashed var(--border-color); padding-top: 16px; display: none;">
-                    <h5 style="margin: 0 0 12px 0; font-size: 13px; font-weight: 600; color: var(--primary); display: flex; align-items: center; gap: 6px;">
-                        <i class="fa-solid fa-circle-info"></i> Thông tin Sạp liên kết
+                <!-- Thẻ xem chi tiết khi liên kết sạp -->
+                <div id="stall-info-panel" style="margin-top: 20px; border-top: 1px dashed var(--border-color, #e2e8f0); padding-top: 16px; display: none;">
+                    <h5 style="margin: 0 0 12px 0; font-size: 13px; font-weight: 700; color: var(--primary, #0f766e); display: flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-circle-info"></i> Thông tin sạp thuê
                     </h5>
-                    <div style="font-size: 12.5px; line-height: 1.6; display: flex; flex-direction: column; gap: 8px; background: rgba(0,0,0,0.02); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 12px; line-height: 1.6; display: flex; flex-direction: column; gap: 8px; background: rgba(0,0,0,0.02); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color, #e2e8f0);">
                         <div style="display: flex; justify-content: space-between;">
-                            <span style="color: var(--text-muted);">Loại sạp:</span>
-                            <strong id="stall-info-type">--</strong>
-                        </div>
-                        <div style="display: flex; justify-content: space-between;">
-                            <span style="color: var(--text-muted);">Khu vực:</span>
-                            <strong id="stall-info-area-name">--</strong>
-                        </div>
-                        <div style="display: flex; justify-content: space-between;">
-                            <span style="color: var(--text-muted);">Diện tích:</span>
+                            <span style="color: var(--text-muted, #64748b);">Diện tích:</span>
                             <strong id="stall-info-area">--</strong>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
-                            <span style="color: var(--text-muted);">Giá cơ bản:</span>
+                            <span style="color: var(--text-muted);">Đơn giá:</span>
                             <strong id="stall-info-price">--</strong>
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span style="color: var(--text-muted);">Trạng thái:</span>
                             <span class="badge" id="stall-info-status" style="font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">--</span>
                         </div>
-                        
-                        <!-- Thông tin tiểu thương & hợp đồng thuê -->
                         <div id="stall-info-trader-row" style="display: none; flex-direction: column; gap: 6px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 8px; margin-top: 4px;">
                             <div style="display: flex; justify-content: space-between;">
                                 <span style="color: var(--text-muted);">Tiểu thương:</span>
-                                <strong id="stall-info-trader" style="color: var(--primary);">--</strong>
-                            </div>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span style="color: var(--text-muted);">Số điện thoại:</span>
-                                <strong id="stall-info-phone">--</strong>
-                            </div>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span style="color: var(--text-muted);">Số hợp đồng:</span>
-                                <strong id="stall-info-contract">--</strong>
-                            </div>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span style="color: var(--text-muted);">Hạn thuê:</span>
-                                <strong id="stall-info-contract-end" style="color: var(--red);">--</strong>
+                                <strong id="stall-info-trader" style="color: var(--primary, #0f766e);">--</strong>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- PANEL TÌM KIẾM ĐỊA CHỈ (GOOGLE MAP STYLE) -->
+        <div style="border-top: 1px solid var(--border-color, #e2e8f0); padding: 16px; background-color: rgba(0, 0, 0, 0.01);">
+            <div style="font-weight: 700; font-size: 13px; color: var(--primary, #0f766e); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                <i class="fa-solid fa-magnifying-glass-location"></i> Tìm địa điểm (Google Maps)
+            </div>
+            <div style="display: flex; gap: 6px;">
+                <input type="text" id="map-search-address" class="property-input" placeholder="Nhập địa chỉ, tên đường, khu vực..." style="margin-bottom: 0; flex: 1;">
+                <button class="btn btn-primary btn-sm" id="btn-map-search-address" style="padding: 0 12px; height: 34px;"><i class="fa-solid fa-magnifying-glass"></i></button>
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted, #64748b); margin-top: 6px;">
+                <i class="fa-solid fa-info-circle"></i> Bản đồ sẽ tự động chuyển đến vị trí tìm kiếm.
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- Nạp dữ liệu sạp từ DB vào JS -->
+<!-- Modal Xác Nhận Xóa Phần Tử -->
+<div id="modal-confirm-delete" class="custom-modal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); backdrop-filter: blur(4px); align-items: center; justify-content: center;">
+    <div class="card" style="width: 100%; max-width: 400px; margin: auto; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid var(--border-color, #e2e8f0); background: #fff; overflow: hidden; animation: modalFadeIn 0.2s ease-out;">
+        <div class="card-header" style="background: #fafbfc; border-bottom: 1px solid #f1f5f9; padding: 16px 20px; display: flex; align-items: center; gap: 10px;">
+            <i class="fa-solid fa-triangle-exclamation" style="color: var(--red, #ef4444); font-size: 18px;"></i>
+            <div class="card-title" style="font-size: 15px; font-weight: 700; color: #0f172a; margin: 0;">Xác nhận xóa phần tử</div>
+        </div>
+        <div class="card-body" style="padding: 20px;">
+            <p style="margin: 0 0 20px 0; font-size: 13.5px; color: #475569; line-height: 1.5;">Bạn có chắc chắn muốn xóa phần tử này khỏi sơ đồ? Thao tác này không thể hoàn tác.</p>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn btn-outline" id="btn-cancel-delete" style="padding: 8px 16px; font-size: 13px; font-weight: 600;">Hủy</button>
+                <button type="button" class="btn btn-danger" id="btn-confirm-delete" style="padding: 8px 16px; font-size: 13px; font-weight: 600; background-color: var(--red, #ef4444); border-color: var(--red, #ef4444); color: #fff;">Xác nhận xóa</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes modalFadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+.btn-danger:hover {
+    background-color: #dc2626 !important;
+    border-color: #dc2626 !important;
+}
+</style>
+
+<!-- Nạp dữ liệu sạp & Chợ vào JS -->
 <script>
     window.DB_STALLS = <?php echo json_encode($stalls); ?>;
+    window.MARKET_DATA = <?php echo json_encode($market); ?>;
 </script>
 
-<!-- Script xử lý bản đồ -->
 <script>
 (function () {
-    // Hàm hiển thị thông báo Toast nội bộ dùng SweetAlert2
+    // 1. Hàm hiển thị Toast thông báo bằng SweetAlert2
     function showToast(message, type) {
-        var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        var swalBg = isDark ? '#1a2332' : '#ffffff';
-        var swalColor = isDark ? '#ffffff' : '#0f1623';
         var toastConfig = Swal.mixin({
             toast: true,
             position: 'top-end',
             showConfirmButton: false,
             timer: 3000,
-            timerProgressBar: true,
-            background: swalBg,
-            color: swalColor
+            timerProgressBar: true
         });
+
+        // Bộ lọc đã được chuyển vào static panel bên phải nên không cần di chuyển (draggable) nữa
 
         var iconType = 'info';
         if (type === 'danger') iconType = 'error';
@@ -1115,1104 +715,789 @@
         });
     }
 
-    // 1. Khai báo các biến trạng thái sơ đồ
-    let elements = []; // Chứa toàn bộ các phần tử trên bản đồ
-    let selectedElement = null; // Phần tử đang được chọn
-    let zoomLevel = 1.0; // Tỷ lệ thu phóng mặc định
-    const zoomStep = 0.1;
-    const minZoom = 0.5;
-    const maxZoom = 2.0;
+    // 2. Khai báo các trạng thái editor
+    const market = window.MARKET_DATA || {};
+    const marketLat = parseFloat(market.market_latitude) || 15.122174;
+    const marketLng = parseFloat(market.market_longitude) || 108.802315;
+    const marketZoom = parseInt(market.market_map_zoom) || 19;
 
-    let isPanning = false;
-    let startX = 0;
-    let startY = 0;
-    let scrollLeft = 0;
-    let scrollTop = 0;
+    let map;
+    let satelliteLayer;
+    let flatLayer;
+    let currentMapType = 'flat'; // 'flat' hoặc 'satellite'
+    let elements = []; // Lưu trữ danh sách phần tử sơ đồ đang chỉnh sửa
+    let selectedElement = null; // Phần tử đang chọn
+    let activeTool = null; // Công cụ vẽ hiện tại (null, 'stall', 'street', 'fence', 'utility'...)
+    let activePolyline = null; // Polyline tạm thời khi đang vẽ đường
 
-    // Lịch sử thao tác (Undo / Redo)
-    let undoStack = [];
-    let redoStack = [];
-    const MAX_HISTORY_STATES = 40;
+    // DOM Elements
+    const qbStallCode = document.getElementById('qb-stall-code');
+    const qbGpsData = document.getElementById('qb-gps-data');
+    const qbWidth = document.getElementById('qb-width');
+    const qbLength = document.getElementById('qb-length');
+    const qbRotation = document.getElementById('qb-rotation');
 
-    // Các phần tử DOM cần thao tác
-    const canvasGrid = document.getElementById('canvas-grid');
-    const canvasViewport = document.getElementById('canvas-viewport');
-    const zoomValueText = document.getElementById('zoom-value');
     const selectionForm = document.getElementById('selection-form');
     const noSelectionMsg = document.getElementById('no-selection-msg');
-    const chkSnapGrid = document.getElementById('chk-snap-grid');
-
-    // Các ô input trong panel thuộc tính
+    
+    // Inputs panel phải
     const propTypeName = document.getElementById('prop-type-name');
     const propName = document.getElementById('prop-name');
     const propStallId = document.getElementById('prop-stall-id');
-    const propX = document.getElementById('prop-x');
-    const propY = document.getElementById('prop-y');
-    const propW = document.getElementById('prop-w');
-    const propH = document.getElementById('prop-h');
+    const propLat = document.getElementById('prop-lat');
+    const propLng = document.getElementById('prop-lng');
+    const propWM = document.getElementById('prop-w-m');
+    const propHM = document.getElementById('prop-h-m');
     const propRotation = document.getElementById('prop-rotation');
     const propColor = document.getElementById('prop-color');
     const propColorHex = document.getElementById('prop-color-hex');
     const groupStallBinding = document.getElementById('group-stall-binding');
+    const groupStallDimensions = document.getElementById('group-stall-dimensions');
     const groupColorPicker = document.getElementById('group-color-picker');
-    const HANDLE_MIN_SIZE = 24;
+    const stallInfoPanel = document.getElementById('stall-info-panel');
 
-    function isRoadType(type) {
-        return type === 'street' || type === 'fence';
+    // 3. Thuật toán lượng giác: chuyển từ Lat/Lng + Kích thước (m) -> 4 góc sạp
+    function calculateRectVertices(centerLat, centerLng, widthM, lengthM, rotationDeg) {
+        const R = 6378137; // Bán kính Trái Đất (mét)
+        const d2r = Math.PI / 180;
+        const r2d = 180 / Math.PI;
+
+        const theta = rotationDeg * d2r;
+        const cosT = Math.cos(theta);
+        const sinT = Math.sin(theta);
+
+        const halfW = widthM / 2;
+        const halfL = lengthM / 2;
+
+        const localCorners = [
+            { x: -halfW, y: -halfL },
+            { x: halfW, y: -halfL },
+            { x: halfW, y: halfL },
+            { x: -halfW, y: halfL }
+        ];
+
+        return localCorners.map(pt => {
+            const rx = pt.x * cosT - pt.y * sinT;
+            const ry = pt.x * sinT + pt.y * cosT;
+
+            const dLat = (ry / R) * r2d;
+            const dLng = (rx / (R * Math.cos(centerLat * d2r))) * r2d;
+
+            return [centerLat + dLat, centerLng + dLng];
+        });
     }
 
-    function isRoadLikeType(type) {
-        return isRoadType(type);
-    }
+    // 4. Khởi tạo bản đồ thiết kế (Nạp ảnh vệ tinh Google Hybrid cao cấp)
+    function initEditorMap() {
+        map = L.map('map-canvas-editor', {
+            zoomControl: false,
+            doubleClickZoom: false // Tắt dblclick zoom để dùng làm sự kiện kết thúc vẽ đường
+        }).setView([marketLat, marketLng], marketZoom);
 
-    function isIconOnlyType(type) {
-        return !isRoadLikeType(type);
-    }
+        // Sử dụng Google Satellite Hybrid tiles (Hiển thị mái sạp thực tế rất sắc nét)
+        satelliteLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            maxZoom: 22,
+            maxNativeZoom: 20
+        });
 
-    function getDefaultPreset(type) {
-        switch (type) {
-            case 'street':
-                return { width: 240, height: 24, color: '#8d95a0' };
-            case 'fence':
-                return { width: 240, height: 16, color: '#ddc9b0' };
-            case 'security-room':
-                return { width: 40, height: 40, color: '#dbeafe' };
-            case 'gate':
-                return { width: 40, height: 40, color: '#ffe0b2' };
-            case 'door':
-                return { width: 40, height: 40, color: '#d7ccc8' };
-            case 'utility':
-                return { width: 40, height: 40, color: '#e1bee7' };
-            case 'office':
-                return { width: 40, height: 40, color: '#e0f7fa' };
-            default:
-                return { width: 40, height: 40, color: null };
-        }
-    }
+        // Sử dụng Carto Light làm bản đồ phẳng tối giản (như bên home/map)
+        flatLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 22,
+            maxNativeZoom: 20
+        });
 
-    function getElementTypeClass(type) {
-        switch (type) {
-            case 'street':
-                return 'map-element-street-svg';
-            case 'fence':
-                return 'map-element-fence-svg';
-            case 'security-room':
-                return 'map-element-security-room';
-            default:
-                return `map-element-${type}`;
-        }
-    }
+        // Mặc định hiển thị bản đồ phẳng
+        flatLayer.addTo(map);
 
-    function buildElementLabel(item) {
-        if (isRoadLikeType(item.element_type)) {
-            return '';
-        }
-
-        if (item.element_type === 'stall') {
-            return `<i class="fa-solid fa-store"></i><br><strong>${item.stall_code || item.element_name || 'SẠP'}</strong>`;
-        }
-
-        if (isIconOnlyType(item.element_type)) {
-            return `<i class="${getIconForType(item.element_type)}"></i>`;
-        }
-
-        const icon = getIconForType(item.element_type);
-        return `<i class="${icon}"></i><br>${item.element_name || ''}`;
-    }
-
-    function syncElementContent(div, item) {
-        if (isRoadType(item.element_type)) {
-            const isFence = item.element_type === 'fence';
-            const strokeWidth = item.stroke_width || (isFence ? 16 : 24);
-            const bbox = getStreetBoundingBox(item.waypoints, strokeWidth);
-            const pad = strokeWidth / 2;
-            
-            const pointsStr = item.waypoints.map(pt => `${pt.x - bbox.minX + pad},${pt.y - bbox.minY + pad}`).join(' ');
-            
-            if (isFence) {
-                div.innerHTML = `
-                    <svg width="100%" height="100%" class="fence-svg-container" style="overflow: visible;">
-                        <polyline class="fence-bg" points="${pointsStr}" stroke="${item.color || '#64748b'}" stroke-width="${strokeWidth}" fill="none" />
-                        <polyline class="fence-line" points="${pointsStr}" stroke="#cbd5e1" stroke-width="${Math.max(2, strokeWidth - 4)}" stroke-dasharray="10 8" fill="none" />
-                        <polyline class="fence-core" points="${pointsStr}" stroke="#ffffff" stroke-width="2" fill="none" />
-                    </svg>
-                `;
-            } else {
-                div.innerHTML = `
-                    <svg width="100%" height="100%" class="street-svg-container" style="overflow: visible;">
-                        <polyline class="street-bg" points="${pointsStr}" stroke="${item.color || '#8d95a0'}" stroke-width="${strokeWidth}" fill="none" />
-                        <polyline class="street-line" points="${pointsStr}" stroke-width="2" fill="none" />
-                    </svg>
-                `;
-            }
-            
-
-            div.dataset.contentHtml = isFence ? 'fence-svg' : 'street-svg';
-            return;
-        }
-
-        const labelHtml = buildElementLabel(item);
-        const currentHtml = div.dataset.contentHtml || '';
-        if (currentHtml === labelHtml) {
-            return;
-        }
-
-        const handles = Array.from(div.querySelectorAll('.resize-handle, .rotate-handle'));
-        handles.forEach(handle => handle.remove());
-
-        div.innerHTML = labelHtml;
-        div.dataset.contentHtml = labelHtml;
-
-        handles.forEach(handle => div.appendChild(handle));
-    }
-
-    // 2. Hàm Khởi tạo
-    function init() {
+        // Tải dữ liệu bản đồ đã có từ DB
         loadMapData();
-        setupCanvasInteractions();
-        setupDragAndDrop();
-        setupPropertiesForm();
-        setupToolbarActions();
-        setupUnmappedStallsSearch();
-        setupKeyboardShortcuts();
+
+        // Bắt sự kiện click lên bản đồ để lấy tọa độ gán hoặc vẽ sạp
+        map.on('click', handleMapClick);
+
+        // Hoàn thành vẽ polyline khi double click trên map
+        map.on('dblclick', function (e) {
+            if ((activeTool === 'street' || activeTool === 'fence') && selectedElement) {
+                // Loại bỏ điểm trùng cuối cùng thường sinh ra do dblclick
+                if (selectedElement.waypoints.length > 1) {
+                    selectedElement.waypoints.pop();
+                }
+
+                // Vẽ lại đa giác hoàn thiện
+                drawElementOnMap(selectedElement);
+                elements.push(selectedElement);
+                selectElement(selectedElement);
+
+                deactivateTools();
+                showToast('Đã vẽ xong đường đi/hàng rào!', 'success');
+            } else if (selectedElement && !activeTool) {
+                // Kiểm tra trạng thái khóa vị trí sạp
+                const lockCheckbox = document.getElementById('prop-lock-position');
+                const isLocked = lockCheckbox ? lockCheckbox.checked : true;
+                
+                if (isLocked) {
+                    showToast('Vị trí đang Khóa! Hãy bỏ chọn "Đang khóa di chuyển" trong bảng Thuộc Tính để di chuyển sạp.', 'warning');
+                    return;
+                }
+
+                // Di chuyển phần tử đang chọn đến tọa độ click đúp
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+                
+                recordState();
+                selectedElement.latitude = lat;
+                selectedElement.longitude = lng;
+                
+                propLat.value = lat.toFixed(6);
+                propLng.value = lng.toFixed(6);
+                
+                drawElementOnMap(selectedElement);
+                showToast('Đã di chuyển sạp đến vị trí mới thành công!', 'success');
+            } else {
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+                const gpsStr = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                
+                // Tự động điền vào ô Gán nhanh bên trái
+                if (qbGpsData) {
+                    qbGpsData.value = gpsStr;
+                }
+                
+                // Tự động sao chép vào Clipboard
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(gpsStr).then(() => {
+                        showToast(`Đã sao chép và tự động điền tọa độ GPS: ${gpsStr}`, 'success');
+                    }).catch(() => {
+                        showToast(`Đã tự động điền tọa độ GPS: ${gpsStr}`, 'success');
+                    });
+                } else {
+                    showToast(`Đã tự động điền tọa độ GPS: ${gpsStr}`, 'success');
+                }
+                
+                // Ghim ghim tạm thời để trực quan hóa
+                const tempMarker = L.marker([lat, lng]).addTo(map);
+                tempMarker.bindPopup(`<b>Tọa độ điểm chọn:</b><br>${gpsStr}`).openPopup();
+                
+                setTimeout(() => {
+                    map.removeLayer(tempMarker);
+                }, 5000);
+            }
+        });
+
+        // ===== SỰ KIỆN CHO 4 NÚT ĐIỀU KHIỂN NỔI TRÊN BẢN ĐỒ ADMIN =====
+        const btnZoomIn = document.getElementById('btn-zoom-in-admin');
+        const btnZoomOut = document.getElementById('btn-zoom-out-admin');
+        const btnResetMap = document.getElementById('btn-reset-map-admin');
+        
+        if (btnZoomIn) {
+            btnZoomIn.addEventListener('click', function() {
+                if (map) map.zoomIn();
+            });
+        }
+        if (btnZoomOut) {
+            btnZoomOut.addEventListener('click', function() {
+                if (map) map.zoomOut();
+            });
+        }
+        if (btnResetMap) {
+            btnResetMap.addEventListener('click', function() {
+                if (map) map.setView([marketLat, marketLng], marketZoom);
+            });
+        }
+
+        const btnFilterAllAdmin = document.getElementById('btn-filter-all-admin');
+        if (btnFilterAllAdmin) {
+            btnFilterAllAdmin.addEventListener('click', function() {
+                const mapFilterArea = document.getElementById('map-filter-area');
+                const mapFilterBusiness = document.getElementById('map-filter-business');
+                if (mapFilterArea) mapFilterArea.value = '';
+                if (mapFilterBusiness) mapFilterBusiness.value = '';
+                
+                const qbFilterArea = document.getElementById('qb-filter-area');
+                const qbSearchInput = document.getElementById('qb-search-input');
+                const qbToggleMapped = document.getElementById('qb-toggle-mapped');
+                if (qbFilterArea) qbFilterArea.value = '';
+                if (qbSearchInput) qbSearchInput.value = '';
+                if (qbToggleMapped) qbToggleMapped.checked = false;
+                
+                // Highlight nút Tất cả
+                btnFilterAllAdmin.classList.add('active');
+                
+                if (typeof applyMapFilter === 'function') {
+                    applyMapFilter();
+                }
+                if (typeof filterQuickBindStalls === 'function') {
+                    filterQuickBindStalls();
+                }
+            });
+        }
+
+        // ===== TOGGLE ẨN/HIỆN PANEL & BỘ LỌC =====
+        const editorContainer = document.querySelector('.map-editor-container');
+        const mapLegend = document.getElementById('map-legend');
+
+        document.getElementById('btn-toggle-left').addEventListener('click', function() {
+            editorContainer.classList.toggle('hide-left');
+            setTimeout(() => map.invalidateSize(), 350);
+            this.classList.toggle('active');
+        });
+        document.getElementById('btn-toggle-right').addEventListener('click', function() {
+            editorContainer.classList.toggle('hide-right');
+            setTimeout(() => map.invalidateSize(), 350);
+            this.classList.toggle('active');
+        });
+        document.getElementById('btn-toggle-legend').addEventListener('click', function() {
+            mapLegend.style.display = mapLegend.style.display === 'none' ? '' : 'none';
+            this.classList.toggle('active');
+        });
+
+        // Thiết lập bộ sự kiện form thuộc tính & gán nhanh
+        setupEventBindings();
     }
 
-    // 3. Gọi API lấy dữ liệu sơ đồ từ Server
+    // Tải dữ liệu sơ đồ hiện tại của chợ qua API
     function loadMapData() {
         $.ajax({
             type: 'GET',
             url: '<?php echo BASE_URL; ?>api/getMapElements',
             dataType: 'json',
             success: function (response) {
-                if (response.status === 200) {
-                    elements = response.data || [];
-                    
-                    // Chuẩn hóa dữ liệu đường đi (SVG / waypoints / backward compat)
-                    elements.forEach(item => {
-                        if (item.waypoints && typeof item.waypoints === 'string') {
-                            try {
-                                item.waypoints = JSON.parse(item.waypoints);
-                            } catch (e) {
-                                item.waypoints = [];
-                            }
-                        }
+                // Xóa sạch các layer vẽ cũ
+                elements.forEach(el => {
+                    if (el.layer) map.removeLayer(el.layer);
+                    if (el.labelLayer) map.removeLayer(el.labelLayer);
+                });
+                elements = [];
 
-                        if (item.element_type === 'street-corner') {
-                            item.element_type = 'street';
-                            item.element_name = 'Đường đi';
-                            item.stroke_width = 24;
-                            item.waypoints = [
-                                { x: parseInt(item.pos_x), y: parseInt(item.pos_y) + (parseInt(item.height) || 120)/2 },
-                                { x: parseInt(item.pos_x) + (parseInt(item.width) || 120)/2, y: parseInt(item.pos_y) + (parseInt(item.height) || 120)/2 },
-                                { x: parseInt(item.pos_x) + (parseInt(item.width) || 120)/2, y: parseInt(item.pos_y) }
-                            ];
-                        } else if (isRoadType(item.element_type) && (!item.waypoints || item.waypoints.length === 0)) {
-                            // Chuyển đổi rect sang 2 waypoints
-                            const w = parseInt(item.width) || 120;
-                            const h = parseInt(item.height) || (item.element_type === 'fence' ? 16 : 24);
-                            const x = parseInt(item.pos_x) || 100;
-                            const y = parseInt(item.pos_y) || 100;
-                            
-                            if (w >= h) {
-                                item.waypoints = [
-                                    { x: x, y: y + h/2 },
-                                    { x: x + w, y: y + h/2 }
-                                ];
-                                item.stroke_width = h;
-                            } else {
-                                item.waypoints = [
-                                    { x: x + w/2, y: y },
-                                    { x: x + w/2, y: y + h }
-                                ];
-                                item.stroke_width = w;
-                            }
-                        }
+                const items = response.data || response || [];
+                if (items.length > 0) {
+                    items.forEach(item => {
+                        createElementFromData(item);
                     });
-
-                    renderAllElements();
-                } else {
-                    showToast('Không thể tải sơ đồ chợ: ' + response.message, 'danger');
                 }
+                updateUnmappedStallsBadge();
             },
             error: function () {
-                showToast('Không thể kết nối máy chủ để tải sơ đồ chợ.', 'danger');
+                showToast('Không thể tải dữ liệu sơ đồ chợ từ máy chủ.', 'danger');
             }
         });
     }
 
-    // 4. Render toàn bộ danh sách phần tử lên Canvas
-    function renderAllElements() {
-        // Xóa sạch canvas cũ
-        const oldElements = canvasGrid.querySelectorAll('.map-element');
-        oldElements.forEach(el => el.remove());
+    // Vẽ phần tử dựa trên dữ liệu tải từ DB
+    function createElementFromData(data) {
+        let el = {
+            id: data.element_id,
+            element_type: data.element_type,
+            element_name: data.element_name,
+            stall_id: data.element_stall_id,
+            stall_code: data.stall_code,
+            // pixel fallback
+            pos_x: parseInt(data.element_pos_x) || 0,
+            pos_y: parseInt(data.element_pos_y) || 0,
+            width: parseInt(data.element_width) || 40,
+            height: parseInt(data.element_height) || 40,
+            
+            // GPS fields
+            latitude: data.element_latitude ? parseFloat(data.element_latitude) : null,
+            longitude: data.element_longitude ? parseFloat(data.element_longitude) : null,
+            width_m: data.element_width_m ? parseFloat(data.element_width_m) : 3.0,
+            length_m: data.element_length_m ? parseFloat(data.element_length_m) : 3.0,
+            rotation: parseInt(data.element_rotation) || 0,
+            color: data.element_color,
+            waypoints: data.element_waypoints,
+            stroke_width: data.element_stroke_width
+        };
 
-        // Vẽ từng phần tử mới
-        elements.forEach(item => {
-            renderElement(item);
-        });
-
-        updateUnmappedStallsBadge();
+        drawElementOnMap(el);
+        elements.push(el);
     }
 
-    // Hàm vẽ một phần tử đơn lẻ lên canvas
-    function renderElement(item) {
-        const div = document.createElement('div');
-        div.className = `map-element ${getElementTypeClass(item.element_type)}`;
-        div.id = `el-${item.id || item.temp_id}`;
-        
-        // Gán trạng thái màu sắc nếu là sạp
-        if (item.element_type === 'stall') {
-            const colorClass = item.color_class || (item.status_code ? `status-${item.status_code}` : 'status-white');
-            div.classList.add(colorClass);
-        }
-        div.classList.toggle('is-icon-only', isIconOnlyType(item.element_type));
+    // Thực hiện vẽ đối tượng lên Leaflet Map dựa trên thuộc tính GPS của nó
+    function drawElementOnMap(el) {
+        // Xóa layer vẽ cũ nếu tồn tại
+        if (el.layer) map.removeLayer(el.layer);
+        if (el.labelLayer) map.removeLayer(el.labelLayer);
 
-        // Nội dung hiển thị bên trong hình vẽ
-        syncElementContent(div, item);
-        updateElementDOM(div, item);
+        let layer = null;
 
-        if (!isRoadType(item.element_type)) {
-            // Tay nắm thay đổi kích thước theo 4 phía + xoay trực tiếp
-            ['n', 'e', 's', 'w'].forEach(position => {
-                const resizeHandle = document.createElement('div');
-                resizeHandle.className = `resize-handle handle-${position}`;
-                resizeHandle.dataset.resize = position;
-                div.appendChild(resizeHandle);
-                resizeHandle.addEventListener('mousedown', function (e) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    startResizingElement(e, item, div, position);
+        // Vẽ Sạp
+        if (el.element_type === 'stall') {
+            if (el.latitude && el.longitude) {
+                const corners = calculateRectVertices(el.latitude, el.longitude, el.width_m, el.length_m, el.rotation);
+                const isSelected = (selectedElement === el);
+                const statusColors = getStallStatusColor(el.stall_id);
+
+                layer = L.polygon(corners, {
+                    color: isSelected ? '#0f766e' : statusColors.border,
+                    fillColor: isSelected ? '#0f766e' : statusColors.fill,
+                    fillOpacity: 0.6,
+                    weight: isSelected ? 3 : 1.5
+                }).addTo(map);
+
+                // Thêm nhãn stall code lên sạp
+                const labelIcon = L.divIcon({
+                    className: 'leaflet-stall-label-editor',
+                    html: el.stall_code || 'SẠP',
+                    iconSize: [40, 16],
+                    iconAnchor: [20, 8]
                 });
+                
+                el.labelLayer = L.marker([el.latitude, el.longitude], {
+                    icon: labelIcon,
+                    interactive: false
+                }).addTo(map);
+            }
+        }
+        // Vẽ biểu tượng tiện ích (WC, Cổng, Office...)
+        else if (el.latitude && el.longitude) {
+            const isSelected = (selectedElement === el);
+            const markerColor = isSelected ? '#0f766e' : '#475569';
+            const iconHtml = `<div style="background-color:${markerColor}; color:#fff; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,0.2);"><i class="${getIconClass(el.element_type)}" style="font-size:10px;"></i></div>`;
+
+            const icon = L.divIcon({
+                className: 'leaflet-marker-utility-editor',
+                html: iconHtml,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
             });
 
-            const rotateHandle = document.createElement('div');
-            rotateHandle.className = 'rotate-handle';
-            rotateHandle.dataset.rotate = 'true';
-            div.appendChild(rotateHandle);
-            rotateHandle.addEventListener('mousedown', function (e) {
-                e.stopPropagation();
-                e.preventDefault();
-                startRotatingElement(e, item, div);
-            });
+            layer = L.marker([el.latitude, el.longitude], { icon: icon }).addTo(map);
         }
 
-        // Sự kiện click để chọn phần tử
-        div.addEventListener('mousedown', function (e) {
-            // Nếu click trúng tay nắm trực tiếp, waypoint handle hoặc midpoint handle thì bỏ qua để handler riêng xử lý
-            if (e.target.closest('.resize-handle') || e.target.closest('.rotate-handle') || e.target.closest('.waypoint-handle') || e.target.closest('.midpoint-handle')) {
+        if (layer) {
+            el.layer = layer;
+
+            // Bắt sự kiện click để chọn đối tượng
+            layer.on('click', function (e) {
+                L.DomEvent.stopPropagation(e);
+                selectElement(el);
+            });
+        }
+    }
+
+    // 5. Thao tác Click trên bản đồ (Lấy tọa độ click hoặc Vẽ)
+    function handleMapClick(e) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+
+        // Nếu đang bật công cụ vẽ đa giác sạp mới: Tạo sạp mới tại vị trí click
+        if (activeTool === 'stall') {
+            const codeInput = qbStallCode.value.trim().toUpperCase();
+            if (!codeInput) {
+                showToast('Hãy nhập mã sạp bên khung Gán Nhanh trước khi click đặt sạp!', 'warning');
                 return;
             }
-            e.stopPropagation();
-            selectElement(item);
-            startDraggingElement(e, item, div);
-        });
 
-        canvasGrid.appendChild(div);
+            createStallAtGPS(codeInput, lat, lng);
+            deactivateTools();
+        }
+        // Đang đặt tiện ích (WC, Cổng, Office, Bảo vệ)
+        else if (['utility', 'office', 'gate', 'security-room'].includes(activeTool)) {
+            const tempId = 'temp-' + Date.now();
+            let newEl = {
+                temp_id: tempId,
+                element_type: activeTool,
+                element_name: getTypeNameVietnamese(activeTool),
+                latitude: lat,
+                longitude: lng
+            };
+
+            drawElementOnMap(newEl);
+            elements.push(newEl);
+            selectElement(newEl);
+
+            deactivateTools();
+            showToast('Đã đặt tiện ích thành công!', 'success');
+        }
     }
 
-    // Cập nhật CSS hiển thị cho phần tử trong DOM
-    function updateElementDOM(div, item) {
-        if (isRoadType(item.element_type)) {
-            const isFence = item.element_type === 'fence';
-            const strokeWidth = item.stroke_width || (isFence ? 16 : 24);
-            const bbox = getStreetBoundingBox(item.waypoints, strokeWidth);
-            
-            div.style.left = `${bbox.x}px`;
-            div.style.top = `${bbox.y}px`;
-            div.style.width = `${bbox.w}px`;
-            div.style.height = `${bbox.h}px`;
-            div.style.transform = '';
-            div.style.transformOrigin = '';
-            div.style.fontSize = '';
-            
-            const pad = strokeWidth / 2;
-            const pointsStr = item.waypoints.map(pt => `${pt.x - bbox.minX + pad},${pt.y - bbox.minY + pad}`).join(' ');
-            
-            if (isFence) {
-                const fenceBg = div.querySelector('.fence-bg');
-                const fenceLine = div.querySelector('.fence-line');
-                const fenceCore = div.querySelector('.fence-core');
-                if (fenceBg) {
-                    fenceBg.setAttribute('points', pointsStr);
-                    fenceBg.setAttribute('stroke-width', strokeWidth);
-                    fenceBg.setAttribute('stroke', item.color || '#64748b');
-                }
-                if (fenceLine) {
-                    fenceLine.setAttribute('points', pointsStr);
-                    fenceLine.setAttribute('stroke-width', Math.max(2, strokeWidth - 4));
-                }
-                if (fenceCore) {
-                    fenceCore.setAttribute('points', pointsStr);
-                }
-            } else {
-                const streetBg = div.querySelector('.street-bg');
-                const streetLine = div.querySelector('.street-line');
-                if (streetBg) {
-                    streetBg.setAttribute('points', pointsStr);
-                    streetBg.setAttribute('stroke-width', strokeWidth);
-                    streetBg.setAttribute('stroke', item.color || '#8d95a0');
-                }
-                if (streetLine) {
-                    streetLine.setAttribute('points', pointsStr);
-                }
-            }
-            
-            // Sync bounding box coordinates to model
-            item.pos_x = bbox.x;
-            item.pos_y = bbox.y;
-            item.width = bbox.w;
-            item.height = bbox.h;
-            item.rotation = 0;
+    // ponytail: dblclick handler moved inside initEditorMap() — was crashing here because `map` is undefined at IIFE top-level
+
+    // Tạo sạp chợ tại vị trí GPS
+    function createStallAtGPS(stallCode, lat, lng) {
+        // Kiểm tra xem mã sạp có tồn tại trong DB_STALLS không
+        let dbStall = window.DB_STALLS ? window.DB_STALLS.find(s => s.stall_code.toUpperCase() === stallCode) : null;
+        if (!dbStall) {
+            showToast(`Mã sạp "${stallCode}" không tồn tại trong danh sách của Chợ!`, 'danger');
             return;
         }
 
-        div.style.left = `${item.pos_x}px`;
-        div.style.top = `${item.pos_y}px`;
-        div.style.width = `${item.width}px`;
-        div.style.height = `${item.height}px`;
-        div.style.transform = `rotate(${item.rotation || 0}deg)`;
-        div.style.transformOrigin = 'center center';
-        div.style.fontSize = '';
-        div.style.setProperty('--icon-size', '1em');
-        div.style.setProperty('--icon-stretch-x', '1');
-        div.style.setProperty('--icon-stretch-y', '1');
+        const width = parseFloat(qbWidth.value) || 3.0;
+        const length = parseFloat(qbLength.value) || 3.0;
+        const rotation = parseInt(qbRotation.value) || 0;
+
+        // Kiểm tra xem sạp đã được vẽ trên bản đồ chưa
+        let existingElement = elements.find(el => el.stall_id == dbStall.stall_id);
+        if (existingElement) {
+            // Cập nhật vị trí và kích thước sạp đã tồn tại
+            existingElement.latitude = lat;
+            existingElement.longitude = lng;
+            existingElement.width_m = width;
+            existingElement.length_m = length;
+            existingElement.rotation = rotation;
+
+            if (existingElement.layer) map.removeLayer(existingElement.layer);
+            if (existingElement.labelLayer) map.removeLayer(existingElement.labelLayer);
+
+            drawElementOnMap(existingElement);
+            selectElement(existingElement);
+            
+            showToast(`Đã di chuyển sạp ${stallCode} đến tọa độ mới thành công!`, 'success');
+            return;
+        }
+
+        const tempId = 'temp-' + Date.now();
+        let newStall = {
+            temp_id: tempId,
+            element_type: 'stall',
+            element_name: stallCode,
+            stall_id: dbStall.stall_id,
+            stall_code: stallCode,
+            latitude: lat,
+            longitude: lng,
+            width_m: width,
+            length_m: length,
+            rotation: rotation,
+            // default pixel fallback
+            pos_x: 0,
+            pos_y: 0,
+            width: 40,
+            height: 40
+        };
+
+        drawElementOnMap(newStall);
+        elements.push(newStall);
+        selectElement(newStall);
+
+        // Xóa khỏi danh sách chưa gán
+        removeStallFromUnmappedList(dbStall.stall_id);
+        updateUnmappedStallsBadge();
+        showToast(`Đã định vị sạp ${stallCode} thành công!`, 'success');
+    }
+
+    // 6. GẮN TỌA ĐỘ NHANH 1 BƯỚC (Parser dán link & trích xuất)
+    function runQuickBind() {
+        const stallCode = qbStallCode.value.trim().toUpperCase();
+        const rawGps = qbGpsData.value.trim();
+
+        if (!stallCode) {
+            showToast('Vui lòng nhập mã sạp cần gán!', 'warning');
+            return;
+        }
+        if (!rawGps) {
+            showToast('Vui lòng dán tọa độ hoặc link Google Maps!', 'warning');
+            return;
+        }
+
+        // Kiểm tra xem có phải link Google Maps rút ngắn hay không (maps.app.goo.gl hoặc goo.gl/maps)
+        const isShortenedUrl = rawGps.toLowerCase().includes('maps.app.goo.gl') || rawGps.toLowerCase().includes('goo.gl/maps');
         
-        // Màu sắc tự chọn
-        if (isIconOnlyType(item.element_type)) {
-            div.style.backgroundColor = 'transparent';
-            div.style.borderColor = 'transparent';
-            div.style.boxShadow = '';
-            div.style.color = item.color ? adjustColorBrightness(item.color, -45) : '';
-        } else if (item.element_type !== 'stall' && item.color) {
-            div.style.backgroundColor = item.color;
-            div.style.borderColor = adjustColorBrightness(item.color, -28);
-            div.style.color = getContrastColor(item.color);
-        } else if (!isRoadLikeType(item.element_type)) {
-            div.style.backgroundColor = '';
-            div.style.borderColor = '';
-            div.style.boxShadow = '';
-            div.style.color = '';
+        if (isShortenedUrl) {
+            showToast('Đang giải mã liên kết rút gọn, vui lòng chờ...', 'info');
+            $.ajax({
+                type: 'POST',
+                url: '<?php echo BASE_URL; ?>api/resolveShortenedUrl',
+                data: JSON.stringify({ url: rawGps }),
+                contentType: 'application/json',
+                dataType: 'json',
+                success: function (response) {
+                    if (response.status === 200 && response.data.latitude && response.data.longitude) {
+                        const lat = response.data.latitude;
+                        const lng = response.data.longitude;
+                        createStallAtGPS(stallCode, lat, lng);
+                        map.setView([lat, lng], 21);
+                        qbGpsData.value = '';
+                        qbStallCode.value = '';
+                    } else {
+                        showToast('Giải mã link rút gọn thất bại: ' + (response.message || 'Không tìm thấy tọa độ'), 'danger');
+                    }
+                },
+                error: function (xhr) {
+                    let msg = 'Lỗi kết nối máy chủ để giải mã link rút gọn.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                    showToast(msg, 'danger');
+                }
+            });
+            return;
         }
 
-        if (item.element_type === 'stall') {
-            div.classList.remove('status-white', 'status-green', 'status-yellow', 'status-red', 'status-orange', 'status-blue', 'status-gray', 'status-rented', 'status-empty', 'status-repairing', 'status-locked');
-            const colorClass = item.color_class || (item.status_code ? `status-${item.status_code}` : 'status-white');
-            div.classList.add(colorClass);
+        // Tách tọa độ GPS bằng các định dạng ưu tiên từ link liên kết hoặc text thường
+        let lat = null;
+        let lng = null;
+
+        // Ưu tiên 1: Link chứa tọa độ ghim địa điểm chính xác (!3d...!4d)
+        let match = rawGps.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/i);
+        if (match) {
+            lat = parseFloat(match[1]);
+            lng = parseFloat(match[2]);
+        }
+        
+        // Ưu tiên 2: Link chứa tham số query=lat,lng hoặc q=lat,lng
+        if (lat === null) {
+            match = rawGps.match(/(?:query|q)=(-?\d+\.\d+)(?:%2C|,)(-?\d+\.\d+)/i);
+            if (match) {
+                lat = parseFloat(match[1]);
+                lng = parseFloat(match[2]);
+            }
         }
 
-        syncElementContent(div, item);
-
-        if (!isRoadLikeType(item.element_type)) {
-            const areaScale = Math.sqrt(Math.max(1, (item.width || 0) * (item.height || 0)));
-            const labelSize = Math.min(28, Math.max(12, Math.round(areaScale * 0.05)));
-            const iconSize = Math.min(120, Math.max(18, Math.round(areaScale * 0.22)));
-            div.style.fontSize = `${labelSize}px`;
-            div.style.setProperty('--icon-size', `${iconSize}px`);
+        // Ưu tiên 3: Link chứa viewport camera (@lat,lng)
+        if (lat === null) {
+            match = rawGps.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+            if (match) {
+                lat = parseFloat(match[1]);
+                lng = parseFloat(match[2]);
+            }
         }
 
-        if (isIconOnlyType(item.element_type)) {
-            const baseSize = 100;
-            const scaleX = Math.max(0.1, (item.width || baseSize) / baseSize);
-            const scaleY = Math.max(0.1, (item.height || baseSize) / baseSize);
-            div.style.fontSize = '0';
-            div.style.setProperty('--icon-size', `${baseSize}px`);
-            div.style.setProperty('--icon-stretch-x', scaleX.toFixed(3));
-            div.style.setProperty('--icon-stretch-y', scaleY.toFixed(3));
+        // Ưu tiên 4: Dữ liệu copy thô (chuỗi số Lat, Lng phân tách bởi phẩy/space/kí tự bất kì)
+        if (lat === null) {
+            const gpsRegex = /(-?\d+\.\d+)[,\s/\\|#@:]+\s*(-?\d+\.\d+)/;
+            match = rawGps.match(gpsRegex);
+            if (match) {
+                lat = parseFloat(match[1]);
+                lng = parseFloat(match[2]);
+            }
+        }
+
+        if (lat !== null && lng !== null) {
+            // Thực hiện vẽ sạp tại GPS trích xuất được
+            createStallAtGPS(stallCode, lat, lng);
+            
+            // Di chuyển camera bản đồ đến điểm vừa gán
+            map.setView([lat, lng], 21);
+            
+            // Reset ô dán tọa độ để tiện nhập sạp tiếp theo
+            qbGpsData.value = '';
+            qbStallCode.value = '';
+        } else {
+            showToast('Không thể trích xuất tọa độ GPS từ dữ liệu dán vào. Vui lòng thử lại!', 'danger');
         }
     }
 
-    // 5. Chọn và hiển thị thuộc tính
-    function selectElement(item) {
-        selectedElement = item;
-        
-        // Đánh dấu viền nét đứt cho phần tử được chọn
-        canvasGrid.querySelectorAll('.map-element').forEach(el => el.classList.remove('selected'));
-        const activeDom = document.getElementById(`el-${item.id || item.temp_id}`);
-        if (activeDom) {
-            activeDom.classList.add('selected');
+    // 7. Chọn phần tử hiển thị thông tin ở cột Phải
+    function selectElement(el) {
+        if (selectedElement === el) return; // Tránh đệ quy lặp lại
+        deselectElement(); // Hủy chọn cái cũ trước
+
+        selectedElement = el;
+
+        // Reset nút khóa vị trí về mặc định: Khóa (checked)
+        const lockCheckbox = document.getElementById('prop-lock-position');
+        if (lockCheckbox) {
+            lockCheckbox.checked = true;
+            lockCheckbox.dispatchEvent(new Event('change'));
         }
 
-        // Hiển thị Panel thuộc tính bên phải
+        // Vẽ lại sạp cũ với nét vẽ nổi bật
+        drawElementOnMap(selectedElement);
+
+        // Hiển thị form
         noSelectionMsg.style.display = 'none';
         selectionForm.style.display = 'block';
 
-        // Điền dữ liệu vào form thuộc tính
-        propTypeName.value = getTypeNameVietnamese(item.element_type);
-        propName.value = item.element_name || '';
-        propX.value = Math.round(item.pos_x);
-        propY.value = Math.round(item.pos_y);
-        propW.value = Math.round(item.width);
-        propH.value = Math.round(item.height);
-        propRotation.value = item.rotation || 0;
+        propTypeName.value = getTypeNameVietnamese(el.element_type);
+        propName.value = el.element_name || '';
 
-        // Toggle panel inputs based on element type
-        if (isRoadType(item.element_type)) {
-            document.getElementById('group-size-dimensions').style.display = 'none';
-            document.getElementById('group-rotation-container').style.display = 'none';
-            document.getElementById('group-stroke-width').style.display = 'block';
-            document.getElementById('prop-stroke-width').value = item.stroke_width || (item.element_type === 'fence' ? 16 : 24);
-        } else {
-            document.getElementById('group-size-dimensions').style.display = 'grid';
-            document.getElementById('group-rotation-container').style.display = 'block';
-            document.getElementById('group-stroke-width').style.display = 'none';
-        }
+        // Tọa độ GPS
+        propLat.value = el.latitude ? el.latitude.toFixed(6) : '';
+        propLng.value = el.longitude ? el.longitude.toFixed(6) : '';
 
-        // Trạng thái hiển thị dropdown chọn sạp
-        if (item.element_type === 'stall') {
+        // Rotation
+        propRotation.value = el.rotation || 0;
+
+        // Hiển thị các trường đặc thù theo loại
+        if (el.element_type === 'stall') {
             groupStallBinding.style.display = 'block';
+            groupStallDimensions.style.display = 'grid';
             groupColorPicker.style.display = 'none';
-            propStallId.value = item.stall_id || '';
-            updateStallInfoCard(item);
+
+            propStallId.value = el.stall_id || '';
+            propWM.value = el.width_m || 3.0;
+            propHM.value = el.length_m || 3.0;
+
+            updateStallInfoPanel(el.stall_id);
+
+            // Đồng bộ sang khung Gán Nhanh bên trái
+            const qbToggleMapped = document.getElementById('qb-toggle-mapped');
+            const qbStallCode = document.getElementById('qb-stall-code');
+            
+            if (qbToggleMapped && qbStallCode) {
+                // 1. Chuyển bộ lọc sang trạng thái "Tìm sạp đã gán"
+                if (!qbToggleMapped.checked) {
+                    qbToggleMapped.checked = true;
+                    if (typeof filterQuickBindStalls === 'function') filterQuickBindStalls();
+                }
+                
+                // 2. Chọn sạp này trong dropdown nếu chưa chọn
+                if (qbStallCode.value !== el.stall_code) {
+                    qbStallCode.value = el.stall_code;
+                    // Kích hoạt change sự kiện của dropdown nhưng chặn việc gọi ngược selectElement
+                    window.isSyncingFromMap = true;
+                    qbStallCode.dispatchEvent(new Event('change'));
+                    window.isSyncingFromMap = false;
+                }
+            }
         } else {
             groupStallBinding.style.display = 'none';
+            groupStallDimensions.style.display = 'none';
             groupColorPicker.style.display = 'block';
-            propColor.value = item.color || '#eceff1';
-            propColorHex.value = item.color || '#eceff1';
-            updateStallInfoCard(null);
-        }
 
-        // Vẽ các waypoint handles của đường đi
-        renderWaypointHandles(item);
+            propColor.value = el.color || '#cbd5e1';
+            propColorHex.value = el.color || '#cbd5e1';
+            stallInfoPanel.style.display = 'none';
+        }
     }
 
-    // Bỏ chọn phần tử
+    // Hủy chọn
     function deselectElement() {
-        selectedElement = null;
-        canvasGrid.querySelectorAll('.map-element').forEach(el => el.classList.remove('selected'));
-        noSelectionMsg.style.display = 'block';
+        if (selectedElement) {
+            const old = selectedElement;
+            selectedElement = null;
+            // Vẽ lại nét vẽ thường
+            drawElementOnMap(old);
+        }
+
         selectionForm.style.display = 'none';
-        updateStallInfoCard(null);
-        renderWaypointHandles(null); // Xóa handles
+        noSelectionMsg.style.display = 'block';
+        stallInfoPanel.style.display = 'none';
     }
 
-    // Cập nhật thẻ thông tin sạp dưới nút xóa
-    function updateStallInfoCard(item) {
-        const panel = document.getElementById('stall-info-panel');
-        if (!panel) return;
-
-        if (!item || item.element_type !== 'stall') {
-            panel.style.display = 'none';
-            return;
-        }
-
-        const stallId = item.stall_id;
+    // Cập nhật thông tin sạp chi tiết ở panel thuộc tính
+    function updateStallInfoPanel(stallId) {
         if (!stallId) {
-            panel.style.display = 'none';
+            stallInfoPanel.style.display = 'none';
             return;
         }
 
-        // Tìm thông tin sạp từ DB_STALLS (hoặc trực tiếp trong item nếu có sẵn)
-        let details = null;
-        if (window.DB_STALLS) {
-            details = window.DB_STALLS.find(s => s.stall_id == stallId);
-        }
-        
-        // Fallback sang thông tin lưu trên item nếu không tìm thấy trong DB_STALLS
-        if (!details) {
-            details = {
-                stall_type: item.stall_type,
-                area_name: item.area_name,
-                block: item.block,
-                lot: item.lot,
-                area_size: item.area_size,
-                base_price: item.base_price,
-                status_name: item.status_name || 'Còn trống',
-                status_code: item.status_code || 'empty',
-                trader_name: item.trader_name,
-                trader_phone: item.trader_phone,
-                contract_number: item.contract_number,
-                contract_end_date: item.contract_end_date
-            };
-        }
-
+        const details = window.DB_STALLS ? window.DB_STALLS.find(s => s.stall_id == stallId) : null;
         if (details) {
-            panel.style.display = 'block';
-            
-            // Loại sạp & Vị trí
-            document.getElementById('stall-info-type').textContent = details.stall_type || 'Quầy hàng';
-            
-            let location = details.area_name || '--';
-            if (details.block) location += ' - Dãy ' + details.block;
-            if (details.lot) location += ' - Lô ' + details.lot;
-            document.getElementById('stall-info-area-name').textContent = location;
-
+            stallInfoPanel.style.display = 'block';
             document.getElementById('stall-info-area').textContent = (details.area_size || '--') + ' m²';
             
             const price = parseInt(details.base_price) || 0;
             document.getElementById('stall-info-price').textContent = price > 0 ? price.toLocaleString('vi-VN') + ' đ' : '--';
-            
+
             const statusBadge = document.getElementById('stall-info-status');
-            const statusCode = details.status_code || 'empty';
-            statusBadge.className = `badge badge-status-${statusCode}`;
-            statusBadge.textContent = details.status_name || 'Còn trống';
-            
+            const code = details.status_code || 'empty';
+            statusBadge.className = `badge badge-status ${code}`;
+            statusBadge.textContent = getStatusName(code);
+
             const traderRow = document.getElementById('stall-info-trader-row');
-            if (statusCode === 'rented' && details.trader_name) {
+            if (code === 'rented' && details.trader_name) {
                 traderRow.style.display = 'flex';
                 document.getElementById('stall-info-trader').textContent = details.trader_name;
-                document.getElementById('stall-info-phone').textContent = details.trader_phone || '--';
-                document.getElementById('stall-info-contract').textContent = details.contract_number || '--';
-                
-                // Định dạng ngày thuê DD/MM/YYYY
-                let dateStr = '--';
-                if (details.contract_end_date) {
-                    const parts = details.contract_end_date.split('-');
-                    if (parts.length === 3) dateStr = `${parts[2]}/${parts[1]}/${parts[0]}`;
-                    else dateStr = details.contract_end_date;
-                }
-                document.getElementById('stall-info-contract-end').textContent = dateStr;
             } else {
                 traderRow.style.display = 'none';
             }
         } else {
-            panel.style.display = 'none';
+            stallInfoPanel.style.display = 'none';
         }
     }
 
-    // 6. Xử lý Kéo thả vẽ mới (Drag & Drop)
-    function setupDragAndDrop() {
-        // Thiết lập sự kiện dragstart cho các nút kéo thả ở Toolbox bên trái
-        const toolboxItems = document.querySelectorAll('.toolbox-item');
-        toolboxItems.forEach(item => {
-            item.addEventListener('dragstart', function (e) {
-                e.dataTransfer.setData('action', 'create-basic');
-                e.dataTransfer.setData('type', item.getAttribute('data-type'));
-            });
-        });
-
-        // Thiết lập sự kiện dragstart cho các sạp chưa gán ở panel trái
-        const unmappedList = document.getElementById('unmapped-stalls-list');
-        unmappedList.addEventListener('dragstart', function (e) {
-            const stallItem = e.target.closest('.unmapped-stall-item');
-            if (stallItem) {
-                e.dataTransfer.setData('action', 'create-stall');
-                e.dataTransfer.setData('stall-id', stallItem.getAttribute('data-stall-id'));
-                e.dataTransfer.setData('stall-code', stallItem.getAttribute('data-stall-code'));
-            }
-        });
-
-        // Cho phép kéo trên vùng canvas
-        canvasGrid.addEventListener('dragover', function (e) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'copy';
-        });
-
-        // Xử lý khi thả xuống (Drop)
-        canvasGrid.addEventListener('drop', function (e) {
-            e.preventDefault();
-            
-            const action = e.dataTransfer.getData('action');
-            if (!action) return;
-
-            // Tính toán tọa độ thả chuẩn xác theo tỷ lệ thu phóng (Zoom)
-            const rect = canvasGrid.getBoundingClientRect();
-            let x = (e.clientX - rect.left) / zoomLevel;
-            let y = (e.clientY - rect.top) / zoomLevel;
-
-            // Hỗ trợ snap to grid nếu được tích hợp
-            if (chkSnapGrid.checked) {
-                x = Math.round(x / 20) * 20;
-                y = Math.round(y / 20) * 20;
-            }
-
-            const tempId = 'temp-' + Date.now();
-            let newElement = {
-                temp_id: tempId,
-                pos_x: x,
-                pos_y: y,
-                width: 40,
-                height: 40,
-                rotation: 0,
-                color: null
-            };
-
-            if (action === 'create-basic') {
-                const type = e.dataTransfer.getData('type');
-                newElement.element_type = type;
-                newElement.element_name = getTypeNameVietnamese(type);
-                const preset = getDefaultPreset(type);
-                
-                if (isRoadType(type)) {
-                    newElement.stroke_width = (type === 'fence') ? 16 : 24;
-                    newElement.waypoints = [
-                        { x: x, y: y },
-                        { x: x + 120, y: y }
-                    ];
-                    const bbox = getStreetBoundingBox(newElement.waypoints, newElement.stroke_width);
-                    newElement.pos_x = bbox.x;
-                    newElement.pos_y = bbox.y;
-                    newElement.width = bbox.w;
-                    newElement.height = bbox.h;
+    // 8. Bắt sự kiện chỉnh sửa các input cột Phải
+    function setupEventBindings() {
+        // Nút chuyển đổi loại bản đồ (Vệ tinh / Bản đồ phẳng)
+        const btnToggleMapType = document.getElementById('btn-toggle-map-type');
+        if (btnToggleMapType) {
+            btnToggleMapType.addEventListener('click', function () {
+                if (currentMapType === 'satellite') {
+                    map.removeLayer(satelliteLayer);
+                    flatLayer.addTo(map);
+                    currentMapType = 'flat';
+                    btnToggleMapType.innerHTML = '<i class="fa-solid fa-layer-group"></i> Bản đồ vệ tinh';
                 } else {
-                    newElement.width = preset.width;
-                    newElement.height = preset.height;
-                }
-                newElement.color = preset.color;
-            } else if (action === 'create-stall') {
-                const stallId = e.dataTransfer.getData('stall-id');
-                const stallCode = e.dataTransfer.getData('stall-code');
-
-                newElement.element_type = 'stall';
-                newElement.stall_id = stallId;
-                newElement.stall_code = stallCode;
-                newElement.element_name = stallCode;
-
-                // Đồng bộ thông tin sạp từ DB_STALLS vào newElement
-                if (window.DB_STALLS) {
-                    const details = window.DB_STALLS.find(s => s.stall_id == stallId);
-                    if (details) {
-                        newElement.stall_type = details.stall_type;
-                        newElement.area_name = details.area_name;
-                        newElement.block = details.block;
-                        newElement.lot = details.lot;
-                        newElement.area_size = details.area_size;
-                        newElement.base_price = details.base_price;
-                        newElement.status_name = details.status_name;
-                        newElement.status_code = details.status_code;
-                        newElement.color_class = details.color_class;
-                        newElement.trader_name = details.trader_name;
-                        newElement.trader_phone = details.trader_phone;
-                        newElement.contract_number = details.contract_number;
-                        newElement.contract_end_date = details.contract_end_date;
-                    }
-                }
-
-                // Xóa sạp khỏi danh sách chưa gán ở cột trái
-                const stallDom = document.querySelector(`.unmapped-stall-item[data-stall-id="${stallId}"]`);
-                if (stallDom) stallDom.remove();
-            }
-
-            recordState();
-            elements.push(newElement);
-            renderElement(newElement);
-            selectElement(newElement);
-            updateUnmappedStallsBadge();
-        });
-    }
-
-    // 7. Xử lý di chuyển kéo lê phần tử (Drag Move) trên Grid Canvas
-    function startDraggingElement(e, item, div) {
-        e.preventDefault();
-        
-        const startClientX = e.clientX;
-        const startClientY = e.clientY;
-        const initialX = item.pos_x;
-        const initialY = item.pos_y;
-        const initialWaypoints = isRoadType(item.element_type) ? JSON.parse(JSON.stringify(item.waypoints)) : null;
-        let hasRecorded = false;
-
-        function onMouseMove(moveEvent) {
-            if (!hasRecorded) {
-                recordState();
-                hasRecorded = true;
-            }
-            // Tính khoảng cách di dời dựa trên zoomLevel
-            const dx = (moveEvent.clientX - startClientX) / zoomLevel;
-            const dy = (moveEvent.clientY - startClientY) / zoomLevel;
-
-            let newX = initialX + dx;
-            let newY = initialY + dy;
-
-            // Bắt dính lưới ô vuông (Snap-to-grid 20px)
-            if (chkSnapGrid.checked) {
-                newX = Math.round(newX / 20) * 20;
-                newY = Math.round(newY / 20) * 20;
-            }
-
-            const actualDx = newX - initialX;
-            const actualDy = newY - initialY;
-
-            if (isRoadType(item.element_type) && initialWaypoints) {
-                // Di chuyển toàn bộ các điểm của đường đi theo khoảng cách thực tế
-                item.waypoints.forEach((pt, idx) => {
-                    pt.x = initialWaypoints[idx].x + actualDx;
-                    pt.y = initialWaypoints[idx].y + actualDy;
-                });
-                updateElementDOM(div, item);
-                renderWaypointHandles(item);
-            } else {
-                // Cập nhật tọa độ vào dữ liệu gốc
-                item.pos_x = newX;
-                item.pos_y = newY;
-
-                // Cập nhật giao diện
-                div.style.left = `${newX}px`;
-                div.style.top = `${newY}px`;
-            }
-
-            // Cập nhật ô nhập tọa độ nếu đang hiển thị thuộc tính của nó
-            if (selectedElement === item) {
-                propX.value = Math.round(item.pos_x);
-                propY.value = Math.round(item.pos_y);
-            }
-        }
-
-        function onMouseUp() {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-        }
-
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    }
-
-    // 8. Co giãn kích thước trực tiếp bằng 4 phía (Resize Element)
-    function startResizingElement(e, item, div, handlePosition) {
-        const startClientX = e.clientX;
-        const startClientY = e.clientY;
-        const initialWidth = item.width;
-        const initialHeight = item.height;
-        const initialX = item.pos_x;
-        const initialY = item.pos_y;
-        let hasRecorded = false;
-
-        function onMouseMove(moveEvent) {
-            if (!hasRecorded) {
-                recordState();
-                hasRecorded = true;
-            }
-            const dx = (moveEvent.clientX - startClientX) / zoomLevel;
-            const dy = (moveEvent.clientY - startClientY) / zoomLevel;
-
-            let newW = initialWidth;
-            let newH = initialHeight;
-            let newX = initialX;
-            let newY = initialY;
-
-            if (handlePosition === 'e') {
-                newW = initialWidth + dx;
-            }
-            if (handlePosition === 's') {
-                newH = initialHeight + dy;
-            }
-            if (handlePosition === 'w') {
-                newW = initialWidth - dx;
-                newX = initialX + dx;
-            }
-            if (handlePosition === 'n') {
-                newH = initialHeight - dy;
-                newY = initialY + dy;
-            }
-
-            // Giới hạn nhỏ nhất 24px
-            if (newW < HANDLE_MIN_SIZE) {
-                if (handlePosition === 'w') {
-                    newX -= HANDLE_MIN_SIZE - newW;
-                }
-                newW = HANDLE_MIN_SIZE;
-            }
-            if (newH < HANDLE_MIN_SIZE) {
-                if (handlePosition === 'n') {
-                    newY -= HANDLE_MIN_SIZE - newH;
-                }
-                newH = HANDLE_MIN_SIZE;
-            }
-
-            if (chkSnapGrid.checked) {
-                newW = Math.round(newW / 20) * 20;
-                newH = Math.round(newH / 20) * 20;
-                newX = Math.round(newX / 20) * 20;
-                newY = Math.round(newY / 20) * 20;
-            }
-
-            item.pos_x = newX;
-            item.pos_y = newY;
-            if (chkSnapGrid.checked) {
-                newW = Math.max(HANDLE_MIN_SIZE, newW);
-                newH = Math.max(HANDLE_MIN_SIZE, newH);
-            }
-
-            item.width = newW;
-            item.height = newH;
-
-            updateElementDOM(div, item);
-
-            if (selectedElement === item) {
-                propX.value = newX;
-                propY.value = newY;
-                propW.value = newW;
-                propH.value = newH;
-            }
-        }
-
-        function onMouseUp() {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-        }
-
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    }
-
-    function startRotatingElement(e, item, div) {
-        const rect = div.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        const startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
-        const initialRotation = item.rotation || 0;
-        let hasRecorded = false;
-
-        function onMouseMove(moveEvent) {
-            if (!hasRecorded) {
-                recordState();
-                hasRecorded = true;
-            }
-            const currentAngle = Math.atan2(moveEvent.clientY - centerY, moveEvent.clientX - centerX);
-            let rotation = initialRotation + ((currentAngle - startAngle) * 180 / Math.PI);
-            rotation = ((rotation % 360) + 360) % 360;
-            rotation = Math.round(rotation);
-
-            item.rotation = rotation;
-            div.style.transform = `rotate(${rotation}deg)`;
-
-            if (selectedElement === item) {
-                propRotation.value = rotation;
-            }
-        }
-
-        function onMouseUp() {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-        }
-
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    }
-
-    // 9. Lắng nghe và thay đổi thuộc tính ở cột bên phải
-    function setupPropertiesForm() {
-        // Record state when inputs are focused (so we capture state before edit)
-        const propStrokeWidth = document.getElementById('prop-stroke-width');
-        [propName, propX, propY, propW, propH, propRotation, propColor, propColorHex, propStrokeWidth].forEach(input => {
-            if (input) {
-                input.addEventListener('focus', function () {
-                    recordState();
-                });
-            }
-        });
-
-        if (propStrokeWidth) {
-            propStrokeWidth.addEventListener('change', function () {
-                if (selectedElement && isRoadType(selectedElement.element_type)) {
-                    selectedElement.stroke_width = parseInt(propStrokeWidth.value) || (selectedElement.element_type === 'fence' ? 16 : 24);
-                    const div = document.getElementById(`el-${selectedElement.id || selectedElement.temp_id}`);
-                    if (div) updateElementDOM(div, selectedElement);
+                    map.removeLayer(flatLayer);
+                    satelliteLayer.addTo(map);
+                    currentMapType = 'satellite';
+                    btnToggleMapType.innerHTML = '<i class="fa-solid fa-layer-group"></i> Bản đồ phẳng';
                 }
             });
         }
 
-        // Tên hiển thị thay đổi
-        propName.addEventListener('input', function () {
-            if (selectedElement) {
-                selectedElement.element_name = propName.value;
-                const div = document.getElementById(`el-${selectedElement.id || selectedElement.temp_id}`);
-                if (div) updateElementDOM(div, selectedElement);
-            }
+        // ===== TOGGLE ẨN/HIỆN PANEL & BỘ LỌC =====
+        const editorContainer = document.querySelector('.map-editor-container');
+        const mapLegend = document.getElementById('map-legend');
+
+        document.getElementById('btn-toggle-left').addEventListener('click', function() {
+            editorContainer.classList.toggle('hide-left');
+            setTimeout(() => map.invalidateSize(), 350);
+            this.classList.toggle('active');
+        });
+        document.getElementById('btn-toggle-right').addEventListener('click', function() {
+            editorContainer.classList.toggle('hide-right');
+            setTimeout(() => map.invalidateSize(), 350);
+            this.classList.toggle('active');
+        });
+        document.getElementById('btn-toggle-legend').addEventListener('click', function() {
+            mapLegend.style.display = mapLegend.style.display === 'none' ? '' : 'none';
+            this.classList.toggle('active');
         });
 
-        // Liên kết Sạp thay đổi
-        propStallId.addEventListener('change', function () {
-            if (selectedElement && selectedElement.element_type === 'stall') {
-                recordState();
-                const newStallId = propStallId.value;
-                
-                // Trả lại sạp cũ nếu có về list chưa gán
-                const oldStallId = selectedElement.stall_id;
-                if (oldStallId && oldStallId !== newStallId) {
-                    addStallBackToUnmapped(oldStallId, selectedElement.stall_code);
-                }
-
-                if (newStallId) {
-                    selectedElement.stall_id = newStallId;
-                    const opt = propStallId.options[propStallId.selectedIndex];
-                    selectedElement.stall_code = opt.text;
-                    selectedElement.element_name = opt.text;
-                    
-                    // Cập nhật thông tin sạp vào cache của selectedElement từ DB_STALLS
-                    if (window.DB_STALLS) {
-                        const details = window.DB_STALLS.find(s => s.stall_id == newStallId);
-                        if (details) {
-                            selectedElement.stall_type = details.stall_type;
-                            selectedElement.area_name = details.area_name;
-                            selectedElement.block = details.block;
-                            selectedElement.lot = details.lot;
-                            selectedElement.area_size = details.area_size;
-                            selectedElement.base_price = details.base_price;
-                            selectedElement.status_name = details.status_name;
-                            selectedElement.status_code = details.status_code;
-                            selectedElement.trader_name = details.trader_name;
-                            selectedElement.trader_phone = details.trader_phone;
-                            selectedElement.contract_number = details.contract_number;
-                            selectedElement.contract_end_date = details.contract_end_date;
-                        }
-                    }
-                    
-                    // Xóa sạp mới khỏi danh sách cột trái
-                    const stallDom = document.querySelector(`.unmapped-stall-item[data-stall-id="${newStallId}"]`);
-                    if (stallDom) stallDom.remove();
+        // Lắng nghe thay đổi nút khóa di chuyển
+        const propLockPosition = document.getElementById('prop-lock-position');
+        const propLockText = document.getElementById('prop-lock-text');
+        if (propLockPosition) {
+            propLockPosition.addEventListener('change', function () {
+                if (propLockPosition.checked) {
+                    propLockText.textContent = 'Đang khóa di chuyển';
+                    propLockPosition.parentElement.style.color = 'var(--red, #ef4444)';
+                    propLockPosition.parentElement.parentElement.style.background = 'rgba(239, 68, 68, 0.05)';
+                    propLockPosition.parentElement.parentElement.style.borderColor = 'rgba(239, 68, 68, 0.3)';
                 } else {
-                    selectedElement.stall_id = null;
-                    selectedElement.stall_code = null;
-                    selectedElement.element_name = 'SẠP';
-                    selectedElement.stall_type = null;
-                    selectedElement.area_name = null;
-                    selectedElement.block = null;
-                    selectedElement.lot = null;
-                    selectedElement.area_size = null;
-                    selectedElement.base_price = null;
-                    selectedElement.status_name = null;
-                    selectedElement.status_code = null;
-                    selectedElement.trader_name = null;
-                    selectedElement.trader_phone = null;
-                    selectedElement.contract_number = null;
-                    selectedElement.contract_end_date = null;
-                }
-
-                const div = document.getElementById(`el-${selectedElement.id || selectedElement.temp_id}`);
-                if (div) updateElementDOM(div, selectedElement);
-                updateUnmappedStallsBadge();
-                updateStallInfoCard(selectedElement);
-            }
-        });
-
-        // X, Y thay đổi
-        [propX, propY].forEach(input => {
-            input.addEventListener('change', function () {
-                if (selectedElement) {
-                    let val = parseInt(input.value) || 0;
-                    if (chkSnapGrid.checked) {
-                        val = Math.round(val / 20) * 20;
-                        input.value = val;
-                    }
-                    if (input === propX) selectedElement.pos_x = val;
-                    if (input === propY) selectedElement.pos_y = val;
-
-                    const div = document.getElementById(`el-${selectedElement.id || selectedElement.temp_id}`);
-                    if (div) updateElementDOM(div, selectedElement);
+                    propLockText.textContent = 'Cho phép di chuyển';
+                    propLockPosition.parentElement.style.color = 'var(--primary, #0f766e)';
+                    propLockPosition.parentElement.parentElement.style.background = 'rgba(15, 118, 110, 0.05)';
+                    propLockPosition.parentElement.parentElement.style.borderColor = 'rgba(15, 118, 110, 0.3)';
                 }
             });
-        });
+        }
 
-        // W, H thay đổi
-        [propW, propH].forEach(input => {
-            input.addEventListener('change', function () {
-                if (selectedElement) {
-                    let val = parseInt(input.value) || 20;
-                    val = Math.max(20, val);
-                    if (chkSnapGrid.checked) {
-                        val = Math.round(val / 20) * 20;
-                        input.value = val;
-                    }
-                    if (input === propW) selectedElement.width = val;
-                    if (input === propH) selectedElement.height = val;
+        // Nút chạy Gán nhanh 1 bước
+        document.getElementById('btn-quick-bind-run').addEventListener('click', runQuickBind);
 
-                    const div = document.getElementById(`el-${selectedElement.id || selectedElement.temp_id}`);
-                    if (div) updateElementDOM(div, selectedElement);
-                }
-            });
-        });
-
-        // Góc xoay thay đổi
-        propRotation.addEventListener('change', function () {
-            if (selectedElement) {
-                selectedElement.rotation = parseInt(propRotation.value) || 0;
-                const div = document.getElementById(`el-${selectedElement.id || selectedElement.temp_id}`);
-                if (div) updateElementDOM(div, selectedElement);
-            }
-        });
-
-        // Màu nền chọn bảng màu
-        propColor.addEventListener('input', function () {
-            if (selectedElement && selectedElement.element_type !== 'stall') {
-                selectedElement.color = propColor.value;
-                propColorHex.value = propColor.value;
-                const div = document.getElementById(`el-${selectedElement.id || selectedElement.temp_id}`);
-                if (div) updateElementDOM(div, selectedElement);
-            }
-        });
-
-        // Màu nền tự gõ Hex code
-        propColorHex.addEventListener('input', function () {
-            if (selectedElement && selectedElement.element_type !== 'stall') {
-                const hex = propColorHex.value;
-                if (/^#[0-9A-F]{6}$/i.test(hex)) {
-                    selectedElement.color = hex;
-                    propColor.value = hex;
-                    const div = document.getElementById(`el-${selectedElement.id || selectedElement.temp_id}`);
-                    if (div) updateElementDOM(div, selectedElement);
-                }
-            }
-        });
-
-        // Xóa một phần tử khỏi bản đồ
-        document.getElementById('btn-delete-element').addEventListener('click', function () {
-            deleteSelectedElement(true);
-        });
-    }
-
-    // 10. Toolbar thu phóng, pan và các nút chính
-    function setupToolbarActions() {
-        // Thu nhỏ
-        document.getElementById('btn-zoom-out').addEventListener('click', function () {
-            if (zoomLevel > minZoom) {
-                zoomLevel = Math.max(minZoom, zoomLevel - zoomStep);
-                applyZoom();
-            }
-        });
-
-        // Phóng to
-        document.getElementById('btn-zoom-in').addEventListener('click', function () {
-            if (zoomLevel < maxZoom) {
-                zoomLevel = Math.min(maxZoom, zoomLevel + zoomStep);
-                applyZoom();
-            }
-        });
-
-        // Reset thu phóng
-        document.getElementById('btn-zoom-reset').addEventListener('click', function () {
-            zoomLevel = 1.0;
-            applyZoom();
-            canvasViewport.scrollLeft = 0;
-            canvasViewport.scrollTop = 0;
-        });
-
-        // Xóa sạch bản đồ
+        // Nút Xóa bản đồ
         document.getElementById('btn-clear-map').addEventListener('click', function () {
             if (confirm('LƯU Ý: Thao tác này sẽ xóa sạch toàn bộ sơ đồ hiện tại và giải phóng tất cả sạp. Bạn có chắc chắn muốn xóa hết?')) {
-                // Đưa toàn bộ sạp trở lại list chưa gán
-                elements.forEach(item => {
-                    if (item.element_type === 'stall' && item.stall_id) {
-                        addStallBackToUnmapped(item.stall_id, item.stall_code);
-                    }
+                elements.forEach(el => {
+                    if (el.layer) map.removeLayer(el.layer);
+                    if (el.labelLayer) map.removeLayer(el.labelLayer);
                 });
-
                 elements = [];
-                renderAllElements();
                 deselectElement();
+                loadMapData(); // reload danh sách sạp
             }
         });
 
-        // Lưu sơ đồ lên server qua API
+        // Nút Lưu sơ đồ lên database
         document.getElementById('btn-save-map').addEventListener('click', function () {
             const dataToSave = {
-                elements: elements.map(item => {
+                elements: elements.map(el => {
                     return {
-                        element_type: item.element_type,
-                        element_name: item.element_name,
-                        stall_id: item.stall_id,
-                        pos_x: Math.round(item.pos_x),
-                        pos_y: Math.round(item.pos_y),
-                        width: Math.round(item.width),
-                        height: Math.round(item.height),
-                        rotation: item.rotation,
-                        color: item.color,
-                        waypoints: item.waypoints ? JSON.stringify(item.waypoints) : null,
-                        stroke_width: item.stroke_width || null
+                        element_type: el.element_type || null,
+                        element_name: el.element_name || null,
+                        stall_id: el.stall_id || null,
+                        // pixel defaults
+                        pos_x: el.pos_x || 0,
+                        pos_y: el.pos_y || 0,
+                        width: el.width || 40,
+                        height: el.height || 40,
+                        
+                        // GPS fields
+                        latitude: el.latitude || null,
+                        longitude: el.longitude || null,
+                        width_m: el.width_m || null,
+                        length_m: el.length_m || null,
+                        rotation: el.rotation || 0,
+                        color: el.color || null,
+                        waypoints: el.waypoints ? (typeof el.waypoints === 'string' ? el.waypoints : JSON.stringify(el.waypoints)) : null,
+                        stroke_width: el.stroke_width || null
                     };
                 })
             };
 
-            // App.utils.ajaxRequest('POST', 'api/saveMapElements', dataToSave, function (response) { ... });
             $.ajax({
                 type: 'POST',
                 url: '<?php echo BASE_URL; ?>api/saveMapElements',
@@ -2225,9 +1510,8 @@
                 dataType: 'json',
                 success: function (response) {
                     if (response.status === 200) {
-                        showToast('Lưu sơ đồ chợ thành công!', 'success');
-                        // Tải lại dữ liệu để nhận các ID thật từ database
-                        loadMapData();
+                        showToast('Lưu bản đồ số thành công!', 'success');
+                        loadMapData(); // tải lại dữ liệu để nhận các ID thật từ database
                     } else {
                         showToast('Lưu sơ đồ thất bại: ' + response.message, 'danger');
                     }
@@ -2237,61 +1521,559 @@
                 }
             });
         });
-    }
 
-    // Áp dụng tỷ lệ thu phóng vào CSS transform
-    function applyZoom() {
-        canvasGrid.style.transform = `scale(${zoomLevel})`;
-        zoomValueText.textContent = `${Math.round(zoomLevel * 100)}%`;
-    }
-
-    // Thiết lập tính năng kéo cuộn màn hình (Pan) trên canvas
-    function setupCanvasInteractions() {
-        canvasViewport.addEventListener('mousedown', function (e) {
-            // Chỉ Pan khi click chuột giữa, hoặc click lên vùng trống của viewport/grid
-            if (e.button === 1 || e.target === canvasViewport || e.target === canvasGrid) {
-                isPanning = true;
-                canvasViewport.style.cursor = 'grabbing';
-                startX = e.pageX - canvasViewport.offsetLeft;
-                startY = e.pageY - canvasViewport.offsetTop;
-                scrollLeft = canvasViewport.scrollLeft;
-                scrollTop = canvasViewport.scrollTop;
+        // Lắng nghe thay đổi input thuộc tính bên phải
+        propName.addEventListener('input', function () {
+            if (selectedElement) {
+                selectedElement.element_name = propName.value;
+                if (selectedElement.element_type === 'stall') {
+                    // Update label marker
+                    drawElementOnMap(selectedElement);
+                }
             }
         });
 
-        document.addEventListener('mousemove', function (e) {
-            if (!isPanning) return;
-            e.preventDefault();
-            const x = e.pageX - canvasViewport.offsetLeft;
-            const y = e.pageY - canvasViewport.offsetTop;
-            const walkX = (x - startX); // Tốc độ cuộn 1x
-            const walkY = (y - startY);
-            canvasViewport.scrollLeft = scrollLeft - walkX;
-            canvasViewport.scrollTop = scrollTop - walkY;
-        });
+        // Chọn sạp liên kết
+        propStallId.addEventListener('change', function () {
+            if (selectedElement && selectedElement.element_type === 'stall') {
+                const oldId = selectedElement.stall_id;
+                const newId = propStallId.value;
 
-        document.addEventListener('mouseup', function () {
-            isPanning = false;
-            canvasViewport.style.cursor = 'grab';
-        });
+                if (oldId && oldId != newId) {
+                    addStallBackToUnmappedList(oldId, selectedElement.stall_code);
+                }
 
-        // Click ra ngoài khoảng trống canvas để hủy chọn phần tử
-        canvasViewport.addEventListener('click', function (e) {
-            if (e.target === canvasViewport || e.target === canvasGrid) {
-                deselectElement();
+                if (newId) {
+                    selectedElement.stall_id = newId;
+                    const opt = propStallId.options[propStallId.selectedIndex];
+                    selectedElement.stall_code = opt.text;
+                    selectedElement.element_name = opt.text;
+                    removeStallFromUnmappedList(newId);
+                } else {
+                    selectedElement.stall_id = null;
+                    selectedElement.stall_code = null;
+                    selectedElement.element_name = 'SẠP';
+                }
+
+                drawElementOnMap(selectedElement);
+                updateUnmappedStallsBadge();
+                updateStallInfoPanel(newId);
             }
         });
+
+        // Dài, Rộng, Góc xoay, Lat, Lng thay đổi
+        [propLat, propLng, propWM, propHM, propRotation].forEach(input => {
+            input.addEventListener('change', function () {
+                if (selectedElement) {
+                    selectedElement.latitude = parseFloat(propLat.value) || null;
+                    selectedElement.longitude = parseFloat(propLng.value) || null;
+                    selectedElement.width_m = parseFloat(propWM.value) || 3.0;
+                    selectedElement.length_m = parseFloat(propHM.value) || 3.0;
+                    selectedElement.rotation = parseInt(propRotation.value) || 0;
+
+                    drawElementOnMap(selectedElement);
+                }
+            });
+        });
+
+        // Chọn màu sắc
+        propColor.addEventListener('input', function () {
+            if (selectedElement) {
+                selectedElement.color = propColor.value;
+                propColorHex.value = propColor.value;
+                drawElementOnMap(selectedElement);
+            }
+        });
+        propColorHex.addEventListener('input', function () {
+            const hex = propColorHex.value;
+            if (/^#[0-9A-F]{6}$/i.test(hex) && selectedElement) {
+                selectedElement.color = hex;
+                propColor.value = hex;
+                drawElementOnMap(selectedElement);
+            }
+        });
+
+        // Xóa phần tử đang chọn với modal xác nhận tùy chỉnh
+        const modalConfirmDelete = document.getElementById('modal-confirm-delete');
+        const btnCancelDelete = document.getElementById('btn-cancel-delete');
+        const btnConfirmDelete = document.getElementById('btn-confirm-delete');
+
+        document.getElementById('btn-delete-element').addEventListener('click', function () {
+            if (!selectedElement) return;
+            modalConfirmDelete.style.display = 'flex';
+        });
+
+        btnCancelDelete.addEventListener('click', function () {
+            modalConfirmDelete.style.display = 'none';
+        });
+
+        // Đóng modal khi click ra ngoài vùng card
+        modalConfirmDelete.addEventListener('click', function (e) {
+            if (e.target === modalConfirmDelete) {
+                modalConfirmDelete.style.display = 'none';
+            }
+        });
+
+        btnConfirmDelete.addEventListener('click', function () {
+            if (!selectedElement) {
+                modalConfirmDelete.style.display = 'none';
+                return;
+            }
+
+            if (selectedElement.element_type === 'stall' && selectedElement.stall_id) {
+                addStallBackToUnmappedList(selectedElement.stall_id, selectedElement.stall_code);
+            }
+
+            // Loại khỏi map layer
+            if (selectedElement.layer) map.removeLayer(selectedElement.layer);
+            if (selectedElement.labelLayer) map.removeLayer(selectedElement.labelLayer);
+
+            // Loại khỏi elements array
+            const idx = elements.indexOf(selectedElement);
+            if (idx > -1) elements.splice(idx, 1);
+
+            // Xóa tham chiếu trước khi gọi deselectElement để tránh bị vẽ đè lại
+            selectedElement = null;
+            deselectElement();
+            updateUnmappedStallsBadge();
+            
+            modalConfirmDelete.style.display = 'none';
+            showToast('Đã xóa phần tử thành công!', 'info');
+        });
+
+        // Click các nút công cụ vẽ để kích hoạt tool vẽ
+        document.querySelectorAll('.draw-tool-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const tool = btn.getAttribute('data-tool');
+                
+                if (activeTool === tool) {
+                    deactivateTools();
+                } else {
+                    document.querySelectorAll('.draw-tool-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    activeTool = tool;
+                    
+                    if (tool === 'stall') {
+                        showToast('Nhập mã sạp bên Gán Nhanh, sau đó Click một điểm trên map vệ tinh để đặt sạp.', 'info');
+                    } else {
+                        showToast('Click một điểm trên map vệ tinh để đặt tiện ích.', 'info');
+                    }
+                }
+            });
+        });
+
+        // Khởi tạo và đồng bộ bộ lọc Gán nhanh phía trên
+        let allStalls = [];
+        const qbFilterArea = document.getElementById('qb-filter-area');
+        const qbSearchInput = document.getElementById('qb-search-input');
+        const qbStallCode = document.getElementById('qb-stall-code');
+        const qbToggleMapped = document.getElementById('qb-toggle-mapped');
+
+        if (qbStallCode) {
+            // Backup lại danh sách tất cả sạp
+            allStalls = Array.from(qbStallCode.options).map(opt => ({
+                value: opt.value,
+                text: opt.textContent,
+                id: opt.getAttribute('data-stall-id') || '',
+                area: opt.getAttribute('data-area-name') || '',
+                trader: opt.getAttribute('data-trader-name') || ''
+            }));
+        }
+
+        window.filterQuickBindStalls = function() {
+            const selectedArea = qbFilterArea.value.toLowerCase().trim();
+            const searchQuery = qbSearchInput.value.toLowerCase().trim();
+            const showMappedOnly = qbToggleMapped ? qbToggleMapped.checked : false;
+            const currentVal = qbStallCode.value;
+
+            // Danh sách ID sạp đã được vẽ trên bản đồ
+            const mappedIds = elements.map(el => String(el.stall_id)).filter(id => id && id !== 'undefined');
+
+            // Clear options cũ trừ dòng placeholder
+            qbStallCode.innerHTML = '<option value="">-- Chọn Sạp --</option>';
+
+            // Lọc và thêm lại các option thỏa mãn
+            allStalls.forEach(stall => {
+                if (stall.value === "") return;
+
+                const matchesArea = !selectedArea || stall.area.toLowerCase() === selectedArea;
+                const matchesSearch = !searchQuery || stall.value.toLowerCase().includes(searchQuery) || stall.trader.toLowerCase().includes(searchQuery);
+                
+                // Trạng thái đã gán hay chưa gán
+                const isMapped = mappedIds.includes(String(stall.id));
+                const matchesMappingState = showMappedOnly ? isMapped : !isMapped;
+
+                if (matchesArea && matchesSearch && matchesMappingState) {
+                    const opt = document.createElement('option');
+                    opt.value = stall.value;
+                    opt.textContent = stall.text;
+                    opt.setAttribute('data-stall-id', stall.id);
+                    opt.setAttribute('data-area-name', stall.area);
+                    opt.setAttribute('data-trader-name', stall.trader);
+                    qbStallCode.appendChild(opt);
+                }
+            });
+
+            // Gán lại giá trị cũ nếu còn tồn tại trong list
+            qbStallCode.value = currentVal;
+
+            // Kích hoạt sự kiện change để đồng bộ trạng thái khóa/mở khóa sạp
+            qbStallCode.dispatchEvent(new Event('change'));
+        }
+
+        if (qbFilterArea) {
+            qbFilterArea.addEventListener('change', filterQuickBindStalls);
+        }
+        if (qbSearchInput) {
+            qbSearchInput.addEventListener('input', filterQuickBindStalls);
+        }
+        if (qbToggleMapped) {
+            qbToggleMapped.addEventListener('change', filterQuickBindStalls);
+        }
+
+        // Chạy filter ban đầu (chỉ hiện sạp chưa gán)
+        filterQuickBindStalls();
+
+        // ===== BỘ LỌC SẠP TRÊN BẢN ĐỒ =====
+        const mapFilterArea = document.getElementById('map-filter-area');
+        const mapFilterBusiness = document.getElementById('map-filter-business');
+        const btnClearMapFilter = document.getElementById('btn-clear-map-filter');
+
+        function applyMapFilter() {
+            const filterArea = mapFilterArea ? mapFilterArea.value : '';
+            const filterBusiness = mapFilterBusiness ? mapFilterBusiness.value : '';
+            const hasFilter = filterArea || filterBusiness;
+
+            elements.forEach(el => {
+                if (el.element_type !== 'stall' || !el.layer) return;
+
+                if (!hasFilter) {
+                    // Không có bộ lọc: khôi phục bình thường
+                    const statusColors = getStallStatusColor(el.stall_id);
+                    const isSelected = (selectedElement === el);
+                    el.layer.setStyle({
+                        color: isSelected ? '#0f766e' : statusColors.border,
+                        fillColor: isSelected ? '#0f766e' : statusColors.fill,
+                        fillOpacity: 0.6,
+                        opacity: 1,
+                        weight: isSelected ? 3 : 1.5
+                    });
+                    if (el.labelLayer && el.labelLayer._icon) {
+                        el.labelLayer._icon.style.opacity = '1';
+                    }
+                    return;
+                }
+
+                // Kiểm tra khớp bộ lọc
+                const details = window.DB_STALLS ? window.DB_STALLS.find(s => s.stall_id == el.stall_id) : null;
+                let matchesArea = true;
+                let matchesBusiness = true;
+
+                if (filterArea && details) {
+                    matchesArea = (details.area_name === filterArea);
+                } else if (filterArea && !details) {
+                    matchesArea = false;
+                }
+
+                if (filterBusiness && details) {
+                    // Tìm ngành hàng trong area_description (VD: "Tạp hóa, DCGĐ, hàng khô")
+                    const desc = (details.area_description || '').toLowerCase();
+                    matchesBusiness = desc.includes(filterBusiness.toLowerCase());
+                } else if (filterBusiness && !details) {
+                    matchesBusiness = false;
+                }
+
+                const isMatch = matchesArea && matchesBusiness;
+
+                if (isMatch) {
+                    // Sạp khớp: giữ nguyên màu, tăng viền nổi bật
+                    const statusColors = getStallStatusColor(el.stall_id);
+                    el.layer.setStyle({
+                        color: '#0f766e',
+                        fillColor: statusColors.fill,
+                        fillOpacity: 0.8,
+                        opacity: 1,
+                        weight: 3
+                    });
+                    if (el.labelLayer && el.labelLayer._icon) {
+                        el.labelLayer._icon.style.opacity = '1';
+                    }
+                } else {
+                    // Sạp không khớp: làm mờ
+                    el.layer.setStyle({
+                        color: '#d1d5db',
+                        fillColor: '#f3f4f6',
+                        fillOpacity: 0.15,
+                        opacity: 0.3,
+                        weight: 0.5
+                    });
+                    if (el.labelLayer && el.labelLayer._icon) {
+                        el.labelLayer._icon.style.opacity = '0.15';
+                    }
+                }
+            });
+        }
+
+        const handleFilterChange = function() {
+            applyMapFilter();
+            const filterArea = mapFilterArea ? mapFilterArea.value : '';
+            const filterBusiness = mapFilterBusiness ? mapFilterBusiness.value : '';
+            const hasFilter = filterArea || filterBusiness;
+            
+            const btnAll = document.getElementById('btn-filter-all-admin');
+            if (btnAll) {
+                if (hasFilter) {
+                    btnAll.classList.remove('active');
+                } else {
+                    btnAll.classList.add('active');
+                }
+            }
+        };
+
+        if (mapFilterArea) mapFilterArea.addEventListener('change', handleFilterChange);
+        if (mapFilterBusiness) mapFilterBusiness.addEventListener('change', handleFilterChange);
+        if (btnClearMapFilter) {
+            btnClearMapFilter.addEventListener('click', function() {
+                if (mapFilterArea) mapFilterArea.value = '';
+                if (mapFilterBusiness) mapFilterBusiness.value = '';
+                applyMapFilter();
+                
+                // Khôi phục active của nút Tất cả (biểu tượng fa-border-all)
+                const btnAll = document.getElementById('btn-filter-all-admin');
+                if (btnAll) btnAll.classList.add('active');
+            });
+        }
+
+        if (qbStallCode) {
+            qbStallCode.addEventListener('change', function () {
+                const code = qbStallCode.value;
+                if (!code) {
+                    // Mở khóa các ô nhập khi chưa chọn sạp
+                    qbWidth.disabled = false;
+                    qbLength.disabled = false;
+                    return;
+                }
+                
+                if (window.DB_STALLS) {
+                    const details = window.DB_STALLS.find(s => s.stall_code === code);
+                    if (details) {
+                        // Khóa các ô nhập lại khi đã chọn sạp
+                        qbWidth.disabled = true;
+                        qbLength.disabled = true;
+
+                        // Tìm xem sạp này đã được vẽ trên bản đồ chưa
+                        const existingElement = elements.find(el => el.stall_id == details.stall_id);
+                        
+                        if (existingElement && existingElement.latitude && existingElement.longitude) {
+                            // 1. Di chuyển camera bản đồ đến sạp đó và zoom sát vào
+                            map.setView([existingElement.latitude, existingElement.longitude], 21);
+                            
+                            // 2. Điền tọa độ GPS hiện có vào ô "Dán tọa độ"
+                            qbGpsData.value = `${existingElement.latitude.toFixed(6)}, ${existingElement.longitude.toFixed(6)}`;
+                            
+                            // 3. Lấy kích thước & góc xoay thực tế hiện tại
+                            qbWidth.value = existingElement.width_m || 3.0;
+                            qbLength.value = existingElement.length_m || 3.0;
+                            qbRotation.value = existingElement.rotation || 0;
+                            
+                            // 4. Chọn sạp này trên sơ đồ để hiển thị thuộc tính
+                            if (!window.isSyncingFromMap) {
+                                selectElement(existingElement);
+                            }
+                        } else {
+                            // Sạp chưa được gán: xóa panel bên phải và điền ước lượng diện tích
+                            deselectElement();
+                            
+                            if (details.area_size) {
+                                const area = parseFloat(details.area_size);
+                                qbWidth.value = 3.0;
+                                qbLength.value = (area / 3.0).toFixed(1);
+                            }
+                            qbRotation.value = 0;
+                            qbGpsData.value = ""; // Xóa ô nhập tọa độ
+                        }
+                    }
+                }
+            });
+        }
+
+        // Tìm kiếm địa điểm bằng địa chỉ (Google Maps Geocoding API chính thức qua backend)
+        // Tìm kiếm địa điểm bằng địa chỉ (Google Maps Autocomplete & Geocoding)
+        const btnSearchAddress = document.getElementById('btn-map-search-address');
+        const inputSearchAddress = document.getElementById('map-search-address');
+        const suggestionsBox = document.getElementById('search-address-suggestions');
+
+        if (btnSearchAddress && inputSearchAddress && suggestionsBox) {
+            let debounceTimer;
+
+            // Sự kiện gõ từ khóa tìm kiếm địa chỉ
+            inputSearchAddress.addEventListener('input', function () {
+                clearTimeout(debounceTimer);
+                const query = inputSearchAddress.value.trim();
+
+                if (query.length < 1) {
+                    suggestionsBox.innerHTML = '';
+                    suggestionsBox.style.display = 'none';
+                    return;
+                }
+
+                // Đợi 150ms sau khi dừng gõ để tránh gọi API liên tiếp, phản hồi cực nhanh
+                debounceTimer = setTimeout(() => {
+                    $.ajax({
+                        type: 'POST',
+                        url: '<?php echo BASE_URL; ?>api/autocompleteAddressGoogle',
+                        data: JSON.stringify({
+                            input: query,
+                            latitude: marketLat,  // Ưu tiên gợi ý khu vực xung quanh tọa độ Chợ
+                            longitude: marketLng
+                        }),
+                        contentType: 'application/json',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': '<?php echo security::getToken(); ?>'
+                        },
+                        dataType: 'json',
+                        success: function (response) {
+                            if (response.status === 200 && response.predictions && response.predictions.length > 0) {
+                                suggestionsBox.innerHTML = '';
+                                response.predictions.forEach(pred => {
+                                    const item = document.createElement('div');
+                                    item.className = 'suggestion-item';
+                                    item.style.padding = '8px 12px';
+                                    item.style.cursor = 'pointer';
+                                    item.style.fontSize = '12px';
+                                    item.style.borderBottom = '1px solid #f1f5f9';
+                                    item.style.transition = 'background 0.2s';
+                                    item.style.color = '#334155';
+                                    item.textContent = pred.description;
+
+                                    // Hiệu ứng hover
+                                    item.addEventListener('mouseenter', () => item.style.backgroundColor = '#f1f5f9');
+                                    item.addEventListener('mouseleave', () => item.style.backgroundColor = '#ffffff');
+
+                                    // Khi chọn một gợi ý
+                                    item.addEventListener('click', () => {
+                                        inputSearchAddress.value = pred.description;
+                                        suggestionsBox.style.display = 'none';
+                                        
+                                        if (pred.source === 'osm' && pred.latitude && pred.longitude) {
+                                            // Dùng tọa độ OSM trực tiếp, không cần gọi Place Details của Google!
+                                            const lat = parseFloat(pred.latitude);
+                                            const lon = parseFloat(pred.longitude);
+                                            
+                                            map.setView([lat, lon], 19);
+                                            
+                                            const tempMarker = L.marker([lat, lon]).addTo(map);
+                                            tempMarker.bindPopup(`<b>Bản đồ:</b><br>${pred.description}`).openPopup();
+                                            
+                                            setTimeout(() => {
+                                                map.removeLayer(tempMarker);
+                                            }, 10000);
+                                            
+                                            showToast('Đã di chuyển bản đồ đến địa điểm tìm thấy!', 'success');
+                                        } else if (pred.source === 'suggest') {
+                                            // Nếu là gợi ý cụm từ từ Google Suggest, chạy trực tiếp hàm tìm kiếm địa chỉ để định vị và ghim
+                                            executeAddressSearch();
+                                        } else {
+                                            // Gọi API lấy tọa độ chi tiết của Place ID từ Google
+                                            selectPlaceById(pred.place_id);
+                                        }
+                                    });
+
+                                    suggestionsBox.appendChild(item);
+                                });
+                                suggestionsBox.style.display = 'block';
+                            } else {
+                                suggestionsBox.style.display = 'none';
+                            }
+                        },
+                        error: function () {
+                            suggestionsBox.style.display = 'none';
+                        }
+                    });
+                }, 150);
+            });
+
+            // Tắt danh sách gợi ý khi bấm chuột ra ngoài
+            document.addEventListener('click', function (e) {
+                if (e.target !== inputSearchAddress && e.target !== suggestionsBox) {
+                    suggestionsBox.style.display = 'none';
+                }
+            });
+
+            // Tìm kiếm trực tiếp khi nhấn nút tìm kiếm hoặc gõ Enter
+            function executeAddressSearch() {
+                const query = inputSearchAddress.value.trim();
+                if (!query) {
+                    showToast('Vui lòng nhập địa chỉ cần tìm!', 'warning');
+                    return;
+                }
+                suggestionsBox.style.display = 'none';
+                showToast('Đang tìm kiếm vị trí...', 'info');
+
+                $.ajax({
+                    type: 'POST',
+                    url: '<?php echo BASE_URL; ?>api/searchAddressGoogle',
+                    data: JSON.stringify({ address: query }),
+                    contentType: 'application/json',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': '<?php echo security::getToken(); ?>'
+                    },
+                    dataType: 'json',
+                    success: function (response) {
+                        if (response.status === 200 && response.data) {
+                            const lat = parseFloat(response.data.lat);
+                            const lon = parseFloat(response.data.lon);
+                            
+                            map.setView([lat, lon], 19);
+                            
+                            const tempMarker = L.marker([lat, lon]).addTo(map);
+                            tempMarker.bindPopup(`<b>Google Maps:</b><br>${response.data.display_name}`).openPopup();
+                            
+                            setTimeout(() => {
+                                map.removeLayer(tempMarker);
+                            }, 10000);
+                            
+                            showToast('Đã di chuyển bản đồ đến địa điểm tìm thấy!', 'success');
+                        } else {
+                            showToast('Không tìm thấy địa điểm hoặc lỗi kết nối Google Maps.', 'danger');
+                        }
+                    },
+                    error: function (xhr) {
+
     }
 
-    // 11. Các hàm Helper phụ trợ
-    function addStallBackToUnmapped(stallId, stallCode) {
-        // Kiểm tra xem đã có sẵn trong danh sách chưa gán chưa để tránh trùng lặp
+    // Tắt các công cụ vẽ đang chạy
+    function deactivateTools() {
+        document.querySelectorAll('.draw-tool-btn').forEach(b => b.classList.remove('active'));
+        activeTool = null;
+        activePolyline = null;
+    }
+
+    // Click vào danh sách cột trái tự điền vào khung Gán Nhanh
+    window.selectUnmappedStall = function (code) {
+        // Reset bộ lọc gán nhanh để hiện đầy đủ sạp trước khi gán
+        if (qbFilterArea) qbFilterArea.value = "";
+        if (qbSearchInput) qbSearchInput.value = "";
+        if (qbToggleMapped) qbToggleMapped.checked = false;
+        if (typeof filterQuickBindStalls === 'function') filterQuickBindStalls();
+
+        qbStallCode.value = code;
+        
+        // Kích hoạt sự kiện change để tự động lấy diện tích/tọa độ sạp
+        qbStallCode.dispatchEvent(new Event('change'));
+
+        // Chuyển tiêu điểm sang ô dán tọa độ GPS
+        qbGpsData.focus();
+    };
+
+    // Đưa sạp quay lại cột trái chưa gán
+    function addStallBackToUnmappedList(stallId, stallCode) {
         const exist = document.querySelector(`.unmapped-stall-item[data-stall-id="${stallId}"]`);
         if (exist) return;
 
         const list = document.getElementById('unmapped-stalls-list');
-        
-        // Xóa thông báo trống nếu có
         const emptyMsg = list.querySelector('p');
         if (emptyMsg) emptyMsg.remove();
 
@@ -2299,723 +2081,151 @@
         div.className = 'unmapped-stall-item';
         div.setAttribute('data-stall-id', stallId);
         div.setAttribute('data-stall-code', stallCode);
-        div.setAttribute('draggable', 'true');
-        
-        // Thử tìm diện tích trong window.DB_STALLS nếu có
+        div.onclick = function () { selectUnmappedStall(stallCode); };
+
         let area = 10;
         if (window.DB_STALLS) {
-            const found = window.DB_STALLS.find(s => parseInt(s.stall_id) === parseInt(stallId));
-            if (found && found.area_size) area = found.area_size;
+            const details = window.DB_STALLS.find(s => s.stall_id == stallId);
+            if (details && details.area_size) area = details.area_size;
         }
 
         div.innerHTML = `
             <div>
-                <i class="fa-solid fa-store" style="margin-right: 6px; color: var(--primary);"></i>
+                <i class="fa-solid fa-store" style="margin-right: 6px; color: var(--primary, #0f766e);"></i>
                 <strong style="font-size: 12px;">${stallCode}</strong>
             </div>
-            <span style="font-size: 10px; color: var(--text-muted);">${area} m²</span>
+            <span style="font-size: 10px; color: var(--text-muted, #64748b);">${area} m²</span>
         `;
         list.appendChild(div);
+
+        // Thêm option vào select liên kết
+        const select = document.getElementById('prop-stall-id');
+        const opt = document.createElement('option');
+        opt.value = stallId;
+        opt.textContent = stallCode;
+        select.appendChild(opt);
+
+        // Sắp xếp lại option trong select
+        sortSelectOptions(select);
     }
 
-    // Cập nhật số lượng sạp chưa gán hiển thị ở góc
+    // Xóa sạp khỏi danh sách chưa gán
+    function removeStallFromUnmappedList(stallId) {
+        const dom = document.querySelector(`.unmapped-stall-item[data-stall-id="${stallId}"]`);
+        if (dom) dom.remove();
+
+        const select = document.getElementById('prop-stall-id');
+        for (let i = 0; i < select.options.length; i++) {
+            if (select.options[i].value == stallId) {
+                select.remove(i);
+                break;
+            }
+        }
+
+        // Loại bỏ khỏi danh sách sạp của bộ lọc Gán nhanh phía trên
+        if (window.DB_STALLS) {
+            const dbStall = window.DB_STALLS.find(s => s.stall_id == stallId);
+            if (dbStall && typeof allStalls !== 'undefined') {
+                allStalls = allStalls.filter(s => s.value !== dbStall.stall_code);
+                if (typeof filterQuickBindStalls === 'function') {
+                    filterQuickBindStalls();
+                }
+            }
+        }
+    }
+
+    // Cập nhật số lượng sạp chưa gán ở góc
     function updateUnmappedStallsBadge() {
         const count = document.querySelectorAll('#unmapped-stalls-list .unmapped-stall-item').length;
         document.getElementById('unmapped-count').textContent = count;
 
         const list = document.getElementById('unmapped-stalls-list');
         if (count === 0 && !list.querySelector('p')) {
-            list.innerHTML = `<p style="font-size: 12px; color: var(--text-muted); text-align: center; margin-top: 10px;">Đã đưa tất cả sạp lên bản đồ!</p>`;
+            list.innerHTML = `<p style="font-size: 12px; color: var(--text-muted, #64748b); text-align: center; margin-top: 10px;">Đã đưa tất cả sạp lên bản đồ!</p>`;
         }
     }
 
-    // Tìm kiếm sạp chưa gán nhanh
-    function setupUnmappedStallsSearch() {
-        const searchInput = document.getElementById('unmapped-search');
-        searchInput.addEventListener('input', function () {
-            const query = searchInput.value.toLowerCase().trim();
-            const items = document.querySelectorAll('#unmapped-stalls-list .unmapped-stall-item');
-            
-            items.forEach(item => {
-                const code = item.getAttribute('data-stall-code').toLowerCase();
-                if (code.includes(query)) {
-                    item.style.display = 'flex';
-                } else {
-                    item.style.display = 'none';
-                }
+    function sortSelectOptions(select) {
+        const tmp = [];
+        // Giữ lại option đầu tiên (-- Chọn sạp --)
+        const firstOpt = select.options[0];
+        
+        for (let i = 1; i < select.options.length; i++) {
+            tmp.push({
+                text: select.options[i].text,
+                value: select.options[i].value
             });
+        }
+        
+        tmp.sort((a, b) => a.text.localeCompare(b.text, undefined, {numeric: true}));
+        
+        select.innerHTML = '';
+        select.appendChild(firstOpt);
+        
+        tmp.forEach(opt => {
+            const o = document.createElement('option');
+            o.value = opt.value;
+            o.textContent = opt.text;
+            select.appendChild(o);
         });
     }
 
-    // Lấy icon FontAwesome cho từng loại phần tử vẽ
-    function getIconForType(type) {
+    function getIconClass(type) {
         switch (type) {
-            case 'stall': return 'fa-solid fa-store';
-            case 'street': return 'fa-solid fa-road';
-            case 'gate': return 'fa-solid fa-archway';
-            case 'door': return 'fa-solid fa-door-open';
-            case 'utility': return 'fa-solid fa-restroom';
-            case 'office': return 'fa-solid fa-building-user';
             case 'security-room': return 'fa-solid fa-shield-halved';
-            default: return 'fa-solid fa-draw-polygon';
+            case 'utility': return 'fa-solid fa-restroom';
+            case 'gate': return 'fa-solid fa-archway';
+            case 'office': return 'fa-solid fa-building-user';
+            default: return 'fa-solid fa-location-dot';
         }
     }
 
-    // Đổi tên loại phần tử sang Tiếng Việt
+    // Record State (định nghĩa rỗng cho tương thích mã copy cũ hoặc phục vụ undo stack nâng cao)
+    function recordState() {}
+
     function getTypeNameVietnamese(type) {
         switch (type) {
             case 'stall': return 'Sạp Chợ';
-            case 'street': return 'Đường đi';
             case 'gate': return 'Cổng Chợ';
             case 'door': return 'Cửa Ra Vào';
             case 'utility': return 'Nhà Vệ Sinh / Tiện ích';
-            case 'fence': return 'Hàng rào';
-            case 'security-room': return 'Phòng bảo vệ';
             case 'office': return 'Văn Phòng BQL';
+            case 'security-room': return 'Phòng Bảo Vệ';
             default: return 'Khác';
         }
     }
 
-    // Hàm điều chỉnh độ sáng tối của mã HEX màu
-    function adjustColorBrightness(hex, percent) {
-        let R = parseInt(hex.substring(1, 3), 16);
-        let G = parseInt(hex.substring(3, 5), 16);
-        let B = parseInt(hex.substring(5, 7), 16);
-
-        R = parseInt(R * (100 + percent) / 100);
-        G = parseInt(G * (100 + percent) / 100);
-        B = parseInt(B * (100 + percent) / 100);
-
-        R = (R < 255) ? R : 255;
-        G = (G < 255) ? G : 255;
-        B = (B < 255) ? B : 255;
-
-        R = (R > 0) ? R : 0;
-        G = (G > 0) ? G : 0;
-        B = (B > 0) ? B : 0;
-
-        const rHex = R.toString(16).padStart(2, '0');
-        const gHex = G.toString(16).padStart(2, '0');
-        const bHex = B.toString(16).padStart(2, '0');
-
-        return `#${rHex}${gHex}${bHex}`;
-    }
-
-    // Lấy màu chữ tương phản (Đen hoặc Trắng) dựa trên độ sáng của màu nền
-    function getContrastColor(hexColor) {
-        const r = parseInt(hexColor.substring(1, 3), 16);
-        const g = parseInt(hexColor.substring(3, 5), 16);
-        const b = parseInt(hexColor.substring(5, 7), 16);
-        const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-        return (yiq >= 128) ? '#000000' : '#FFFFFF';
-    }
-
-    // Xóa một phần tử khỏi bản đồ
-    function deleteSelectedElement(showConfirm = false) {
-        if (!selectedElement) return;
-
-        if (showConfirm && !confirm('Bạn chắc chắn muốn xóa phần tử này khỏi sơ đồ?')) {
-            return;
-        }
-
-        recordState(); // Lưu lịch sử trước khi xóa
-
-        // Nếu là sạp chợ, trả lại vào danh sách chưa gán
-        if (selectedElement.element_type === 'stall' && selectedElement.stall_id) {
-            addStallBackToUnmapped(selectedElement.stall_id, selectedElement.stall_code);
-        }
-
-        // Loại bỏ khỏi danh sách elements
-        const index = elements.indexOf(selectedElement);
-        if (index > -1) {
-            elements.splice(index, 1);
-        }
-
-        // Xóa khỏi DOM
-        const div = document.getElementById(`el-${selectedElement.id || selectedElement.temp_id}`);
-        if (div) div.remove();
-
-        deselectElement();
-        updateUnmappedStallsBadge();
-        showToast('Đã xóa phần tử thành công!', 'info');
-    }
-
-    // Ghi lại trạng thái hiện tại vào Undo Stack trước khi thay đổi
-    function recordState() {
-        const stateCopy = JSON.parse(JSON.stringify(elements));
-        undoStack.push(stateCopy);
-        if (undoStack.length > MAX_HISTORY_STATES) {
-            undoStack.shift();
-        }
-        redoStack = []; // Reset Redo khi có thao tác mới
-    }
-
-    // Hoàn tác hành động trước đó (Ctrl + Z)
-    function undo() {
-        if (undoStack.length === 0) {
-            showToast('Không có gì để hoàn tác!', 'warning');
-            return;
-        }
-
-        const currentStateCopy = JSON.parse(JSON.stringify(elements));
-        redoStack.push(currentStateCopy);
-
-        elements = undoStack.pop();
-        
-        deselectElement();
-        renderAllElements();
-        showToast('Đã Hoàn tác (Undo)', 'info');
-    }
-
-    // Làm lại hành động vừa hoàn tác (Ctrl + Y hoặc Ctrl + Shift + Z)
-    function redo() {
-        if (redoStack.length === 0) {
-            showToast('Không có gì để làm lại!', 'warning');
-            return;
-        }
-
-        const currentStateCopy = JSON.parse(JSON.stringify(elements));
-        undoStack.push(currentStateCopy);
-
-        elements = redoStack.pop();
-
-        deselectElement();
-        renderAllElements();
-        showToast('Đã Làm lại (Redo)', 'info');
-    }
-
-    // Thiết lập phím tắt bàn phím
-    function setupKeyboardShortcuts() {
-        document.addEventListener('keydown', function (e) {
-            // Tránh chạy phím tắt khi đang nhập liệu trong ô input/textarea/select
-            const activeEl = document.activeElement;
-            const isTyping = activeEl && (
-                activeEl.tagName === 'INPUT' || 
-                activeEl.tagName === 'TEXTAREA' || 
-                activeEl.tagName === 'SELECT'
-            );
-
-            if (isTyping) return;
-
-            // Phím Delete hoặc Backspace: Xóa phần tử đang chọn
-            if (e.key === 'Delete' || e.key === 'Backspace') {
-                if (selectedElement) {
-                    e.preventDefault();
-                    deleteSelectedElement(false); // Xóa trực tiếp không cần confirm nhờ đã có Undo
-                }
-            }
-
-            // Ctrl + Z hoặc Cmd + Z: Undo
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
-                e.preventDefault();
-                undo();
-            }
-
-            // Ctrl + Y / Cmd + Y hoặc Ctrl + Shift + Z: Redo
-            if (
-                ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') ||
-                ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')
-            ) {
-                e.preventDefault();
-                redo();
-            }
-        });
-    }
-
-    // Tính toán bounding box của đường đi từ waypoints
-    function getStreetBoundingBox(waypoints, strokeWidth = 24) {
-        if (!waypoints || waypoints.length === 0) {
-            return { x: 0, y: 0, w: 40, h: 40, minX: 0, maxX: 0, minY: 0, maxY: 0 };
-        }
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-        waypoints.forEach(pt => {
-            const px = parseFloat(pt.x);
-            const py = parseFloat(pt.y);
-            if (px < minX) minX = px;
-            if (px > maxX) maxX = px;
-            if (py < minY) minY = py;
-            if (py > maxY) maxY = py;
-        });
-        
-        const pad = strokeWidth / 2;
-        const x = minX - pad;
-        const y = minY - pad;
-        const w = (maxX - minX) + strokeWidth;
-        const h = (maxY - minY) + strokeWidth;
-        
-        return { x, y, w, h, minX, maxX, minY, maxY };
-    }
-
-    // Vẽ các nút nắm kéo dài (waypoint handles) lên canvas
-    function renderWaypointHandles(item) {
-        // Xóa các handle cũ (cả waypoint và midpoint)
-        canvasGrid.querySelectorAll('.waypoint-handle, .midpoint-handle').forEach(h => h.remove());
-        
-        if (!item || !isRoadType(item.element_type) || !item.waypoints) return;
-        
-        // 1. Vẽ các nút nắm kéo tự do (waypoint handles) ở các góc/đầu mút
-        item.waypoints.forEach((pt, idx) => {
-            const handle = document.createElement('div');
-            handle.className = 'waypoint-handle';
-            handle.style.left = `${pt.x}px`;
-            handle.style.top = `${pt.y}px`;
-            handle.dataset.index = idx;
-            
-            // Container cho mũi tên bẻ hướng
-            const arrows = document.createElement('div');
-            arrows.className = 'waypoint-arrows';
-            handle.appendChild(arrows);
-            
-            const isStart = (idx === 0);
-            const isEnd = (idx === item.waypoints.length - 1);
-            
-            if (isStart || isEnd) {
-                const neighbor = isStart ? item.waypoints[1] : item.waypoints[idx - 1];
-                if (neighbor) {
-                    const dx = pt.x - neighbor.x;
-                    const dy = pt.y - neighbor.y;
-                    
-                    let straightDir, leftDir, rightDir;
-                    let straightArrow, leftArrow, rightArrow;
-                    
-                    if (Math.abs(dx) >= Math.abs(dy)) {
-                        if (dx >= 0) { // Heading Right
-                            straightDir = 'right'; straightArrow = '→';
-                            leftDir = 'up'; leftArrow = '↑';
-                            rightDir = 'down'; rightArrow = '↓';
-                        } else { // Heading Left
-                            straightDir = 'left'; straightArrow = '←';
-                            leftDir = 'down'; leftArrow = '↓';
-                            rightDir = 'up'; rightArrow = '↑';
-                        }
-                    } else {
-                        if (dy >= 0) { // Heading Down
-                            straightDir = 'down'; straightArrow = '↓';
-                            leftDir = 'right'; leftArrow = '→';
-                            rightDir = 'left'; rightArrow = '←';
-                        } else { // Heading Up
-                            straightDir = 'up'; straightArrow = '↑';
-                            leftDir = 'left'; leftArrow = '←';
-                            rightDir = 'right'; rightArrow = '→';
-                        }
-                    }
-                    
-                    const dirs = [
-                        { dir: straightDir, arrow: straightArrow, label: 'Đi Thẳng' },
-                        { dir: leftDir, arrow: leftArrow, label: 'Rẽ Trái' },
-                        { dir: rightDir, arrow: rightArrow, label: 'Rẽ Phải' }
-                    ];
-                    
-                    dirs.forEach(d => {
-                        const arrowBtn = document.createElement('div');
-                        arrowBtn.className = `waypoint-arrow arrow-${d.dir}`;
-                        arrowBtn.innerHTML = d.arrow;
-                        arrowBtn.title = `Kéo dài ${d.label} (${d.arrow})`;
-                        
-                        arrowBtn.addEventListener('mousedown', function(e) {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            startExtendingWaypoint(e, item, idx, d.dir);
-                        });
-                        
-                        arrows.appendChild(arrowBtn);
-                    });
-                }
-            }
-            
-            // Double-click vào handle để xóa waypoint (chấm lớn)
-            handle.addEventListener('dblclick', function(e) {
-                e.stopPropagation();
-                if (item.waypoints.length > 2) {
-                    recordState();
-                    
-                    // Kiểm tra xem đây có phải là điểm đầu của nhánh rẽ (M -> C -> M) không
-                    if (idx > 0 && idx < item.waypoints.length - 1) {
-                        const prev = item.waypoints[idx - 1];
-                        const next = item.waypoints[idx + 1];
-                        if (prev.x === next.x && prev.y === next.y) {
-                            // Xóa cả điểm nhánh rẽ C và điểm quay lại M
-                            item.waypoints.splice(idx, 2);
-                        } else {
-                            item.waypoints.splice(idx, 1);
-                        }
-                    } else {
-                        item.waypoints.splice(idx, 1);
-                    }
-                    
-                    const div = document.getElementById(`el-${item.id || item.temp_id}`);
-                    if (div) updateElementDOM(div, item);
-                    renderWaypointHandles(item);
-                } else {
-                    showToast('Đường đi phải có ít nhất 2 điểm!', 'warning');
-                }
-            });
-            
-            // Kéo thả handle để di chuyển waypoint tự do
-            handle.addEventListener('mousedown', function(e) {
-                // Nếu mousedown trúng mũi tên con thì không chạy logic kéo handle tự do
-                if (e.target.closest('.waypoint-arrow')) return;
-                
-                e.stopPropagation();
-                e.preventDefault();
-                
-                const startClientX = e.clientX;
-                const startClientY = e.clientY;
-                const initialX = pt.x;
-                const initialY = pt.y;
-                let hasRecorded = false;
-                let isDragging = false;
-                
-                function onMouseMove(moveEvent) {
-                    const dx = (moveEvent.clientX - startClientX) / zoomLevel;
-                    const dy = (moveEvent.clientY - startClientY) / zoomLevel;
-                    
-                    if (!isDragging && Math.hypot(dx, dy) > 3) {
-                        isDragging = true;
-                    }
-                    
-                    if (isDragging) {
-                        if (!hasRecorded) {
-                            recordState();
-                            hasRecorded = true;
-                        }
-                        
-                        let newX = initialX + dx;
-                        let newY = initialY + dy;
-                        
-                        if (chkSnapGrid.checked) {
-                            newX = Math.round(newX / 20) * 20;
-                            newY = Math.round(newY / 20) * 20;
-                        }
-                        
-                        pt.x = newX;
-                        pt.y = newY;
-                        
-                        handle.style.left = `${newX}px`;
-                        handle.style.top = `${newY}px`;
-                        
-                        const div = document.getElementById(`el-${item.id || item.temp_id}`);
-                        if (div) updateElementDOM(div, item);
-                    }
-                }
-                
-                function onMouseUp() {
-                    document.removeEventListener('mousemove', onMouseMove);
-                    document.removeEventListener('mouseup', onMouseUp);
-                    if (isDragging) {
-                        renderWaypointHandles(item);
-                    }
-                }
-                
-                document.addEventListener('mousemove', onMouseMove);
-                document.addEventListener('mouseup', onMouseUp);
-            });
-            
-            canvasGrid.appendChild(handle);
-        });
-
-        // 2. Vẽ các nút tròn mờ ở chính giữa từng đoạn thẳng (midpoint handles)
-        for (let i = 0; i < item.waypoints.length - 1; i++) {
-            const p1 = item.waypoints[i];
-            const p2 = item.waypoints[i + 1];
-            
-            const midX = (p1.x + p2.x) / 2;
-            const midY = (p1.y + p2.y) / 2;
-            
-            const midHandle = document.createElement('div');
-            midHandle.className = 'midpoint-handle';
-            midHandle.style.left = `${midX}px`;
-            midHandle.style.top = `${midY}px`;
-            
-            // Container cho mũi tên bẻ hướng của midpoint
-            const arrows = document.createElement('div');
-            arrows.className = 'waypoint-arrows';
-            midHandle.appendChild(arrows);
-            
-            // Xác định phân đoạn ngang hay dọc để hiển thị 2 hướng vuông góc tương ứng
-            const dx = p2.x - p1.x;
-            const dy = p2.y - p1.y;
-            const isHorizontalSegment = Math.abs(dx) >= Math.abs(dy);
-            
-            const dirs = isHorizontalSegment 
-                ? [ { dir: 'up', arrow: '↑', label: 'Lên' }, { dir: 'down', arrow: '↓', label: 'Xuống' } ]
-                : [ { dir: 'left', arrow: '←', label: 'Trái' }, { dir: 'right', arrow: '→', label: 'Phải' } ];
-                
-            dirs.forEach(d => {
-                const arrowBtn = document.createElement('div');
-                arrowBtn.className = `waypoint-arrow arrow-${d.dir}`;
-                arrowBtn.innerHTML = d.arrow;
-                arrowBtn.title = `Bẻ góc rẽ ${d.label} (${d.arrow})`;
-                
-                arrowBtn.addEventListener('mousedown', function(e) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    startExtendingMidpoint(e, item, i, d.dir);
-                });
-                
-                arrows.appendChild(arrowBtn);
-            });
-            
-            // Kéo tự do trên midpoint-handle vẫn hoạt động như cũ
-            midHandle.addEventListener('mousedown', function(e) {
-                if (e.target.closest('.waypoint-arrow')) return;
-                
-                e.stopPropagation();
-                e.preventDefault();
-                startDraggingMidpoint(e, item, i);
-            });
-            
-            canvasGrid.appendChild(midHandle);
+    function getStatusName(statusCode) {
+        switch (statusCode) {
+            case 'rented': return 'Đã thuê';
+            case 'empty': return 'Còn trống';
+            case 'repairing': return 'Đang bảo trì';
+            case 'locked': return 'Tạm khóa';
+            default: return 'Khác';
         }
     }
 
-    // Kéo dài góc rẽ theo hướng ngang hoặc dọc thẳng hàng
-    function startExtendingWaypoint(e, item, idx, direction) {
-        const originalPt = item.waypoints[idx];
-        const newPt = { x: originalPt.x, y: originalPt.y };
-        
-        const rect = canvasGrid.getBoundingClientRect();
-        const startX = originalPt.x;
-        const startY = originalPt.y;
-        let hasInserted = false;
-        
-        const isHorizontal = (direction === 'horizontal' || direction === 'left' || direction === 'right');
-        
-        function onMouseMove(moveEvent) {
-            let dragX = (moveEvent.clientX - rect.left) / zoomLevel;
-            let dragY = (moveEvent.clientY - rect.top) / zoomLevel;
-            
-            if (chkSnapGrid.checked) {
-                dragX = Math.round(dragX / 20) * 20;
-                dragY = Math.round(dragY / 20) * 20;
-            }
-            
-            const dist = isHorizontal ? Math.abs(dragX - startX) : Math.abs(dragY - startY);
-            if (!hasInserted && dist > 5) {
-                recordState();
-                
-                // Chèn điểm mới
-                if (idx === 0) {
-                    item.waypoints.unshift(newPt);
-                } else if (idx === item.waypoints.length - 1) {
-                    item.waypoints.push(newPt);
-                } else {
-                    item.waypoints.splice(idx + 1, 0, newPt);
-                }
-                
-                hasInserted = true;
-            }
-            
-            if (hasInserted) {
-                if (isHorizontal) {
-                    newPt.x = dragX;
-                    newPt.y = originalPt.y;
-                } else {
-                    newPt.x = originalPt.x;
-                    newPt.y = dragY;
-                }
-                
-                const div = document.getElementById(`el-${item.id || item.temp_id}`);
-                if (div) updateElementDOM(div, item);
-            }
-        }
-        
-        // onMouseUp extends waypoint
-        function onMouseUp() {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-            if (hasInserted) {
-                renderWaypointHandles(item);
-            }
-        }
-        
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
+    // Trả về bảng màu viền/nền sạp theo trạng thái hoạt động
+    function getStallStatusColor(stallId) {
+        const colorMap = {
+            rented:    { fill: '#dcfce7', border: '#22c55e' },
+            empty:     { fill: '#dbeafe', border: '#3b82f6' },
+            repairing: { fill: '#ffedd5', border: '#f97316' },
+            locked:    { fill: '#fee2e2', border: '#ef4444' }
+        };
+        const fallback = { fill: '#f1f5f9', border: '#94a3b8' };
+
+        if (!stallId || !window.DB_STALLS) return fallback;
+        const details = window.DB_STALLS.find(s => s.stall_id == stallId);
+        if (!details) return fallback;
+        return colorMap[details.status_code] || fallback;
     }
 
-    // Kéo bẻ góc từ nút tròn mờ ở chính giữa đoạn thẳng
-    function startDraggingMidpoint(e, item, segmentIdx) {
-        const p1 = item.waypoints[segmentIdx];
-        const p2 = item.waypoints[segmentIdx + 1];
-        
-        const midX = (p1.x + p2.x) / 2;
-        const midY = (p1.y + p2.y) / 2;
-        
-        const newPt = { x: midX, y: midY };
-        const rect = canvasGrid.getBoundingClientRect();
-        
-        const startX = midX;
-        const startY = midY;
-        let hasInserted = false;
-        
-        function onMouseMove(moveEvent) {
-            let dragX = (moveEvent.clientX - rect.left) / zoomLevel;
-            let dragY = (moveEvent.clientY - rect.top) / zoomLevel;
-            
-            if (chkSnapGrid.checked) {
-                dragX = Math.round(dragX / 20) * 20;
-                dragY = Math.round(dragY / 20) * 20;
-            }
-            
-            const dist = Math.hypot(dragX - startX, dragY - startY);
-            if (!hasInserted && dist > 5) {
-                recordState();
-                
-                // Chèn điểm mới ở giữa đoạn segmentIdx và segmentIdx + 1
-                item.waypoints.splice(segmentIdx + 1, 0, newPt);
-                hasInserted = true;
-            }
-            
-            if (hasInserted) {
-                newPt.x = dragX;
-                newPt.y = dragY;
-                
-                const div = document.getElementById(`el-${item.id || item.temp_id}`);
-                if (div) updateElementDOM(div, item);
-            }
-        }
-        
-        function onMouseUp() {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-            if (hasInserted) {
-                renderWaypointHandles(item);
-            }
-        }
-        
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    }
-
-    // Kéo bẻ góc vuông góc cố định từ nút tròn mờ (Tạo nhánh rẽ trên chính con đường đó)
-    function startExtendingMidpoint(e, item, segmentIdx, direction) {
-        const p1 = item.waypoints[segmentIdx];
-        const p2 = item.waypoints[segmentIdx + 1];
-        
-        const midX = (p1.x + p2.x) / 2;
-        const midY = (p1.y + p2.y) / 2;
-        
-        // Chèn 3 điểm đại diện cho nhánh rẽ: M -> C -> M
-        const M = { x: midX, y: midY };
-        const C = { x: midX, y: midY };
-        const M_dup = { x: midX, y: midY };
-        
-        item.waypoints.splice(segmentIdx + 1, 0, M, C, M_dup);
-        
-        // Gọi hàm kéo nhánh rẽ mới chèn (điểm C ở index segmentIdx + 2)
-        startDraggingBranch(e, item, segmentIdx, segmentIdx + 2, direction);
-    }
-
-    // Kéo nhánh rẽ mới bẻ từ trung điểm dọc/ngang
-    function startDraggingBranch(e, item, segmentIdx, branchIdx, direction) {
-        const branchPt = item.waypoints[branchIdx];
-        const rect = canvasGrid.getBoundingClientRect();
-        const startX = branchPt.x;
-        const startY = branchPt.y;
-        
-        const isHorizontal = (direction === 'horizontal' || direction === 'left' || direction === 'right');
-        let hasRecorded = false;
-        
-        function onMouseMove(moveEvent) {
-            let dragX = (moveEvent.clientX - rect.left) / zoomLevel;
-            let dragY = (moveEvent.clientY - rect.top) / zoomLevel;
-            
-            if (chkSnapGrid.checked) {
-                dragX = Math.round(dragX / 20) * 20;
-                dragY = Math.round(dragY / 20) * 20;
-            }
-            
-            const dist = isHorizontal ? Math.abs(dragX - startX) : Math.abs(dragY - startY);
-            if (dist > 5) {
-                if (!hasRecorded) {
-                    recordState();
-                    hasRecorded = true;
-                }
-                
-                if (isHorizontal) {
-                    branchPt.x = dragX;
-                    branchPt.y = startY;
-                } else {
-                    branchPt.x = startX;
-                    branchPt.y = dragY;
-                }
-                
-                const div = document.getElementById(`el-${item.id || item.temp_id}`);
-                if (div) updateElementDOM(div, item);
-            }
-        }
-        
-        function onMouseUp() {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-            if (hasRecorded) {
-                renderWaypointHandles(item);
-            } else {
-                // Người dùng không kéo đủ xa, hoàn tác chèn 3 điểm nhánh rẽ
-                item.waypoints.splice(segmentIdx + 1, 3);
-                const div = document.getElementById(`el-${item.id || item.temp_id}`);
-                if (div) updateElementDOM(div, item);
-                renderWaypointHandles(item);
-            }
-        }
-        
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    }
-
-    // Tìm phân đoạn đường gần điểm click nhất
-    function findClosestSegment(pt, waypoints) {
-        let minDistance = Infinity;
-        let closestIndex = 0;
-        
-        for (let i = 0; i < waypoints.length - 1; i++) {
-            const dist = getDistanceToSegment(pt, waypoints[i], waypoints[i+1]);
-            if (dist < minDistance) {
-                minDistance = dist;
-                closestIndex = i;
-            }
-        }
-        return closestIndex;
-    }
-    
-    // Tính khoảng cách Euclid từ điểm P đến đoạn thẳng AB
-    function getDistanceToSegment(p, a, b) {
-        const x = p.x, y = p.y;
-        const x1 = a.x, y1 = a.y;
-        const x2 = b.x, y2 = b.y;
-        
-        const A = x - x1;
-        const B = y - y1;
-        const C = x2 - x1;
-        const D = y2 - y1;
-        
-        const dot = A * C + B * D;
-        const len_sq = C * C + D * D;
-        let param = -1;
-        if (len_sq != 0) param = dot / len_sq;
-            
-        let xx, yy;
-        if (param < 0) {
-            xx = x1;
-            yy = y1;
-        } else if (param > 1) {
-            xx = x2;
-            yy = y2;
-        } else {
-            xx = x1 + param * C;
-            yy = y1 + param * D;
-        }
-        
-        const dx = x - xx;
-        const dy = y - yy;
-        return Math.sqrt(dx * dx + dy * dy);
-    }
-
-    // Chạy khởi động khi tài liệu sẵn sàng
+    // Khởi động
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', initEditorMap);
     } else {
-        init();
+        initEditorMap();
     }
 })();
 </script>
