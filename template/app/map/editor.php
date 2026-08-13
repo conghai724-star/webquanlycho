@@ -1894,19 +1894,32 @@ $market = $marketModel->getById($marketId);
 
     // Click vào danh sách cột trái tự điền vào khung Gán Nhanh
     window.selectUnmappedStall = function (code) {
-        // Reset bộ lọc gán nhanh để hiện đầy đủ sạp trước khi gán
+        const qbFilterArea = document.getElementById('qb-filter-area');
+        const qbSearchInput = document.getElementById('qb-search-input');
+        const qbToggleMapped = document.getElementById('qb-toggle-mapped');
+
+        // Reset bộ lọc tìm kiếm và khu vực để tránh ẩn sạp được chọn
         if (qbFilterArea) qbFilterArea.value = "";
         if (qbSearchInput) qbSearchInput.value = "";
-        if (qbToggleMapped) qbToggleMapped.checked = false;
+        
+        // Xác định trạng thái đã gán hay chưa gán của sạp được click
+        const mappedIds = elements.map(el => String(el.stall_id)).filter(id => id && id !== 'undefined');
+        let dbStall = window.DB_STALLS ? window.DB_STALLS.find(s => s.stall_code.toUpperCase() === code.toUpperCase()) : null;
+        if (dbStall && qbToggleMapped) {
+            const isMapped = mappedIds.includes(String(dbStall.stall_id));
+            qbToggleMapped.checked = isMapped;
+        }
+
         if (typeof filterQuickBindStalls === 'function') filterQuickBindStalls();
 
-        qbStallCode.value = code;
-        
-        // Kích hoạt sự kiện change để tự động lấy diện tích/tọa độ sạp
-        qbStallCode.dispatchEvent(new Event('change'));
+        if (qbStallCode) {
+            qbStallCode.value = code;
+            // Kích hoạt sự kiện change để tự động lấy diện tích/tọa độ sạp
+            qbStallCode.dispatchEvent(new Event('change'));
+        }
 
         // Chuyển tiêu điểm sang ô dán tọa độ GPS
-        qbGpsData.focus();
+        if (qbGpsData) qbGpsData.focus();
     };
 
     // Đưa sạp quay lại cột trái chưa gán
