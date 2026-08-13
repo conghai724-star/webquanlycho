@@ -387,21 +387,8 @@ $market = $marketModel->getById($marketId);
             </div>
 
             <!-- CÔNG CỤ VẼ MỚI -->
-            <div style="font-weight: 700; font-size: 12px; margin-bottom: 10px; color: var(--text-muted, #64748b); text-transform: uppercase; letter-spacing: 0.5px;">Vẽ phần tử mới</div>
-            <button class="draw-tool-btn" id="tool-draw-stall" data-tool="stall">
-                <i class="fa-solid fa-store" style="color: #3b82f6;"></i>
-                <span>Vẽ sạp mới (Stall)</span>
-            </button>
-            <button class="draw-tool-btn" id="tool-draw-street" data-tool="street">
-                <i class="fa-solid fa-road" style="color: #64748b;"></i>
-                <span>Vẽ Lối đi (Street)</span>
-            </button>
-            <button class="draw-tool-btn" id="tool-draw-fence" data-tool="fence">
-                <i class="fa-solid fa-bars" style="color: #d97706;"></i>
-                <span>Vẽ Hàng rào (Fence)</span>
-            </button>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;">
+            <div style="font-weight: 700; font-size: 12px; margin-bottom: 10px; color: var(--text-muted, #64748b); text-transform: uppercase; letter-spacing: 0.5px;">Đặt tiện ích mới</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 15px;">
                 <button class="draw-tool-btn" id="tool-place-wc" data-tool="utility" style="padding:0 4px; font-size: 11px;">
                     <i class="fa-solid fa-restroom" style="color: #0ea5e9;"></i>
                     <span>Đặt WC</span>
