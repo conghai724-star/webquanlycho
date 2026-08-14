@@ -123,8 +123,45 @@ $htmlBg = $theme === 'dark' ? '#0f1623' : '#f5f7fb';
 
     <!-- jQuery (cần cho inline script trong các view PHP dùng $().ready / $.ajax) -->
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-    <!-- ponytail: Restore sidebar-rail state before first paint to avoid layout flash -->
-    <script>if(localStorage.getItem('sidebar-collapsed')==='1'&&window.innerWidth>768)document.documentElement.classList.add('sidebar-rail-pending');</script>
+    <!-- SweetAlert2 (Thông báo & Tab xác nhận xóa đẹp mắt) -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+    if(localStorage.getItem('sidebar-collapsed')==='1'&&window.innerWidth>768)document.documentElement.classList.add('sidebar-rail-pending');
+
+    /**
+     * Hàm mở Tab / Hộp thoại Popup xác nhận Xóa Mềm chuyên nghiệp
+     */
+    function confirmSoftDelete(url, itemTitle, itemType) {
+        var typeLabel = itemType || 'mục này';
+        var title = itemTitle ? 'Xác nhận xóa ' + typeLabel + '?' : 'Xác nhận xóa dữ liệu?';
+        var nameHtml = itemTitle ? '<div style="font-weight: 700; color: #0f172a; margin-top: 8px; font-size: 14.5px; background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px dashed #cbd5e1; word-break: break-word;">' + itemTitle + '</div>' : '';
+
+        Swal.fire({
+            title: title,
+            html: nameHtml + '<p style="color: #64748b; font-size: 13.5px; margin-top: 12px; margin-bottom: 0;">Hệ thống sẽ thực hiện <b>Xóa mềm (Soft Delete)</b>. Dữ liệu sẽ được chuyển vào lưu trữ an toàn và ẩn khỏi trang web.</p>',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: '<i class="fa-solid fa-trash-can me-1"></i> Đồng ý xóa',
+            cancelButtonText: '<i class="fa-solid fa-xmark me-1"></i> Hủy bỏ',
+            reverseButtons: true,
+            focusCancel: true
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Đang xử lý...',
+                    allowOutsideClick: false,
+                    didOpen: function() {
+                        Swal.showLoading();
+                    }
+                });
+                window.location.href = url;
+            }
+        });
+        return false;
+    }
+    </script>
 </head>
 <?php
 $successMsg = session::get('success_message');

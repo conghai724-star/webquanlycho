@@ -3,9 +3,7 @@ $moduleList = [
     'dashboard'     => ['title' => 'TRANG CHỦ', 'sub' => '(DASHBOARD)'],
     'map_editor'    => ['title' => 'BIÊN TẬP BẢN ĐỒ', 'sub' => "('MAP_EDITOR')"],
     'map_tree'      => ['title' => 'SƠ ĐỒ CÂY', 'sub' => "('MAP_TREE')"],
-    'banners'       => ['title' => 'QUẢN LÝ BANNER', 'sub' => "('BANNERS')"],
-    'registrations' => ['title' => 'ĐĂNG KÝ THUÊ SẠP', 'sub' => "('REGISTRATIONS')"],
-    'feedbacks'     => ['title' => 'KHIẾU NẠI & GÓP Ý', 'sub' => "('FEEDBACKS')"],
+    'banners'       => ['title' => 'NỘI DUNG WEB', 'sub' => "('BANNERS')"],
     'users'         => ['title' => 'TÀI KHOẢN WEB', 'sub' => "('USERS')"],
     'roles'         => ['title' => 'PHÂN QUYỀN', 'sub' => "('ROLES')"]
 ];
@@ -123,10 +121,20 @@ input:checked + .slider:before {
                 </thead>
                 <tbody>
                     <?php if (!empty($users)): ?>
+                        <?php 
+                        $roleMap = [];
+                        if (!empty($webRoles)) {
+                            foreach ($webRoles as $r) {
+                                $roleMap[$r['role_code']] = $r['role_name'];
+                            }
+                        }
+                        ?>
                         <?php foreach ($users as $u): ?>
                             <?php 
                             $userPerms = array_filter(array_map('trim', explode(',', $u['permissions'] ?? '')));
-                            $isAdmin = ($u['role'] ?? '') === 'admin' || in_array('all', $userPerms);
+                            $userRoleCode = $u['role'] ?? 'editor';
+                            $userRoleName = $roleMap[$userRoleCode] ?? ($userRoleCode === 'admin' ? 'Quản trị viên' : 'Biên tập viên');
+                            $hasAll = in_array('all', $userPerms);
                             ?>
                             <tr style="border-bottom: 1px solid var(--border-color); text-align: center;" class="user-perm-row" data-search="<?php echo htmlspecialchars(mb_strtolower(($u['fullname'] ?? '') . ' ' . ($u['username'] ?? '') . ' ' . ($u['email'] ?? ''))); ?>">
                                 <td style="padding: 14px 16px; text-align: left;">
@@ -135,28 +143,25 @@ input:checked + .slider:before {
                                     <small style="color: #94a3b8; font-size: 11px;"><?php echo htmlspecialchars($u['email'] ?: 'Chưa cập nhật email'); ?></small>
                                 </td>
                                 <td style="padding: 14px 16px;">
-                                    <?php if (($u['role'] ?? '') === 'admin'): ?>
-                                        <span class="chip" style="background: rgba(15, 118, 110, 0.1); color: var(--primary); font-weight: 700; border: 1px solid rgba(15, 118, 110, 0.2);">Quản trị viên</span>
-                                    <?php else: ?>
-                                        <span class="chip" style="background: rgba(59, 130, 246, 0.1); color: #1d4ed8; font-weight: 600; border: 1px solid rgba(59, 130, 246, 0.2);">Biên tập viên</span>
-                                    <?php endif; ?>
+                                    <span id="role_chip_<?php echo $u['id']; ?>" class="chip" style="<?php echo ($userRoleCode === 'admin') ? 'background: rgba(15, 118, 110, 0.1); color: var(--primary); font-weight: 700; border: 1px solid rgba(15, 118, 110, 0.2);' : 'background: rgba(59, 130, 246, 0.1); color: #1d4ed8; font-weight: 600; border: 1px solid rgba(59, 130, 246, 0.2);'; ?>">
+                                        <?php echo htmlspecialchars($userRoleName); ?>
+                                    </span>
                                 </td>
                                 <td style="padding: 14px 16px;">
-                                    <select class="form-control" style="font-size: 12px; padding: 4px 8px; height: 32px; border-radius: 6px;" onchange="applyRoleTemplate(<?php echo $u['id']; ?>, this.value)">
+                                    <select id="role_select_<?php echo $u['id']; ?>" class="form-control" style="font-size: 12px; padding: 4px 8px; height: 32px; border-radius: 6px;" onchange="applyRoleTemplate(<?php echo $u['id']; ?>, this.value)">
                                         <option value="">-- Mẫu gán nhanh --</option>
                                         <?php if (!empty($webRoles)): foreach ($webRoles as $r): ?>
-                                            <option value="<?php echo htmlspecialchars($r['role_code']); ?>"><?php echo htmlspecialchars($r['role_name']); ?></option>
+                                            <option value="<?php echo htmlspecialchars($r['role_code']); ?>" <?php echo ($userRoleCode === $r['role_code']) ? 'selected' : ''; ?>><?php echo htmlspecialchars($r['role_name']); ?></option>
                                         <?php endforeach; endif; ?>
                                     </select>
                                 </td>
                                 <?php foreach ($moduleList as $code => $info): ?>
-                                    <?php $hasAccess = $isAdmin || in_array($code, $userPerms); ?>
+                                    <?php $hasAccess = $hasAll || in_array($code, $userPerms); ?>
                                     <td style="padding: 14px 10px;">
                                         <label class="switch">
                                             <input type="checkbox" 
                                                    id="perm_<?php echo $u['id']; ?>_<?php echo $code; ?>" 
                                                    <?php echo $hasAccess ? 'checked' : ''; ?> 
-                                                   <?php echo $isAdmin ? 'disabled' : ''; ?>
                                                    onchange="toggleUserModulePerm(<?php echo $u['id']; ?>, '<?php echo $code; ?>', this.checked)">
                                             <span class="slider round"></span>
                                         </label>
@@ -253,12 +258,27 @@ function applyRoleTemplate(userId, roleCode) {
                 var perms = res.permissions;
                 var isAdmin = (roleCode === 'admin' || perms.includes('all'));
 
+                // Cập nhật thẻ hiển thị vai trò
+                var chip = document.getElementById('role_chip_' + userId);
+                if (chip && res.role_name) {
+                    chip.innerText = res.role_name;
+                    if (isAdmin) {
+                        chip.style.background = 'rgba(15, 118, 110, 0.1)';
+                        chip.style.color = 'var(--primary)';
+                        chip.style.borderColor = 'rgba(15, 118, 110, 0.2)';
+                    } else {
+                        chip.style.background = 'rgba(59, 130, 246, 0.1)';
+                        chip.style.color = '#1d4ed8';
+                        chip.style.borderColor = 'rgba(59, 130, 246, 0.2)';
+                    }
+                }
+
                 // Cập nhật lại các toggle switches trên dòng tương ứng
-                ['dashboard', 'map_editor', 'map_tree', 'banners', 'registrations', 'feedbacks', 'users', 'roles'].forEach(function(code) {
+                <?php echo json_encode(array_keys($moduleList)); ?>.forEach(function(code) {
                     var el = document.getElementById('perm_' + userId + '_' + code);
                     if (el) {
-                        el.checked = (isAdmin || perms.includes(code));
-                        el.disabled = isAdmin;
+                        el.checked = (perms.includes('all') || perms.includes(code));
+                        el.disabled = false;
                     }
                 });
 
@@ -266,7 +286,7 @@ function applyRoleTemplate(userId, roleCode) {
                     toast: true,
                     position: 'top-end',
                     icon: 'success',
-                    title: 'Đã áp dụng mẫu vai trò thành công!',
+                    title: res.message || 'Đã áp dụng mẫu vai trò thành công!',
                     showConfirmButton: false,
                     timer: 2500
                 });

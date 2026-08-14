@@ -134,9 +134,9 @@ input:checked + .slider:before {
                                         <a href="<?php echo BASE_URL; ?>admin/post_edit/<?php echo $p['id']; ?>" class="btn btn-outline btn-sm" title="Chỉnh sửa">
                                             <i class="fa-solid fa-pen-to-square"></i> Sửa
                                         </a>
-                                        <a href="<?php echo BASE_URL; ?>admin/post_delete/<?php echo $p['id']; ?>" onclick="return confirm('Bạn có chắc chắn muốn xóa bài viết này?');" class="btn btn-outline btn-sm" style="color: #dc2626; border-color: #fca5a5;" title="Xóa">
+                                        <button type="button" onclick="confirmSoftDelete('<?php echo BASE_URL; ?>admin/post_delete/<?php echo $p['id']; ?>', '<?php echo htmlspecialchars(addslashes($p['post_title'])); ?>', 'bài viết')" class="btn btn-outline btn-sm" style="color: #dc2626; border-color: #fca5a5;" title="Xóa bài viết">
                                             <i class="fa-solid fa-trash-can"></i>
-                                        </a>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>

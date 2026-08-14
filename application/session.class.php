@@ -123,7 +123,6 @@ class session {
      */
     public static function hasWebModule($moduleCode) {
         if (!self::isWebLoggedIn()) return false;
-        if (self::isWebAdmin()) return true;
 
         $perms = self::getWebUser('permissions') ?? '';
         if ($perms === 'all') return true;

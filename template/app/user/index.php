@@ -77,9 +77,9 @@
                                             <i class="fa-solid fa-pen"></i>
                                         </a>
                                         <?php if ($u['id'] != session::getWebUser('id')): ?>
-                                            <a href="<?php echo BASE_URL; ?>admin/user_delete/<?php echo $u['id']; ?>" onclick="return confirm('Bạn có chắc chắn muốn xóa tài khoản này?');" class="btn btn-outline btn-sm" style="padding: 4px 8px; font-size: 11px; color: #d32f2f; display: inline-flex; align-items: center; justify-content: center;" title="Xóa tài khoản">
+                                            <button type="button" onclick="confirmSoftDelete('<?php echo BASE_URL; ?>admin/user_delete/<?php echo $u['id']; ?>', '<?php echo htmlspecialchars(addslashes($u['fullname'] . ' (' . $u['username'] . ')')); ?>', 'tài khoản')" class="btn btn-outline btn-sm" style="padding: 4px 8px; font-size: 11px; color: #d32f2f; display: inline-flex; align-items: center; justify-content: center; border-color: #fca5a5;" title="Xóa tài khoản">
                                                 <i class="fa-solid fa-trash"></i>
-                                            </a>
+                                            </button>
                                         <?php endif; ?>
                                     </div>
                                 </td>

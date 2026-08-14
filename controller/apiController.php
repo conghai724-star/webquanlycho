@@ -233,14 +233,16 @@ class apiController extends baseController {
     // =========================================================================
 
     /**
-     * API lấy danh sách các phần tử bản đồ (AJAX GET)
+     * API lấy danh sách các phần tử bản đồ theo chợ (AJAX GET)
      */
     public function getMapElements() {
         try {
+            $marketId = (int)($_GET['market_id'] ?? $_GET['user_market_market_id'] ?? 0);
             $mapModel = new mapModel();
-            $elements = $mapModel->getElements();
+            $elements = $mapModel->getElements($marketId);
             $this->response([
                 'status' => 200,
+                'market_id' => $marketId,
                 'data' => $elements
             ]);
         } catch (Exception $e) {
@@ -349,6 +351,7 @@ class apiController extends baseController {
     public function saveMapElements() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             $this->response(['status' => 405, 'message' => 'Phương thức không được hỗ trợ.'], 405);
+            return;
         }
 
         $raw = file_get_contents('php://input');
@@ -356,15 +359,19 @@ class apiController extends baseController {
 
         if ($data === null || !isset($data['elements'])) {
             $this->response(['status' => 400, 'message' => 'Dữ liệu sơ đồ không hợp lệ.'], 400);
+            return;
         }
 
         try {
             include_once __SITE_PATH . '/model/mapModel.php';
             $mapModel = new mapModel();
-            $mapModel->saveElements($data['elements']);
+            $marketId = isset($data['market_id']) ? (int)$data['market_id'] : (isset($_GET['market_id']) ? (int)$_GET['market_id'] : 0);
+
+            $mapModel->saveElements($data['elements'], $marketId);
             
             $this->response([
                 'status' => 200,
+                'market_id' => $marketId,
                 'message' => 'Lưu sơ đồ chợ thành công!'
             ]);
         } catch (Exception $e) {

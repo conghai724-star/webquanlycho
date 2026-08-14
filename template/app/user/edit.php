@@ -91,13 +91,7 @@ $isAdmin = ($user['role'] ?? '') === 'admin' || in_array('all', $currentPerms);
                         <input type="checkbox" name="permissions[]" value="map_tree" class="perm-cb" <?php echo (in_array('map_tree', $currentPerms) || $isAdmin) ? 'checked' : ''; ?>> Sơ đồ Cây bản đồ
                     </label>
                     <label class="form-check" style="cursor: pointer;">
-                        <input type="checkbox" name="permissions[]" value="banners" class="perm-cb" <?php echo (in_array('banners', $currentPerms) || $isAdmin) ? 'checked' : ''; ?>> Quản lý Banner
-                    </label>
-                    <label class="form-check" style="cursor: pointer;">
-                        <input type="checkbox" name="permissions[]" value="registrations" class="perm-cb" <?php echo (in_array('registrations', $currentPerms) || $isAdmin) ? 'checked' : ''; ?>> Đăng ký Thuê Sạp
-                    </label>
-                    <label class="form-check" style="cursor: pointer;">
-                        <input type="checkbox" name="permissions[]" value="feedbacks" class="perm-cb" <?php echo (in_array('feedbacks', $currentPerms) || $isAdmin) ? 'checked' : ''; ?>> Khiếu nại & Góp ý
+                        <input type="checkbox" name="permissions[]" value="banners" class="perm-cb" <?php echo (in_array('banners', $currentPerms) || $isAdmin) ? 'checked' : ''; ?>> Nội dung Website (Banner, Tin tức, Liên hệ)
                     </label>
                     <label class="form-check" style="cursor: pointer;">
                         <input type="checkbox" name="permissions[]" value="users" class="perm-cb" <?php echo (in_array('users', $currentPerms) || $isAdmin) ? 'checked' : ''; ?>> Quản lý Tài khoản Web

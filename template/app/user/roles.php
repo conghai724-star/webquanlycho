@@ -3,9 +3,7 @@ $moduleNames = [
     'dashboard'     => 'Trang chủ (Dashboard)',
     'map_editor'    => 'Biên tập Bản đồ số',
     'map_tree'      => 'Sơ đồ Cây sạp chợ',
-    'banners'       => 'Quản lý Banner',
-    'registrations' => 'Quản lý Đăng ký thuê sạp',
-    'feedbacks'     => 'Quản lý Khiếu nại & Góp ý',
+    'banners'       => 'Nội dung Website (Banner, Tin tức, Liên hệ)',
     'users'         => 'Quản lý Tài khoản Web',
     'roles'         => 'Quản lý Phân quyền'
 ];
@@ -100,9 +98,9 @@ $moduleNames = [
                                                 <i class="fa-solid fa-pen"></i> Sửa
                                             </button>
                                             <?php if ($r['role_code'] !== 'admin'): ?>
-                                                <a href="<?php echo BASE_URL; ?>admin/role_delete/<?php echo $r['id']; ?>" onclick="return confirm('Bạn có chắc chắn muốn xóa vai trò này?');" class="btn btn-outline btn-sm" style="padding: 4px 8px; font-size: 11px; color: #d32f2f;" title="Xóa">
+                                                <button type="button" onclick="confirmSoftDelete('<?php echo BASE_URL; ?>admin/role_delete/<?php echo $r['id']; ?>', '<?php echo htmlspecialchars(addslashes($r['role_name'])); ?>', 'vai trò')" class="btn btn-outline btn-sm" style="padding: 4px 8px; font-size: 11px; color: #d32f2f; border-color: #fca5a5;" title="Xóa">
                                                     <i class="fa-solid fa-trash"></i> Xóa
-                                                </a>
+                                                </button>
                                             <?php endif; ?>
                                         </div>
                                     </td>

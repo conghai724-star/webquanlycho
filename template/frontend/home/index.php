@@ -36,7 +36,17 @@
             </div>
             <div class="hero-visual">
                 <div class="hero-visual-card" style="position: relative; overflow: hidden;">
-                    <a id="hero-banner-link" href="<?php echo htmlspecialchars(!empty($activeBanner['banner_link']) ? $activeBanner['banner_link'] : BASE_URL . 'home/map'); ?>" target="_blank" style="display:block; width:100%; height:100%;">
+                    <?php
+                    $bLink = $activeBanner['banner_link'] ?? '';
+                    if (empty($bLink)) {
+                        $initBannerUrl = BASE_URL . 'home/map';
+                    } elseif (preg_match('/^(https?:\/\/|\/\/|#)/i', $bLink)) {
+                        $initBannerUrl = $bLink;
+                    } else {
+                        $initBannerUrl = BASE_URL . ltrim($bLink, '/');
+                    }
+                    ?>
+                    <a id="hero-banner-link" href="<?php echo htmlspecialchars($initBannerUrl); ?>" style="display:block; width:100%; height:100%;">
                         <img id="hero-banner-img" src="<?php echo htmlspecialchars($activeBanner['banner_image']); ?>" alt="<?php echo htmlspecialchars($activeBanner['banner_title']); ?>" style="transition: opacity 0.4s ease-in-out;">
                     </a>
                     <?php if (count($banners) > 1): ?>
@@ -47,22 +57,6 @@
                         </div>
                     <?php endif; ?>
                 </div>
-                <div class="hero-float-card hero-float-1">
-                    <div class="hero-float-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                            <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8" />
-                            <path d="M21 21L16.5 16.5" stroke="currentColor" stroke-width="1.8"
-                                stroke-linecap="round" />
-                        </svg></div>
-                    <div><b>1.240 sạp</b><small>đã cập nhật trên bản đồ số</small></div>
-                </div>
-                <div class="hero-float-card hero-float-2">
-                    <div class="hero-float-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                            <path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
-                                stroke-linejoin="round" />
-                            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8" />
-                        </svg></div>
-                    <div><b>Đăng ký online</b><small>duyệt trong 24h</small></div>
-                </div>
             </div>
         </div>
     </section>
@@ -70,6 +64,12 @@
     <script>
     var heroBanners = <?php echo json_encode($banners); ?>;
     var currentBannerIdx = 0;
+
+    function resolveBannerUrl(url) {
+        if (!url) return '<?php echo BASE_URL; ?>home/map';
+        if (/^(https?:\/\/|\/\/|#)/i.test(url)) return url;
+        return '<?php echo BASE_URL; ?>' + url.replace(/^\/+/, '');
+    }
 
     function setHeroBanner(idx) {
         if (!heroBanners || heroBanners.length === 0) return;
@@ -90,7 +90,7 @@
         }
         if (titleEl) titleEl.innerText = b.banner_title;
         if (descEl && b.banner_description) descEl.innerText = b.banner_description;
-        if (linkEl) linkEl.href = b.banner_link || '<?php echo BASE_URL; ?>home/map';
+        if (linkEl) linkEl.href = resolveBannerUrl(b.banner_link);
 
 
         document.querySelectorAll('.banner-dot').forEach(function(dot, dIdx) {
@@ -117,10 +117,26 @@
     <div class="container stats-wrap">
         <div class="stats-grid" data-reveal>
             <div class="stat-card">
-                <div class="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <path d="M3 9L12 3L21 9V20C21 20.55 20.55 21 20 21H4C3.45 21 3 20.55 3 20V9Z"
-                            stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
-                    </svg></div>
+                <div class="stat-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M3 9L12 3L21 9V20C21 20.55 20.55 21 20 21H4C3.45 21 3 20.55 3 20V9Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                        <path d="M9 21V12H15V21" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                    </svg>
+                </div>
+                <div>
+                    <div class="stat-num"><?php echo (int)($this->data['total_markets'] ?? 0); ?></div>
+                    <div class="stat-label">Tổng số chợ</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M4 4H10V10H4V4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                        <path d="M14 4H20V10H14V4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                        <path d="M4 14H10V20H4V14Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                        <path d="M14 14H20V20H14V14Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                    </svg>
+                </div>
                 <div>
                     <div class="stat-num"><?php echo $this->data['total_areas'] ?? 0; ?></div>
                     <div class="stat-label">Tổng số khu vực</div>
@@ -159,7 +175,7 @@
                             stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
                     </svg></div>
                 <div>
-                    <div class="stat-num"><?php echo number_format(max(0, ($this->data['total_stalls'] ?? 0) - ($this->data['total_traders'] ?? 0))); ?></div>
+                    <div class="stat-num"><?php echo number_format($this->data['total_vacant_stalls'] ?? 0); ?></div>
                     <div class="stat-label">Sạp còn trống</div>
                 </div>
             </div>
@@ -170,36 +186,34 @@
     <section id="gioithieu">
         <div class="container intro-grid">
             <div class="intro-img" data-reveal>
-                <img src="https://images.unsplash.com/photo-1488459716781-31db52582fe9?q=80&w=1000&auto=format&fit=crop"
-                    alt="Toàn cảnh chợ">
+                <img src="<?php echo htmlspecialchars($settings['home_intro_image'] ?? 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?q=80&w=1000&auto=format&fit=crop'); ?>"
+                    alt="Toàn cảnh chợ" onerror="this.src='https://images.unsplash.com/photo-1488459716781-31db52582fe9?q=80&w=1000&auto=format&fit=crop'">
             </div>
             <div data-reveal>
-                <div class="eyebrow">Giới thiệu chợ</div>
-                <h2 class="section-title">Hơn 40 năm gắn bó với đời sống người dân thành phố</h2>
-                <p class="section-desc">Hình thành từ năm 1985, chợ Trung Tâm Thành Phố là đầu mối buôn bán sầm uất, quy
-                    tụ hàng nghìn tiểu thương thuộc nhiều ngành hàng khác nhau, đồng hành cùng quá trình chuyển đổi số
-                    của địa phương.</p>
+                <div class="eyebrow"><?php echo htmlspecialchars($settings['home_intro_eyebrow'] ?? 'Giới thiệu chợ'); ?></div>
+                <h2 class="section-title"><?php echo htmlspecialchars($settings['home_intro_title'] ?? 'Hơn 40 năm gắn bó với đời sống người dân thành phố'); ?></h2>
+                <p class="section-desc"><?php echo nl2br(htmlspecialchars($settings['home_intro_desc'] ?? 'Hình thành từ năm 1985, chợ Trung Tâm Thành Phố là đầu mối buôn bán sầm uất, quy tụ hàng nghìn tiểu thương thuộc nhiều ngành hàng khác nhau, đồng hành cùng quá trình chuyển đổi số của địa phương.')); ?></p>
+                <?php 
+                $introPoints = [];
+                if (!empty($settings['home_intro_points'])) {
+                    $introPoints = json_decode($settings['home_intro_points'], true) ?: [];
+                }
+                if (empty($introPoints)) {
+                    for ($i = 1; $i <= 10; $i++) {
+                        $pTitle = $settings["home_intro_point_{$i}_title"] ?? '';
+                        $pDesc = $settings["home_intro_point_{$i}_desc"] ?? '';
+                        if (!empty($pTitle) || !empty($pDesc)) {
+                            $introPoints[] = ['title' => $pTitle, 'desc' => $pDesc];
+                        }
+                    }
+                }
+                ?>
                 <ul class="intro-list">
-                    <li><span class="check">✓</span>
-                        <div><b>Lịch sử hình thành</b><span>Xây dựng từ năm 1985, trải qua 3 lần cải tạo, nâng cấp cơ sở
-                                hạ tầng.</span></div>
-                    </li>
-                    <li><span class="check">✓</span>
-                        <div><b>Quy mô</b><span>8 khu vực, 1.240 sạp kinh doanh trên diện tích hơn 12.000m².</span>
-                        </div>
-                    </li>
-                    <li><span class="check">✓</span>
-                        <div><b>Vai trò đối với địa phương</b><span>Đầu mối cung ứng hàng hóa thiết yếu cho hơn 50.000
-                                hộ dân trong khu vực.</span></div>
-                    </li>
-                    <li><span class="check">✓</span>
-                        <div><b>Ngành hàng kinh doanh</b><span>Thực phẩm tươi sống, bách hóa, thời trang, ăn uống và
-                                dịch vụ.</span></div>
-                    </li>
-                    <li><span class="check">✓</span>
-                        <div><b>Mục tiêu chuyển đổi số</b><span>Số hóa 100% sơ đồ sạp và thủ tục đăng ký trực tuyến
-                                trong năm 2026.</span></div>
-                    </li>
+                    <?php foreach ($introPoints as $pt): ?>
+                        <li><span class="check">✓</span>
+                            <div><b><?php echo htmlspecialchars($pt['title'] ?? ''); ?></b><span><?php echo htmlspecialchars($pt['desc'] ?? ''); ?></span></div>
+                        </li>
+                    <?php endforeach; ?>
                 </ul>
                 <a href="<?php echo BASE_URL; ?>home/about" class="btn btn-outline">Xem thêm</a>
             </div>
@@ -233,7 +247,7 @@
                         </svg></div>
                     <h3>Tra cứu vị trí sạp</h3>
                     <p>Tìm kiếm nhanh theo mã sạp hoặc khu vực chỉ trong vài giây.</p>
-                    <a href="#" class="feature-link">Tra cứu ngay →</a>
+                    <a href="<?php echo BASE_URL; ?>home/map" class="feature-link">Tra cứu ngay →</a>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -243,7 +257,7 @@
                         </svg></div>
                     <h3>Thông tin tiểu thương</h3>
                     <p>Tra cứu thông tin tiểu thương được công khai minh bạch.</p>
-                    <a href="#" class="feature-link">Xem danh sách →</a>
+                    <a href="<?php echo BASE_URL; ?>home/traders" class="feature-link">Xem danh sách →</a>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -251,7 +265,7 @@
                         </svg></div>
                     <h3>Đăng ký thuê sạp</h3>
                     <p>Đăng ký trực tuyến các sạp còn trống, theo dõi tiến trình xét duyệt.</p>
-                    <a href="#" class="feature-link">Đăng ký →</a>
+                    <a href="<?php echo BASE_URL; ?>home/register" class="feature-link">Đăng ký ngay →</a>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -260,7 +274,7 @@
                         </svg></div>
                     <h3>Tin tức</h3>
                     <p>Cập nhật thông báo mới nhất từ Ban quản lý chợ.</p>
-                    <a href="#tintuc" class="feature-link">Đọc tin tức →</a>
+                    <a href="<?php echo BASE_URL; ?>home/posts" class="feature-link">Đọc tin tức →</a>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -272,40 +286,12 @@
                         </svg></div>
                     <h3>Liên hệ</h3>
                     <p>Gửi góp ý và phản ánh trực tuyến đến Ban quản lý.</p>
-                    <a href="#lienhe" class="feature-link">Gửi phản ánh →</a>
+                    <a href="<?php echo BASE_URL; ?>home/contact" class="feature-link">Gửi phản ánh →</a>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- ================= SƠ ĐỒ CHỢ ================= -->
-    <section class="map-section" id="sodo">
-        <div class="hero-grid-pattern"></div>
-        <div class="container map-grid">
-            <div class="map-visual" data-reveal>
-                <img src="https://images.unsplash.com/photo-1591958911259-bee2173bdcc3?q=80&w=1000&auto=format&fit=crop"
-                    alt="Bản đồ số khu chợ">
-            </div>
-            <div data-reveal>
-                <div class="eyebrow">Bản đồ số</div>
-                <h2 class="section-title">Bản đồ số chợ</h2>
-                <p class="section-desc">Quan sát toàn bộ khu vực, dãy, lô và sạp trên bản đồ số trực quan — cập nhật
-                    theo thời gian thực.</p>
-                <div class="map-search">
-                    <input type="text" placeholder="Nhập mã sạp hoặc tên khu vực...">
-                    <a href="<?php echo BASE_URL; ?>home/map" class="btn btn-primary btn-sm">Tra cứu</a>
-                </div>
-                <div class="legend">
-                    <div class="legend-item"><span class="legend-dot" style="background:#1E88E5"></span>Đang hoạt động
-                    </div>
-                    <div class="legend-item"><span class="legend-dot" style="background:#FFC107"></span>Còn trống</div>
-                    <div class="legend-item"><span class="legend-dot" style="background:#E53935"></span>Đang sửa chữa
-                    </div>
-                    <div class="legend-item"><span class="legend-dot" style="background:#9E9E9E"></span>Tạm ngưng</div>
-                </div>
-            </div>
-        </div>
-    </section>
 
     <!-- ================= SẠP CÒN TRỐNG ================= -->
     <section>
@@ -319,87 +305,55 @@
                 </div>
             </div>
             <div class="stalls-grid" data-reveal>
-                <!-- Stall card template x6 -->
-                <div class="stall-card">
-                    <div class="stall-top">
-                        <div>
-                            <div class="stall-code">A-105</div>
-                            <div class="stall-zone">Khu A — Thực phẩm tươi sống</div>
-                        </div><span class="badge badge-vacant">Còn trống</span>
+                <?php 
+                $vacantStalls = $this->data['vacantStalls'] ?? [];
+                if (!empty($vacantStalls)):
+                    foreach ($vacantStalls as $st): 
+                ?>
+                    <div class="stall-card" style="box-shadow: var(--shadow-sm); border: 1px solid var(--gray-200); background: #ffffff; padding: 24px; border-radius: var(--radius-lg); display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s;">
+                        <div class="stall-top" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                            <div>
+                                <div class="stall-code" style="font-size: 18px; font-weight: 800; color: var(--gray-900);"><?php echo htmlspecialchars($st['stall_code']); ?></div>
+                                <div class="stall-zone" style="font-size: 12.5px; color: var(--gray-600); margin-top: 4px;">
+                                    <b>Khu vực:</b> <?php echo htmlspecialchars($st['area_name']); ?>
+                                </div>
+                                <div style="font-size: 12px; color: var(--primary, #0f766e); font-weight: 700; margin-top: 2px;">
+                                    <i class="fa-solid fa-store" style="font-size: 11px;"></i> <?php echo htmlspecialchars($st['market_name']); ?>
+                                </div>
+                            </div>
+                            <span class="badge badge-vacant" style="background-color: #dbeafe; color: #1d4ed8; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px;">Còn trống</span>
+                        </div>
+                        <?php 
+                        $unitPrice = (float)($st['stall_base_price'] ?? 0);
+                        $areaSize = (float)($st['stall_area_size'] ?? 0);
+                        $totalPrice = ($unitPrice > 0 && $areaSize > 0) ? ($unitPrice * $areaSize) : $unitPrice;
+                        ?>
+                        <div class="stall-meta" style="border-top: 1px solid var(--gray-200); border-bottom: 1px solid var(--gray-200); padding: 12px 0; margin-bottom: 16px; font-size: 13.5px; color: var(--gray-600);">
+                            <div style="margin-bottom: 6px;">Diện tích: <b style="color: var(--gray-900);"><?php echo $st['stall_area_size']; ?> m²</b></div>
+                            <div style="margin-bottom: 4px;">
+                                Giá thuê: <b style="color: var(--primary, #0f766e); font-size: 14.5px;"><?php echo number_format($totalPrice, 0, ',', '.'); ?> đ</b>/tháng
+                            </div>
+                            <div style="font-size: 11.5px; color: var(--gray-500);">(Đơn giá: <?php echo number_format($unitPrice, 0, ',', '.'); ?> đ/m²)</div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <a href="<?php echo BASE_URL; ?>home/map" class="btn btn-outline btn-sm" style="flex: 1; padding: 8px 0; font-size: 12px; text-align: center;"><i class="fa-solid fa-location-dot"></i> Bản đồ</a>
+                            <a href="<?php echo BASE_URL; ?>home/register?stall_code=<?php echo urlencode($st['stall_code']); ?>&market_id=<?php echo (int)$st['market_id']; ?>&area=<?php echo $st['stall_area_size']; ?>" class="btn btn-primary btn-sm" style="flex: 1.3; font-size: 12px; text-align: center; font-weight: 700;">Đăng ký thuê</a>
+                        </div>
                     </div>
-                    <div class="stall-meta">
-                        <div>Diện tích: <b>9 m²</b></div>
-                        <div>Ngành hàng phù hợp: <b>Rau củ, trái cây</b></div>
+                <?php 
+                    endforeach;
+                else: 
+                ?>
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background: #ffffff; border-radius: var(--radius-lg); border: 1px dashed var(--gray-300);">
+                        <i class="fa-solid fa-store-slash" style="font-size: 40px; color: var(--gray-400); margin-bottom: 12px;"></i>
+                        <p style="color: var(--gray-600); font-size: 14.5px;">Hiện tại toàn bộ các sạp đều đã có tiểu thương kinh doanh. Xin vui lòng liên hệ BQL để đăng ký danh sách chờ.</p>
                     </div>
-                    <a href="#" class="btn btn-outline btn-block btn-sm">Đăng ký thuê</a>
-                </div>
-                <div class="stall-card">
-                    <div class="stall-top">
-                        <div>
-                            <div class="stall-code">B-212</div>
-                            <div class="stall-zone">Khu B — Bách hóa</div>
-                        </div><span class="badge badge-vacant">Còn trống</span>
-                    </div>
-                    <div class="stall-meta">
-                        <div>Diện tích: <b>12 m²</b></div>
-                        <div>Ngành hàng phù hợp: <b>Đồ gia dụng</b></div>
-                    </div>
-                    <a href="#" class="btn btn-outline btn-block btn-sm">Đăng ký thuê</a>
-                </div>
-                <div class="stall-card">
-                    <div class="stall-top">
-                        <div>
-                            <div class="stall-code">C-078</div>
-                            <div class="stall-zone">Khu C — Ăn uống</div>
-                        </div><span class="badge badge-vacant">Còn trống</span>
-                    </div>
-                    <div class="stall-meta">
-                        <div>Diện tích: <b>15 m²</b></div>
-                        <div>Ngành hàng phù hợp: <b>Quán ăn, giải khát</b></div>
-                    </div>
-                    <a href="#" class="btn btn-outline btn-block btn-sm">Đăng ký thuê</a>
-                </div>
-                <div class="stall-card">
-                    <div class="stall-top">
-                        <div>
-                            <div class="stall-code">A-233</div>
-                            <div class="stall-zone">Khu A — Thực phẩm tươi sống</div>
-                        </div><span class="badge badge-vacant">Còn trống</span>
-                    </div>
-                    <div class="stall-meta">
-                        <div>Diện tích: <b>8 m²</b></div>
-                        <div>Ngành hàng phù hợp: <b>Thủy hải sản</b></div>
-                    </div>
-                    <a href="#" class="btn btn-outline btn-block btn-sm">Đăng ký thuê</a>
-                </div>
-                <div class="stall-card">
-                    <div class="stall-top">
-                        <div>
-                            <div class="stall-code">D-041</div>
-                            <div class="stall-zone">Khu D — Thời trang</div>
-                        </div><span class="badge badge-vacant">Còn trống</span>
-                    </div>
-                    <div class="stall-meta">
-                        <div>Diện tích: <b>10 m²</b></div>
-                        <div>Ngành hàng phù hợp: <b>Quần áo, phụ kiện</b></div>
-                    </div>
-                    <a href="#" class="btn btn-outline btn-block btn-sm">Đăng ký thuê</a>
-                </div>
-                <div class="stall-card">
-                    <div class="stall-top">
-                        <div>
-                            <div class="stall-code">B-165</div>
-                            <div class="stall-zone">Khu B — Bách hóa</div>
-                        </div><span class="badge badge-vacant">Còn trống</span>
-                    </div>
-                    <div class="stall-meta">
-                        <div>Diện tích: <b>11 m²</b></div>
-                        <div>Ngành hàng phù hợp: <b>Văn phòng phẩm</b></div>
-                    </div>
-                    <a href="#" class="btn btn-outline btn-block btn-sm">Đăng ký thuê</a>
-                </div>
+                <?php endif; ?>
             </div>
-            <div class="section-footer-cta" data-reveal><a href="<?php echo BASE_URL; ?>home/map" class="btn btn-primary">Xem tất cả</a>
+            <div class="section-footer-cta" data-reveal style="margin-top: 30px;">
+                <a href="<?php echo BASE_URL; ?>home/register" class="btn btn-primary" style="padding: 12px 28px; font-weight: 700;">
+                    <i class="fa-solid fa-store" style="margin-right: 6px;"></i> Xem tất cả sạp trống & Đăng ký thuê
+                </a>
             </div>
         </div>
     </section>
@@ -432,46 +386,6 @@
                 <?php else: ?>
                     <p style="text-align: center; grid-column: 1/-1; color: var(--gray-600); padding: 20px 0;">Hiện chưa có tin tức hoặc thông báo nào mới.</p>
                 <?php endif; ?>
-            </div>
-        </div>
-    </section>
-
-    <!-- ================= THƯ VIỆN ================= -->
-    <section id="thuvien">
-        <div class="container">
-            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:28px; flex-wrap:wrap; gap:16px;"
-                data-reveal>
-                <div>
-                    <div class="eyebrow">Thư viện</div>
-                    <h2 class="section-title" style="margin-bottom:0;">Hình ảnh &amp; video hoạt động chợ</h2>
-                </div>
-                <div class="gallery-tabs">
-                    <span class="gallery-tab active">Tất cả</span>
-                    <span class="gallery-tab">Hoạt động chợ</span>
-                    <span class="gallery-tab">Khu vực</span>
-                    <span class="gallery-tab">Sự kiện</span>
-                    <span class="gallery-tab">Video</span>
-                </div>
-            </div>
-            <div class="gallery-grid" data-reveal>
-                <div class="gallery-item wide tall"><img
-                        src="https://images.unsplash.com/photo-1595535373192-1697a7ab1ff1?q=80&w=800&auto=format&fit=crop"
-                        alt="Hoạt động chợ"></div>
-                <div class="gallery-item"><img
-                        src="https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=500&auto=format&fit=crop"
-                        alt="Khu vực"></div>
-                <div class="gallery-item"><img
-                        src="https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=500&auto=format&fit=crop"
-                        alt="Tiểu thương"></div>
-                <div class="gallery-item video"><img
-                        src="https://images.unsplash.com/photo-1550989460-0adf9ea622e2?q=80&w=500&auto=format&fit=crop"
-                        alt="Video giới thiệu"></div>
-                <div class="gallery-item wide"><img
-                        src="https://images.unsplash.com/photo-1578916171728-46686eac8d58?q=80&w=800&auto=format&fit=crop"
-                        alt="Sự kiện"></div>
-                <div class="gallery-item"><img
-                        src="https://images.unsplash.com/photo-1567306226416-28f0efdc88ce?q=80&w=500&auto=format&fit=crop"
-                        alt="Khu vực"></div>
             </div>
         </div>
     </section>
@@ -530,5 +444,21 @@
     </section>
 
     <!-- ================= GOOGLE MAP ================= -->
+    <?php 
+    $idxCfg = $settings ?? $this->data['settings'] ?? $this->view->data['settings'] ?? [];
+    $idxRawIframe = trim($idxCfg['contact_map_iframe'] ?? '');
+    $idxMapUrl = '';
+    if (!empty($idxRawIframe)) {
+        if (preg_match('/src=[\"\']([^\"\']+)[\"\']/i', $idxRawIframe, $m)) {
+            $idxMapUrl = $m[1];
+        } elseif (preg_match('/^https?:\/\//i', $idxRawIframe)) {
+            $idxMapUrl = $idxRawIframe;
+        }
+    }
+    if (empty($idxMapUrl)) {
+        $idxMapSearch = !empty($idxCfg['contact_map_address']) ? $idxCfg['contact_map_address'] : ($idxCfg['contact_office_address'] ?? '123 Đường Nguyễn Huệ, Phường Trung Tâm, Thành phố Quảng Ngãi');
+        $idxMapUrl = 'https://maps.google.com/maps?q=' . urlencode($idxMapSearch) . '&t=&z=16&ie=UTF8&iwloc=&output=embed';
+    }
+    ?>
     <iframe class="map-embed" loading="lazy"
-        src="https://www.google.com/maps?q=ch%E1%BB%A3%20trung%20t%C3%A2m%20th%C3%A0nh%20ph%E1%BB%91&output=embed"></iframe>
+        src="<?php echo htmlspecialchars($idxMapUrl); ?>" style="border:0;" allowfullscreen="" referrerpolicy="no-referrer-when-downgrade"></iframe>

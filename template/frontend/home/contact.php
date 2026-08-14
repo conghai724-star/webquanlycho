@@ -155,5 +155,35 @@
                     </div>
                 </div>
             <?php endif; ?>
+
+            <!-- ================= BẢN ĐỒ VỊ TRÍ GOOGLE MAPS ================= -->
+            <div style="margin-top: 60px;" id="googleMapsSection">
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--primary, #0f766e); background: #f0fdf4; padding: 4px 14px; border-radius: 20px; border: 1px solid #bbf7d0;">
+                        📍 Bản đồ chỉ đường
+                    </span>
+                    <h3 style="font-size: 24px; font-weight: 800; color: var(--gray-900); margin-top: 8px; margin-bottom: 6px;">Vị trí Ban Quản Lý & Địa Điểm Chợ</h3>
+                    <p style="color: var(--gray-600); font-size: 14.5px;">Bấm vào bản đồ để phóng to, xem hình ảnh thực tế hoặc nhận chỉ đường từ Google Maps</p>
+                </div>
+                
+                <div style="border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-md); border: 1px solid var(--gray-300); height: 450px; background: #f1f5f9;">
+                    <?php 
+                    $rawIframe = trim($cfg['contact_map_iframe'] ?? '');
+                    $cleanMapUrl = '';
+                    if (!empty($rawIframe)) {
+                        if (preg_match('/src=[\"\']([^\"\']+)[\"\']/i', $rawIframe, $m)) {
+                            $cleanMapUrl = $m[1];
+                        } elseif (preg_match('/^https?:\/\//i', $rawIframe)) {
+                            $cleanMapUrl = $rawIframe;
+                        }
+                    }
+                    if (empty($cleanMapUrl)) {
+                        $mapSearch = !empty($cfg['contact_map_address']) ? $cfg['contact_map_address'] : ($cfg['contact_office_address'] ?? '123 Đường Nguyễn Huệ, Phường Trung Tâm, Thành phố Quảng Ngãi');
+                        $cleanMapUrl = 'https://maps.google.com/maps?q=' . urlencode($mapSearch) . '&t=&z=16&ie=UTF8&iwloc=&output=embed';
+                    }
+                    ?>
+                    <iframe width="100%" height="100%" style="border:0;" src="<?php echo htmlspecialchars($cleanMapUrl); ?>" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                </div>
+            </div>
         </div>
     </section>

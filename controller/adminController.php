@@ -23,31 +23,42 @@ Class adminController extends baseController {
 
         // 2. Phân quyền chi tiết theo Module chuẩn hệ thống cũ
         $actionModuleMap = [
-            'index'               => 'dashboard',
-            'dashboard'           => 'dashboard',
-            'map_editor'          => 'map_editor',
-            'map_tree'            => 'map_tree',
+            'index'                     => 'dashboard',
+            'dashboard'                 => 'dashboard',
+            'map_editor'                => 'map_editor',
+            'map_tree'                  => 'map_tree',
             
-            'banners'             => 'banners',
-            'banner_add'          => 'banners',
-            'banner_edit'         => 'banners',
-            'banner_delete'       => 'banners',
+            'banners'                   => 'banners',
+            'banner_add'                => 'banners',
+            'banner_edit'               => 'banners',
+            'banner_delete'             => 'banners',
+            'about_sections'            => 'banners',
+            'about_section_edit'        => 'banners',
+            'contact_settings'          => 'banners',
+            'intro_settings'            => 'banners',
             
-            'registrations'       => 'registrations',
-            'registration_status' => 'registrations',
-            'registration_delete' => 'registrations',
+            'posts'                     => 'banners',
+            'post_add'                  => 'banners',
+            'post_edit'                 => 'banners',
+            'post_delete'               => 'banners',
+            'post_toggle'               => 'banners',
+            'post_upload_inline_image'  => 'banners',
             
-            'feedbacks'           => 'feedbacks',
-            'feedback_status'     => 'feedbacks',
-            'feedback_delete'     => 'feedbacks',
+            'registrations'             => 'registrations',
+            'registration_status'       => 'registrations',
+            'registration_delete'       => 'registrations',
             
-            'users'               => 'users',
-            'user_add'            => 'users',
-            'user_edit'           => 'users',
-            'user_delete'         => 'users',
+            'feedbacks'                 => 'feedbacks',
+            'feedback_status'           => 'feedbacks',
+            'feedback_delete'           => 'feedbacks',
             
-            'roles'               => 'roles',
-            'permissions'         => 'roles'
+            'users'                     => 'users',
+            'user_add'                  => 'users',
+            'user_edit'                 => 'users',
+            'user_delete'               => 'users',
+            
+            'roles'                     => 'roles',
+            'permissions'               => 'roles'
         ];
 
         if (isset($actionModuleMap[$action])) {
@@ -182,18 +193,14 @@ Class adminController extends baseController {
     public function map_editor() {
         $db = database::getInstance();
 
-        // 1. Xác định Chợ hiện tại
-        $marketId = (int)($_GET['market_id'] ?? $_SESSION['active_market_id'] ?? 0);
+        // 1. Xác định Chợ hiện tại (0 nghĩa là Tất cả các Chợ)
+        $marketId = isset($_GET['market_id']) ? (int)$_GET['market_id'] : 0;
+        $_SESSION['active_market_id'] = $marketId;
 
         $markets = [];
         try {
-            $markets = $db->select("SELECT market_id, market_name FROM markets WHERE market_status_code != 'deleted' ORDER BY market_name ASC");
+            $markets = $db->select("SELECT market_id, market_code, market_name, market_latitude, market_longitude, market_map_zoom FROM markets WHERE market_status_code != 'deleted' ORDER BY market_id ASC");
         } catch (Exception $e) {}
-
-        if (empty($marketId) && !empty($markets)) {
-            $marketId = (int)$markets[0]['market_id'];
-        }
-        $_SESSION['active_market_id'] = $marketId;
 
         $market = null;
         if ($marketId > 0) {
@@ -202,10 +209,14 @@ Class adminController extends baseController {
             } catch (Exception $e) {}
         }
 
-        // 2. Lấy danh sách Phân khu & Ngành hàng
+        // 2. Lấy danh sách Phân khu & Ngành hàng của tất cả các chợ (hoặc theo chợ chọn)
         $areas = [];
         try {
-            $areas = $db->select("SELECT area_id, area_name, area_block FROM areas WHERE area_market_id = :id ORDER BY area_name ASC", ['id' => $marketId]);
+            if ($marketId > 0) {
+                $areas = $db->select("SELECT a.area_id, a.area_name, a.area_block, a.area_market_id, m.market_name FROM areas a LEFT JOIN markets m ON a.area_market_id = m.market_id WHERE a.area_market_id = :id ORDER BY a.area_name ASC", ['id' => $marketId]);
+            } else {
+                $areas = $db->select("SELECT a.area_id, a.area_name, a.area_block, a.area_market_id, m.market_name FROM areas a LEFT JOIN markets m ON a.area_market_id = m.market_id ORDER BY a.area_market_id ASC, a.area_name ASC");
+            }
         } catch (Exception $e) {}
 
         $businessLines = [];
@@ -213,33 +224,43 @@ Class adminController extends baseController {
             $businessLines = $db->select("SELECT line_id, line_name FROM business_lines ORDER BY line_name ASC");
         } catch (Exception $e) {}
 
-        // 3. Lấy danh sách toàn bộ sạp chợ thuộc chợ này
+        // 3. Lấy danh sách sạp chợ
         $stalls = [];
-        if ($marketId > 0) {
-            try {
-                $stalls = $db->select("
-                    SELECT s.stall_id, s.stall_code, s.stall_area_size, s.stall_area_id, s.stall_status_id,
-                           s.stall_base_price,
-                           a.area_name, a.area_block, a.area_lot,
-                           COALESCE(s.stall_area_size, 10.0) as area_size,
-                           t.trader_fullname AS trader_name,
-                           ss.status_code, ss.status_name,
-                           mme.element_id
-                    FROM stalls s
-                    LEFT JOIN areas a ON s.stall_area_id = a.area_id
-                    LEFT JOIN system_statuses ss ON s.stall_status_id = ss.status_id
-                    LEFT JOIN contracts c ON c.contract_stall_id = s.stall_id AND c.contract_status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'contract' AND status_code = 'active')
-                    LEFT JOIN traders t ON c.contract_trader_id = t.trader_id
-                    LEFT JOIN market_map_elements mme ON mme.element_stall_id = s.stall_id
-                    WHERE a.area_market_id = :market_id AND (s.stall_status_id IS NULL OR s.stall_status_id != 99)
-                    ORDER BY s.stall_code ASC
-                ", ['market_id' => $marketId]);
+        try {
+            $whereMarket = ($marketId > 0) ? "WHERE a.area_market_id = :market_id AND (s.stall_status_id IS NULL OR s.stall_status_id != 99)" : "WHERE (s.stall_status_id IS NULL OR s.stall_status_id != 99)";
+            $params = ($marketId > 0) ? ['market_id' => $marketId] : [];
 
-            } catch (Exception $e) {}
-        }
+            $stalls = $db->select("
+                SELECT s.stall_id, s.stall_code, s.stall_area_size, s.stall_area_id, s.stall_status_id,
+                       s.stall_base_price, s.stall_latitude, s.stall_longitude,
+                       a.area_name, a.area_block, a.area_lot, a.area_market_id, a.area_description,
+                       m.market_name,
+                       COALESCE(s.stall_area_size, 10.0) as area_size,
+                       t.trader_fullname AS trader_name,
+                       bl.line_name AS business_line_name,
+                       ss.status_code, ss.status_name,
+                       mme.element_id,
+                       CASE WHEN (mme.element_id IS NOT NULL OR (s.stall_latitude IS NOT NULL AND s.stall_latitude != 0)) THEN 1 ELSE 0 END AS is_mapped
+                FROM stalls s
+                LEFT JOIN areas a ON s.stall_area_id = a.area_id
+                LEFT JOIN markets m ON a.area_market_id = m.market_id
+                LEFT JOIN system_statuses ss ON s.stall_status_id = ss.status_id
+                LEFT JOIN contracts c ON c.contract_stall_id = s.stall_id AND c.contract_status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'contract' AND status_code = 'active')
+                LEFT JOIN traders t ON c.contract_trader_id = t.trader_id
+                LEFT JOIN business_lines bl ON t.trader_business_line_id = bl.line_id
+                LEFT JOIN market_map_elements mme ON mme.element_stall_id = s.stall_id
+                {$whereMarket}
+                ORDER BY a.area_market_id ASC, s.stall_code ASC
+            ", $params);
+
+        } catch (Exception $e) {}
 
         $unmappedStalls = array_values(array_filter($stalls, function($st) {
-            return empty($st['element_id']);
+            return empty($st['is_mapped']);
+        }));
+
+        $mappedStalls = array_values(array_filter($stalls, function($st) {
+            return !empty($st['is_mapped']);
         }));
 
         $this->view->app('map/editor', [
@@ -250,7 +271,8 @@ Class adminController extends baseController {
             'areas' => $areas,
             'businessLines' => $businessLines,
             'stalls' => array_values($stalls),
-            'unmappedStalls' => $unmappedStalls
+            'unmappedStalls' => $unmappedStalls,
+            'mappedStalls' => $mappedStalls
         ]);
     }
 
@@ -289,12 +311,26 @@ Class adminController extends baseController {
         $db = database::getInstance();
         $banners = [];
         try {
-            $banners = $db->select("SELECT * FROM website_banners ORDER BY banner_order ASC, id DESC");
+            $banners = $db->select("SELECT * FROM website_banners WHERE banner_status != -1 ORDER BY banner_order ASC, id DESC");
         } catch (Exception $e) {}
 
+        $rows = [];
+        try {
+            $rows = $db->select("SELECT setting_key, setting_value FROM website_settings");
+        } catch (Exception $e) {}
+
+        $settings = [];
+        foreach ($rows as $r) {
+            $settings[$r['setting_key']] = $r['setting_value'];
+        }
+
+        $activeTab = $_GET['tab'] ?? 'banners';
+
         $this->view->app('banner/index', [
-            'title' => 'Quản Lý Banner Quảng Cáo',
-            'banners' => $banners
+            'title' => 'Quản Lý Banner & Giới Thiệu Chợ',
+            'banners' => $banners,
+            'settings' => $settings,
+            'activeTab' => $activeTab
         ]);
     }
 
@@ -404,8 +440,8 @@ Class adminController extends baseController {
         $id = (int)($args[1] ?? $_GET['id'] ?? 0);
         if ($id > 0) {
             $db = database::getInstance();
-            $db->query("DELETE FROM website_banners WHERE id = :id", ['id' => $id]);
-            $_SESSION['flash_success'] = 'Xóa banner thành công.';
+            $db->query("UPDATE website_banners SET banner_status = -1 WHERE id = :id", ['id' => $id]);
+            $_SESSION['flash_success'] = 'Xóa banner thành công (Đã chuyển vào lưu trữ).';
         }
         header('Location: ' . BASE_URL . 'admin/banners');
         exit();
@@ -506,6 +542,28 @@ Class adminController extends baseController {
         $db = database::getInstance();
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $settings = $_POST['settings'] ?? [];
+
+            // Xử lý upload file Logo nếu có tải lên
+            if (!empty($_FILES['website_logo_file']['name']) && $_FILES['website_logo_file']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = __SITE_PATH . '/public/uploads/banners/';
+                if (!is_dir($uploadDir)) {
+                    @mkdir($uploadDir, 0777, true);
+                }
+                $ext = strtolower(pathinfo($_FILES['website_logo_file']['name'], PATHINFO_EXTENSION));
+                $allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'ico'];
+                if (in_array($ext, $allowed)) {
+                    $filename = 'website_logo_' . time() . '.' . $ext;
+                    if (move_uploaded_file($_FILES['website_logo_file']['tmp_name'], $uploadDir . $filename)) {
+                        $settings['website_logo'] = BASE_URL . 'public/uploads/banners/' . $filename;
+                    }
+                }
+            }
+
+            // Nếu người dùng chọn xóa logo (quay về logo mặc định)
+            if (isset($_POST['remove_website_logo']) && $_POST['remove_website_logo'] == '1') {
+                $settings['website_logo'] = '';
+            }
+
             foreach ($settings as $key => $val) {
                 $k = trim($key);
                 $v = trim($val);
@@ -519,7 +577,7 @@ Class adminController extends baseController {
                 }
             }
 
-            $_SESSION['flash_success'] = 'Cập nhật Thông tin liên hệ thành công!';
+            $_SESSION['flash_success'] = 'Cập nhật Cấu hình Website & Logo thành công!';
             header('Location: ' . BASE_URL . 'admin/contact_settings');
             exit();
         }
@@ -538,6 +596,66 @@ Class adminController extends baseController {
             'title' => 'Cấu Hình Thông Tin Liên Hệ',
             'settings' => $settings
         ]);
+    }
+
+    /**
+     * Cấu hình nội dung Giới thiệu chợ hiển thị ở khối #gioithieu trên Trang chủ
+     */
+    public function intro_settings() {
+        $db = database::getInstance();
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $submitted = $_POST['settings'] ?? [];
+
+            // Xử lý upload ảnh minh họa nếu có tải file lên
+            if (!empty($_FILES['intro_image_file']['name']) && $_FILES['intro_image_file']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = __SITE_PATH . '/public/uploads/banners/';
+                if (!is_dir($uploadDir)) {
+                    @mkdir($uploadDir, 0777, true);
+                }
+                $ext = strtolower(pathinfo($_FILES['intro_image_file']['name'], PATHINFO_EXTENSION));
+                $allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+                if (in_array($ext, $allowed)) {
+                    $filename = 'home_intro_' . time() . '.' . $ext;
+                    if (move_uploaded_file($_FILES['intro_image_file']['tmp_name'], $uploadDir . $filename)) {
+                        $submitted['home_intro_image'] = BASE_URL . 'public/uploads/banners/' . $filename;
+                    }
+                }
+            }
+
+            // Xử lý danh sách điểm nổi bật động (Thêm / Bớt tiêu chí)
+            if (isset($_POST['intro_points']) && is_array($_POST['intro_points'])) {
+                $cleanPoints = [];
+                foreach ($_POST['intro_points'] as $pt) {
+                    $t = trim($pt['title'] ?? '');
+                    $d = trim($pt['desc'] ?? '');
+                    if (!empty($t) || !empty($d)) {
+                        $cleanPoints[] = ['title' => $t, 'desc' => $d];
+                    }
+                }
+                $submitted['home_intro_points'] = json_encode($cleanPoints, JSON_UNESCAPED_UNICODE);
+            }
+
+            foreach ($submitted as $key => $val) {
+                $k = trim($key);
+                $v = trim($val);
+                if (empty($k)) continue;
+
+                $exist = $db->selectOne("SELECT setting_key FROM website_settings WHERE setting_key = :k", ['k' => $k]);
+                if ($exist) {
+                    $db->query("UPDATE website_settings SET setting_value = :v, updated_at = NOW() WHERE setting_key = :k", ['v' => $v, 'k' => $k]);
+                } else {
+                    $db->query("INSERT INTO website_settings (setting_key, setting_value, updated_at) VALUES (:k, :v, NOW())", ['k' => $k, 'v' => $v]);
+                }
+            }
+
+            $_SESSION['flash_success'] = 'Cập nhật Phần Giới thiệu Trang chủ thành công!';
+            header('Location: ' . BASE_URL . 'admin/banners?tab=intro');
+            exit();
+        }
+
+        header('Location: ' . BASE_URL . 'admin/banners?tab=intro');
+        exit();
     }
 
     // =========================================================================
@@ -577,7 +695,7 @@ Class adminController extends baseController {
         $keyword = trim($_GET['keyword'] ?? '');
         $statusFilter = $_GET['status'] ?? '';
 
-        $sql = "SELECT * FROM website_posts WHERE 1=1";
+        $sql = "SELECT * FROM website_posts WHERE post_status != -1";
         $params = [];
 
         if (!empty($keyword)) {
@@ -720,8 +838,8 @@ Class adminController extends baseController {
         $id = (int)($args[1] ?? $_GET['id'] ?? 0);
         if ($id > 0) {
             $db = database::getInstance();
-            $db->query("DELETE FROM website_posts WHERE id = :id", ['id' => $id]);
-            $_SESSION['flash_success'] = 'Xóa bài viết thành công!';
+            $db->query("UPDATE website_posts SET post_status = -1, updated_at = NOW() WHERE id = :id", ['id' => $id]);
+            $_SESSION['flash_success'] = 'Xóa bài viết thành công (Đã chuyển vào lưu trữ).';
         }
         header('Location: ' . BASE_URL . 'admin/posts');
         exit();
@@ -918,7 +1036,7 @@ Class adminController extends baseController {
         $db = database::getInstance();
         $users = [];
         try {
-            $users = $db->select("SELECT * FROM web_users ORDER BY id DESC");
+            $users = $db->select("SELECT * FROM web_users WHERE status != -1 ORDER BY id DESC");
         } catch (Exception $e) {}
 
         $this->view->app('user/index', [
@@ -1063,8 +1181,8 @@ Class adminController extends baseController {
         $userId = (int)($args[1] ?? $_GET['id'] ?? 0);
         if ($userId > 0 && $userId != session::getWebUser('id')) {
             $db = database::getInstance();
-            $db->query("DELETE FROM web_users WHERE id = :id", ['id' => $userId]);
-            $_SESSION['flash_success'] = 'Xóa tài khoản thành công.';
+            $db->query("UPDATE web_users SET status = -1 WHERE id = :id", ['id' => $userId]);
+            $_SESSION['flash_success'] = 'Xóa tài khoản thành công (Đã chuyển vào lưu trữ).';
         }
         header('Location: ' . BASE_URL . 'admin/users');
         exit();
@@ -1127,18 +1245,30 @@ Class adminController extends baseController {
 
             if ($id > 0 && !empty($roleName)) {
                 try {
+                    $cleanRoleCode = strtolower($roleCode);
                     $db->query("
                         UPDATE web_roles
                         SET role_name = :role_name, role_code = :role_code, permissions = :permissions, description = :description
                         WHERE id = :id
                     ", [
                         'role_name' => $roleName,
-                        'role_code' => strtolower($roleCode),
+                        'role_code' => $cleanRoleCode,
                         'permissions' => $permsStr,
                         'description' => $description,
                         'id' => $id
                     ]);
-                    $_SESSION['flash_success'] = 'Cập nhật vai trò thành công.';
+
+                    // Đồng bộ quyền mới cập nhật cho toàn bộ tài khoản đang thuộc vai trò này
+                    $db->query("
+                        UPDATE web_users 
+                        SET permissions = :permissions 
+                        WHERE role = :role_code
+                    ", [
+                        'permissions' => $permsStr,
+                        'role_code' => $cleanRoleCode
+                    ]);
+
+                    $_SESSION['flash_success'] = 'Cập nhật vai trò và đồng bộ phân quyền thành công.';
                 } catch (Exception $e) {}
             }
         }
@@ -1150,7 +1280,7 @@ Class adminController extends baseController {
         $id = (int)($args[1] ?? $_GET['id'] ?? 0);
         if ($id > 0) {
             $db = database::getInstance();
-            $db->query("DELETE FROM web_roles WHERE id = :id AND role_code != 'admin'", ['id' => $id]);
+            $db->query("UPDATE web_roles SET status = -1 WHERE id = :id AND role_code != 'admin'", ['id' => $id]);
             $_SESSION['flash_success'] = 'Xóa vai trò thành công.';
         }
         header('Location: ' . BASE_URL . 'admin/roles');
@@ -1162,7 +1292,7 @@ Class adminController extends baseController {
         $users = [];
         $webRoles = [];
         try {
-            $users = $db->select("SELECT id, username, fullname, email, role, permissions, status FROM web_users ORDER BY id ASC");
+            $users = $db->select("SELECT id, username, fullname, email, role, permissions, status FROM web_users WHERE status != -1 ORDER BY id ASC");
             $webRoles = $db->select("SELECT * FROM web_roles WHERE status = 1 ORDER BY id ASC");
         } catch (Exception $e) {}
 
@@ -1230,21 +1360,28 @@ Class adminController extends baseController {
         }
 
         $db = database::getInstance();
-        $role = $db->select("SELECT * FROM web_roles WHERE role_code = :code", ['code' => $roleCode]);
+        $role = $db->select("SELECT * FROM web_roles WHERE role_code = :code AND status = 1", ['code' => $roleCode]);
         if (empty($role)) {
             echo json_encode(['status' => 404, 'message' => 'Mẫu vai trò không tồn tại.']);
             exit();
         }
 
-        $permsStr = $role[0]['permissions'] ?? '';
+        $roleInfo = $role[0];
+        $permsStr = $roleInfo['permissions'] ?? '';
         $db->query("UPDATE web_users SET role = :role, permissions = :perms WHERE id = :id", [
-            'role' => ($roleCode === 'admin') ? 'admin' : 'editor',
+            'role' => $roleCode,
             'perms' => $permsStr,
             'id' => $userId
         ]);
 
         $permsArr = array_filter(array_map('trim', explode(',', $permsStr)));
-        echo json_encode(['status' => 200, 'message' => 'Đã áp dụng mẫu vai trò thành công.', 'permissions' => $permsArr]);
+        echo json_encode([
+            'status' => 200, 
+            'message' => 'Đã áp dụng vai trò "' . $roleInfo['role_name'] . '" thành công!', 
+            'role_code' => $roleCode,
+            'role_name' => $roleInfo['role_name'],
+            'permissions' => $permsArr
+        ]);
         exit();
     }
 }

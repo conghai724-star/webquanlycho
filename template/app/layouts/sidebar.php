@@ -70,41 +70,23 @@
         <?php endif; ?>
 
         <!-- Nhóm Quản lý Nội dung Web -->
-        <?php if (session::hasWebModule('banners') || session::hasWebModule('registrations') || session::hasWebModule('feedbacks')): ?>
+        <?php if (session::hasWebModule('banners')): ?>
             <div class="nav-group">
-                <div class="nav-label">Nội dung & Yêu cầu</div>
+                <div class="nav-label">Nội dung Website</div>
                 
-                <?php if (session::hasWebModule('banners')): ?>
-                    <a class="nav-link <?php echo (isset($title) && strpos($title, 'Banner') !== false) ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/banners" data-rail-label="Banner">
-                        <i class="fa-solid fa-images icon" style="font-size: 16px; margin-right: 8px;"></i>
-                        <span class="nav-text">Quản lý Banner</span>
-                    </a>
-                    <a class="nav-link <?php echo (isset($title) && strpos($title, 'Tin Tức') !== false) ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/posts" data-rail-label="Tin tức">
-                        <i class="fa-solid fa-newspaper icon" style="font-size: 16px; margin-right: 8px;"></i>
-                        <span class="nav-text">Quản lý Tin Tức</span>
-                    </a>
-                    <a class="nav-link <?php echo (isset($title) && strpos($title, 'Thông Tin Liên Hệ') !== false) ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/contact_settings" data-rail-label="Liên hệ">
-                        <i class="fa-solid fa-address-book icon" style="font-size: 16px; margin-right: 8px;"></i>
-                        <span class="nav-text">Thông tin Liên hệ</span>
-                    </a>
-                <?php endif; ?>
-
-
-                <?php if (session::hasWebModule('registrations')): ?>
-                    <a class="nav-link <?php echo (isset($title) && strpos($title, 'Thuê Sạp') !== false) ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/registrations" data-rail-label="Đăng ký sạp">
-                        <i class="fa-solid fa-file-signature icon" style="font-size: 16px; margin-right: 8px;"></i>
-                        <span class="nav-text">Đăng ký Thuê Sạp</span>
-                    </a>
-                <?php endif; ?>
-
-                <?php if (session::hasWebModule('feedbacks')): ?>
-                    <a class="nav-link <?php echo (isset($title) && strpos($title, 'Góp ý') !== false || strpos($title, 'Khiếu nại') !== false) ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/feedbacks" data-rail-label="Góp ý/Khiếu nại">
-                        <i class="fa-solid fa-comments icon" style="font-size: 16px; margin-right: 8px;"></i>
-                        <span class="nav-text">Khiếu nại & Góp ý</span>
-                    </a>
-                <?php endif; ?>
+                <a class="nav-link <?php echo (isset($title) && (strpos($title, 'Banner') !== false || strpos($title, 'Giới Thiệu') !== false)) ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/banners" data-rail-label="Banner">
+                    <i class="fa-solid fa-images icon" style="font-size: 16px; margin-right: 8px;"></i>
+                    <span class="nav-text">Banner & Giới Thiệu</span>
+                </a>
+                <a class="nav-link <?php echo (isset($title) && strpos($title, 'Tin Tức') !== false) ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/posts" data-rail-label="Tin tức">
+                    <i class="fa-solid fa-newspaper icon" style="font-size: 16px; margin-right: 8px;"></i>
+                    <span class="nav-text">Quản lý Tin Tức</span>
+                </a>
+                <a class="nav-link <?php echo (isset($title) && strpos($title, 'Thông Tin Liên Hệ') !== false) ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/contact_settings" data-rail-label="Liên hệ">
+                    <i class="fa-solid fa-address-book icon" style="font-size: 16px; margin-right: 8px;"></i>
+                    <span class="nav-text">Thông tin Liên hệ</span>
+                </a>
             </div>
-
         <?php endif; ?>
 
         <!-- Nhóm Tài khoản & Phân quyền -->

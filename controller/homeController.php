@@ -81,21 +81,54 @@ Class homeController Extends baseController
 
         // 4. Lấy số liệu thống kê thực tế để hiển thị ở trang chủ
         try {
+            // Tổng số chợ (markets)
+            $marketsRow = $db->selectOne("SELECT COUNT(*) AS total FROM markets WHERE market_status_code = 'active'");
+            $this->view->data['total_markets'] = $marketsRow ? (int)$marketsRow['total'] : 0;
+
             // Tổng số khu vực (areas)
             $areasRow = $db->selectOne("SELECT COUNT(*) AS total FROM areas");
-            $this->view->data['total_areas'] = $areasRow ? $areasRow['total'] : 0;
+            $this->view->data['total_areas'] = $areasRow ? (int)$areasRow['total'] : 0;
 
             // Tổng số sạp (stalls)
             $stallsRow = $db->selectOne("SELECT COUNT(*) AS total FROM stalls");
-            $this->view->data['total_stalls'] = $stallsRow ? $stallsRow['total'] : 0;
+            $this->view->data['total_stalls'] = $stallsRow ? (int)$stallsRow['total'] : 0;
 
             // Tổng tiểu thương hoạt động (traders)
             $tradersRow = $db->selectOne("SELECT COUNT(*) AS total FROM traders");
-            $this->view->data['total_traders'] = $tradersRow ? $tradersRow['total'] : 0;
+            $this->view->data['total_traders'] = $tradersRow ? (int)$tradersRow['total'] : 0;
+
+            // Tổng sạp còn trống thực tế (vacant stalls)
+            $vacantRow = $db->selectOne("
+                SELECT COUNT(*) AS total 
+                FROM stalls s 
+                JOIN areas a ON s.stall_area_id = a.area_id
+                JOIN markets m ON a.area_market_id = m.market_id
+                JOIN system_statuses ss ON s.stall_status_id = ss.status_id 
+                WHERE ss.status_code = 'empty' AND m.market_status_code = 'active'
+            ");
+            $this->view->data['total_vacant_stalls'] = $vacantRow ? (int)$vacantRow['total'] : 0;
+
+            // 5. Danh sách sạp thực tế đang còn trống trên toàn hệ thống các chợ
+            $vacantStalls = $db->select("
+                SELECT s.stall_id, s.stall_code, s.stall_area_size, s.stall_base_price,
+                       a.area_name, a.area_description,
+                       m.market_id, m.market_name
+                FROM stalls s
+                JOIN areas a ON s.stall_area_id = a.area_id
+                JOIN markets m ON a.area_market_id = m.market_id
+                JOIN system_statuses ss ON s.stall_status_id = ss.status_id
+                WHERE ss.status_code = 'empty' AND m.market_status_code = 'active'
+                ORDER BY s.stall_id ASC
+                LIMIT 6
+            ");
+            $this->view->data['vacantStalls'] = $vacantStalls;
         } catch (Exception $e) {
+            $this->view->data['total_markets'] = 0;
             $this->view->data['total_areas'] = 0;
             $this->view->data['total_stalls'] = 0;
             $this->view->data['total_traders'] = 0;
+            $this->view->data['total_vacant_stalls'] = 0;
+            $this->view->data['vacantStalls'] = [];
         }
 
         $this->showFrontend('index', 'home');
@@ -169,37 +202,63 @@ Class homeController Extends baseController
             }
         }
 
-        // Lấy danh sách các khu vực CÒN SẠP TRỐNG (stall_status_id = 3)
+        // Lấy danh sách các chợ
+        $markets = [];
+        try {
+            $markets = $db->select("SELECT market_id, market_code, market_name FROM markets WHERE market_status_code = 'active' ORDER BY market_id ASC");
+        } catch (Exception $e) {}
+
+        // Lấy danh sách các khu vực CÒN SẠP TRỐNG (stall_status_id = 3) kèm thông tin chợ
         $areas = [];
         try {
             $areas = $db->select("
-                SELECT a.area_id, a.area_name, a.area_description,
+                SELECT a.area_id, a.area_name, a.area_description, a.area_market_id,
+                       COALESCE(m.market_name, 'Chợ chung') AS market_name,
                        COUNT(s.stall_id) AS empty_count
                 FROM areas a
+                LEFT JOIN markets m ON a.area_market_id = m.market_id
                 INNER JOIN stalls s ON a.area_id = s.stall_area_id
                 WHERE s.stall_status_id = 3
-                GROUP BY a.area_id, a.area_name, a.area_description
+                GROUP BY a.area_id, a.area_name, a.area_description, a.area_market_id, m.market_name
                 HAVING empty_count > 0
-                ORDER BY a.area_id ASC
+                ORDER BY a.area_market_id ASC, a.area_id ASC
             ");
         } catch (Exception $e) {}
 
-        // Lấy danh sách các sạp CÒN TRỐNG (stall_status_id = 3)
+        // Lấy danh sách các sạp CÒN TRỐNG (stall_status_id = 3) kèm market_id
         $stalls = [];
         try {
             $stalls = $db->select("
-                SELECT s.stall_id, s.stall_code, s.stall_area_id, s.stall_area_size, s.stall_base_price, s.stall_status_id,
+                SELECT s.stall_id, s.stall_code, s.stall_area_id, a.area_market_id, s.stall_area_size, s.stall_base_price, s.stall_status_id,
                        COALESCE(ss.status_name, 'Trống') AS status_name
                 FROM stalls s
+                JOIN areas a ON s.stall_area_id = a.area_id
                 LEFT JOIN system_statuses ss ON s.stall_status_id = ss.status_id
                 WHERE s.stall_status_id = 3
                 ORDER BY s.stall_area_id ASC, s.stall_code ASC
             ");
         } catch (Exception $e) {}
 
+        // Danh sách sạp trống đầy đủ hiển thị dạng Card trực quan trên trang Đăng ký
+        $vacantStallsCardList = [];
+        try {
+            $vacantStallsCardList = $db->select("
+                SELECT s.stall_id, s.stall_code, s.stall_area_size, s.stall_base_price,
+                       a.area_id, a.area_name, a.area_description,
+                       m.market_id, m.market_name
+                FROM stalls s
+                JOIN areas a ON s.stall_area_id = a.area_id
+                JOIN markets m ON a.area_market_id = m.market_id
+                JOIN system_statuses ss ON s.stall_status_id = ss.status_id
+                WHERE ss.status_code = 'empty' AND m.market_status_code = 'active'
+                ORDER BY m.market_id ASC, a.area_id ASC, s.stall_id ASC
+            ");
+        } catch (Exception $e) {}
 
+        $this->view->data['markets'] = $markets;
         $this->view->data['areas'] = $areas;
         $this->view->data['stalls'] = $stalls;
+        $this->view->data['vacantStallsCardList'] = $vacantStallsCardList;
         $this->view->data['success'] = $success;
         $this->view->data['error'] = $error;
 
@@ -282,15 +341,30 @@ Class homeController Extends baseController
         include_once __SITE_PATH . '/model/marketModel.php';
         $mapModel = new mapModel();
         $marketModel = new marketModel();
-        $marketId = marketService::currentMarketId();
         
-        $this->view->data['elements'] = $mapModel->getElements();
-        $this->view->data['market'] = $marketModel->getById($marketId);
-        
-        // Lấy danh sách Phân khu/Khu vực để phục vụ bộ lọc giống admin
-        $this->view->data['areas'] = $db->select("SELECT area_id, area_name, area_description FROM areas ORDER BY area_name ASC");
-        
-        // Lấy danh sách Ngành hàng kinh doanh để phục vụ bộ lọc giống admin
+        $markets = [];
+        try {
+            $markets = $db->select("SELECT market_id, market_code, market_name, market_latitude, market_longitude, market_map_zoom FROM markets WHERE market_status_code = 'active' ORDER BY market_id ASC");
+        } catch (Exception $e) {}
+
+        $marketId = isset($_GET['market_id']) ? (int)$_GET['market_id'] : 0;
+
+        $currentMarket = null;
+        if ($marketId > 0) {
+            foreach ($markets as $m) {
+                if ((int)$m['market_id'] === $marketId) {
+                    $currentMarket = $m;
+                    break;
+                }
+            }
+        }
+
+        $this->view->data['markets'] = $markets;
+        $this->view->data['marketId'] = $marketId;
+        $this->view->data['market'] = $currentMarket;
+        // Luôn tải đầy đủ tất cả phần tử và khu vực của toàn bộ các chợ trên cùng 1 bản đồ
+        $this->view->data['elements'] = $mapModel->getElements(0);
+        $this->view->data['areas'] = $db->select("SELECT a.area_id, a.area_name, a.area_description, a.area_market_id, m.market_name FROM areas a LEFT JOIN markets m ON a.area_market_id = m.market_id ORDER BY a.area_market_id ASC, a.area_name ASC");
         $this->view->data['businessLines'] = $db->select("SELECT line_id, line_name FROM business_lines ORDER BY line_name ASC");
 
         $this->showFrontend('map', 'map');
@@ -305,25 +379,80 @@ Class homeController Extends baseController
         $isLoggedIn = $this->helper->isLoggedIn();
         
         $search = isset($_GET['search']) ? trim((string)$_GET['search']) : '';
+        $marketId = (int)($_GET['market_id'] ?? 0);
+        $businessLineId = (int)($_GET['business_line_id'] ?? $_GET['line_id'] ?? 0);
+        $areaId = (int)($_GET['area_id'] ?? 0);
         $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
         $limit = 12;
         $offset = ($page - 1) * $limit;
 
-        $whereClause = "";
+        $markets = [];
+        try {
+            $markets = $db->select("SELECT market_id, market_code, market_name FROM markets WHERE market_status_code = 'active' ORDER BY market_id ASC");
+        } catch (Exception $e) {}
+
+        // Danh sách ngành hàng
+        $businessLines = [];
+        try {
+            $businessLines = $db->select("SELECT line_id, line_name FROM business_lines ORDER BY line_name ASC");
+        } catch (Exception $e) {}
+
+        // Danh sách khu vực
+        $areas = [];
+        try {
+            if ($marketId > 0) {
+                $areas = $db->select("SELECT area_id, area_name, area_market_id FROM areas WHERE area_market_id = :mid ORDER BY area_name ASC", ['mid' => $marketId]);
+            } else {
+                $areas = $db->select("SELECT a.area_id, a.area_name, a.area_market_id, m.market_name FROM areas a LEFT JOIN markets m ON a.area_market_id = m.market_id ORDER BY a.area_market_id ASC, a.area_name ASC");
+            }
+        } catch (Exception $e) {}
+
+        $selectedMarketName = '';
+        if ($marketId > 0) {
+            foreach ($markets as $m) {
+                if ((int)$m['market_id'] === $marketId) {
+                    $selectedMarketName = $m['market_name'];
+                    break;
+                }
+            }
+        }
+
+        $whereConditions = [];
         $queryParams = [];
+        
         if ($search !== '') {
-            $whereClause = " WHERE t.trader_fullname LIKE :search OR t.trader_code LIKE :search OR bl.line_name LIKE :search ";
+            $whereConditions[] = "(t.trader_fullname LIKE :search OR t.trader_code LIKE :search OR bl.line_name LIKE :search)";
             $queryParams['search'] = '%' . $search . '%';
         }
 
-        // Count total traders matching search
+        if ($marketId > 0) {
+            $whereConditions[] = "(a.area_market_id = :mid OR t.trader_market_id = :mid OR m.market_id = :mid)";
+            $queryParams['mid'] = $marketId;
+        }
+
+        if ($businessLineId > 0) {
+            $whereConditions[] = "t.trader_business_line_id = :blid";
+            $queryParams['blid'] = $businessLineId;
+        }
+
+        if ($areaId > 0) {
+            $whereConditions[] = "a.area_id = :aid";
+            $queryParams['aid'] = $areaId;
+        }
+
+        $whereClause = !empty($whereConditions) ? " WHERE " . implode(" AND ", $whereConditions) : "";
+
+        // Count total traders matching all filters
         try {
-            $countSql = "SELECT COUNT(*) AS total FROM traders t LEFT JOIN business_lines bl ON t.trader_business_line_id = bl.line_id" . $whereClause;
-            if ($search !== '') {
-                $totalRow = $db->selectOne($countSql, $queryParams);
-            } else {
-                $totalRow = $db->selectOne($countSql);
-            }
+            $countSql = "SELECT COUNT(DISTINCT t.trader_id) AS total 
+                         FROM traders t 
+                         LEFT JOIN business_lines bl ON t.trader_business_line_id = bl.line_id
+                         LEFT JOIN contracts c ON c.contract_trader_id = t.trader_id
+                         LEFT JOIN stalls s ON s.stall_id = c.contract_stall_id
+                         LEFT JOIN areas a ON a.area_id = s.stall_area_id
+                         LEFT JOIN markets m ON m.market_id = a.area_market_id" . $whereClause;
+            
+            $totalRow = $db->selectOne($countSql, $queryParams);
             $totalTraders = $totalRow ? (int)$totalRow['total'] : 0;
         } catch (Exception $e) {
             $totalTraders = 0;
@@ -337,18 +466,24 @@ Class homeController Extends baseController
 
         // Fetch paginated traders
         try {
-            $sql = "SELECT t.trader_code, t.trader_fullname AS fullname, t.trader_phone AS phone, t.trader_address AS address, bl.line_name AS business_line_name
-                FROM traders t
-                LEFT JOIN business_lines bl ON t.trader_business_line_id = bl.line_id" . 
-                $whereClause . "
-                ORDER BY t.trader_fullname ASC 
-                LIMIT $limit OFFSET $offset";
+            $sql = "SELECT t.trader_code, t.trader_fullname AS fullname, t.trader_phone AS phone, t.trader_address AS address, 
+                           bl.line_name AS business_line_name,
+                           COALESCE(m.market_name, m_direct.market_name, 'Chợ Phường Quyết Thắng') AS market_name,
+                           COALESCE(a.area_name, 'Khu kinh doanh') AS area_name,
+                           s.stall_code
+                    FROM traders t
+                    LEFT JOIN business_lines bl ON t.trader_business_line_id = bl.line_id
+                    LEFT JOIN contracts c ON c.contract_trader_id = t.trader_id
+                    LEFT JOIN stalls s ON s.stall_id = c.contract_stall_id
+                    LEFT JOIN areas a ON a.area_id = s.stall_area_id
+                    LEFT JOIN markets m ON m.market_id = a.area_market_id
+                    LEFT JOIN markets m_direct ON m_direct.market_id = t.trader_market_id" . 
+                    $whereClause . "
+                    GROUP BY t.trader_id
+                    ORDER BY t.trader_fullname ASC 
+                    LIMIT $limit OFFSET $offset";
             
-            if ($search !== '') {
-                $traders = $db->select($sql, $queryParams);
-            } else {
-                $traders = $db->select($sql);
-            }
+            $traders = $db->select($sql, $queryParams);
         } catch (Exception $e) {
             $traders = [];
         }
@@ -364,12 +499,20 @@ Class homeController Extends baseController
             }
         }
         
+        $this->view->data['markets'] = $markets;
+        $this->view->data['businessLines'] = $businessLines;
+        $this->view->data['areas'] = $areas;
+        $this->view->data['marketId'] = $marketId;
+        $this->view->data['businessLineId'] = $businessLineId;
+        $this->view->data['areaId'] = $areaId;
+        $this->view->data['selectedMarketName'] = $selectedMarketName;
         $this->view->data['traders'] = $traders;
         $this->view->data['isLoggedIn'] = $isLoggedIn;
         $this->view->data['currentPage'] = $page;
         $this->view->data['totalPages'] = $totalPages;
         $this->view->data['totalTraders'] = $totalTraders;
         $this->view->data['searchQuery'] = $search;
+
         $this->showFrontend('traders', 'traders');
     }
 

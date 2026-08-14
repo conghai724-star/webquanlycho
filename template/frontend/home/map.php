@@ -411,31 +411,49 @@
 
 <!-- ================= KHU VỰC BẢN ĐỒ SỐ ĐỊA LÝ ================= -->
 <section class="map-section" style="background: none; color: inherit; padding: 10px 0;">
-        <!-- Thanh công cụ điều khiển bản đồ bên ngoài -->
-        <div class="btn-toggle-sidebar-gps-wrapper" style="display: flex; gap: 8px; align-items: center;">
-            <button id="btn-toggle-sidebar-front" class="btn-toggle-sidebar-gps-btn" title="Ẩn/Hiện bảng tìm kiếm" type="button">
-                <i class="fa-solid fa-bars"></i>
-            </button>
-            <button id="btn-toggle-legend-front" class="btn-toggle-sidebar-gps-btn active" title="Ẩn/Hiện bộ lọc sơ đồ" type="button" style="padding: 8px 12px;">
-                <i class="fa-solid fa-filter"></i>
-            </button>
+        <!-- Thanh công cụ điều khiển bản đồ & Chọn Chợ -->
+        <div class="btn-toggle-sidebar-gps-wrapper" style="display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 14px;">
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <button id="btn-toggle-sidebar-front" class="btn-toggle-sidebar-gps-btn" title="Ẩn/Hiện bảng tìm kiếm" type="button">
+                    <i class="fa-solid fa-bars"></i> <span>Tìm kiếm</span>
+                </button>
+                <button id="btn-toggle-legend-front" class="btn-toggle-sidebar-gps-btn active" title="Ẩn/Hiện bộ lọc sơ đồ" type="button" style="padding: 8px 12px;">
+                    <i class="fa-solid fa-filter"></i> <span>Bộ lọc</span>
+                </button>
+            </div>
+
+            <!-- CHỌN CHỢ (MULTI-MARKET SELECTOR) -->
+            <?php if (!empty($markets)): ?>
+                <div style="display: inline-flex; align-items: center; gap: 8px; background: #ffffff; padding: 2px 6px 2px 12px; border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+                    <label for="market-scope-select" style="font-size: 13px; font-weight: 700; color: var(--text-heading, #1e293b); display: inline-flex; align-items: center; gap: 6px; margin: 0; white-space: nowrap;">
+                        <i class="fa-solid fa-map-location-dot" style="color: var(--primary, #0f766e);"></i> Chọn Chợ:
+                    </label>
+                    <select id="market-scope-select" autocomplete="off" style="height: 34px; border: none; background: transparent; font-weight: 600; font-size: 13px; color: var(--text-heading, #1e293b); padding: 0 6px; cursor: pointer; outline: none;" onchange="switchMarketFocus(this.value)">
+                        <option value="0" <?php echo ($marketId === 0) ? 'selected' : ''; ?>>
+                            🌐 Hiển thị tất cả các chợ
+                        </option>
+                        <?php foreach ($markets as $m): ?>
+                            <option value="<?php echo (int)$m['market_id']; ?>" <?php echo ((int)$marketId === (int)$m['market_id']) ? 'selected' : ''; ?>>
+                                🏪 <?php echo htmlspecialchars($m['market_name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            <?php endif; ?>
         </div>
 
         <div class="map-dashboard-container">
             <!-- CỘT TRÁI: Tìm kiếm, Bộ lọc & Chi tiết sạp -->
             <div class="map-dashboard-sidebar">
                 <div class="sidebar-search-area">
-                    <div class="search-box-gps" style="margin-bottom: 12px;">
+                    <div class="search-box-gps" style="margin-bottom: 12px; position: relative;">
                         <i class="fa-solid fa-magnifying-glass"></i>
-                        <input type="text" id="map-search-input" placeholder="Tìm mã sạp (ví dụ: A01, B12)...">
+                        <input type="text" id="map-search-input" placeholder="Tìm mã sạp, tên tiểu thương..." autocomplete="off">
+                        <div id="search-results-dropdown" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; max-height: 240px; overflow-y: auto; background: #ffffff; border: 1.5px solid #0f766e; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); z-index: 1050; padding: 4px;"></div>
                     </div>
                     
                     <!-- Bộ lọc Phân khu di chuyển từ trên map về đây -->
-                    <div>
-                        <span class="section-title-gps" style="margin-bottom: 6px; font-size: 10.5px;">Phân khu / Khu vực</span>
-                        <div id="area-selector-container" style="display: flex; flex-direction: column; gap: 4px; max-height: 150px; overflow-y: auto; border: 1px solid var(--border-color, #cbd5e1); padding: 6px; border-radius: 8px; background: #fff;">
-                        </div>
-                    </div>
+                   
                 </div>
 
                 <div class="sidebar-scrollable-content">
@@ -452,6 +470,14 @@
                         <div class="detail-row-gps">
                             <span>Ngành hàng:</span>
                             <strong id="detail-business">--</strong>
+                        </div>
+                        <div class="detail-row-gps">
+                            <span>Diện tích:</span>
+                            <strong id="detail-area-size">--</strong>
+                        </div>
+                        <div class="detail-row-gps" id="detail-price-row">
+                            <span>Giá thuê:</span>
+                            <strong id="detail-price" style="color: var(--primary, #0f766e);">--</strong>
                         </div>
                         <div class="detail-row-gps" id="detail-trader-row">
                             <span>Tiểu thương:</span>
@@ -507,12 +533,26 @@
                 <div class="map-legend" id="map-legend-front">
                     <div class="map-legend-title"><i class="fa-solid fa-filter"></i> Lọc & Chú giải sạp</div>
                     
-                    <!-- Bộ lọc Khu vực -->
+                    <!-- Bộ lọc Khu vực (Tất cả khu vực của các chợ chung) -->
                     <div style="margin-bottom: 6px;">
                         <select id="map-filter-area-front" style="width:100%; font-size:11px; padding:4px 6px; border:1px solid #cbd5e1; border-radius:4px; background:#fff; cursor:pointer;">
                             <option value="">-- Tất cả Khu vực --</option>
-                            <?php if (!empty($areas)): foreach ($areas as $a): ?>
-                                <option value="<?php echo htmlspecialchars($a['area_name']); ?>"><?php echo htmlspecialchars($a['area_name']); ?></option>
+                            <?php 
+                            if (!empty($areas)): 
+                                $groupedAreas = [];
+                                foreach ($areas as $a) {
+                                    $mName = $a['market_name'] ?? 'Chợ khác';
+                                    $groupedAreas[$mName][] = $a;
+                                }
+                                foreach ($groupedAreas as $mName => $aList):
+                            ?>
+                                <optgroup label="🏪 <?php echo htmlspecialchars($mName); ?>">
+                                    <?php foreach ($aList as $a): ?>
+                                        <option value="<?php echo htmlspecialchars($a['area_name']); ?>" data-market-id="<?php echo (int)($a['area_market_id'] ?? 0); ?>">
+                                            <?php echo htmlspecialchars($a['area_name']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </optgroup>
                             <?php endforeach; endif; ?>
                         </select>
                     </div>
@@ -548,56 +588,12 @@
     </div>
 </section>
 
-<!-- ================= DANH SÁCH SẠP TRỐNG HỖ TRỢ ĐĂNG KÝ NHANH ================= -->
-<section class="bg-gray" style="padding: 60px 0;">
-    <div class="container">
-        <div style="margin-bottom: 30px;">
-            <div class="eyebrow">Cơ hội kinh doanh</div>
-            <h2 class="section-title" style="margin-bottom:6px;">Danh sách sạp còn trống hiện tại</h2>
-            <p style="color:var(--gray-600); font-size:15px;">Chọn sạp phù hợp trên bản đồ số hoặc danh sách bên dưới để gửi yêu cầu đăng ký thuê trực tuyến</p>
-        </div>
-        
-        <div class="stalls-grid">
-            <?php 
-            $emptyStalls = array_filter($elements, function($e) {
-                return $e['element_type'] === 'stall' && $e['status_code'] === 'empty';
-            });
-            ?>
-
-            <?php if (!empty($emptyStalls)): ?>
-                <?php foreach ($emptyStalls as $st): ?>
-                    <div class="stall-card" style="box-shadow: var(--shadow-sm); border: 1px solid var(--gray-200); background: #ffffff; padding: 24px; border-radius: var(--radius-lg); display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s;">
-                        <div class="stall-top" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-                            <div>
-                                <div class="stall-code" style="font-size: 18px; font-weight: 800; color: var(--gray-900);"><?php echo htmlspecialchars($st['stall_code']); ?></div>
-                                <div class="stall-zone" style="font-size: 12px; color: var(--gray-500); margin-top: 4px;">Khu vực: <?php echo htmlspecialchars($st['area_name']); ?></div>
-                            </div>
-                            <span class="badge badge-vacant" style="background-color: #dbeafe; color: #1d4ed8; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px;">Còn trống</span>
-                        </div>
-                        <div class="stall-meta" style="border-top: 1px solid var(--gray-200); border-bottom: 1px solid var(--gray-200); padding: 12px 0; margin-bottom: 16px; font-size: 13.5px; color: var(--gray-600);">
-                            <div style="margin-bottom: 8px;">Diện tích: <b style="color: var(--gray-900);"><?php echo $st['stall_area_size']; ?> m²</b></div>
-                            <div>Đơn giá: <b style="color: var(--gray-900);"><?php echo number_format($st['stall_base_price'], 0, ',', '.'); ?> đ</b>/tháng</div>
-                        </div>
-                        <div style="display: flex; gap: 8px;">
-                            <button onclick="locateStallByCode('<?php echo htmlspecialchars($st['stall_code']); ?>')" class="btn btn-outline btn-sm" style="flex: 1; padding: 0;"><i class="fa-solid fa-location-dot"></i> Định vị</button>
-                            <a href="<?php echo BASE_URL; ?>home/register?stall_code=<?php echo urlencode($st['stall_code']); ?>&area=<?php echo $st['stall_area_size']; ?>" class="btn btn-primary btn-sm" style="flex: 1.2; font-size: 12px;">Thuê ngay</a>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background: #ffffff; border-radius: var(--radius-lg); border: 1px dashed var(--gray-300);">
-                    <i class="fa-solid fa-store-slash" style="font-size: 40px; color: var(--gray-400); margin-bottom: 12px;"></i>
-                    <p style="color: var(--gray-600); font-size: 14.5px;">Hiện tại không còn sạp trống nào trên sơ đồ. Xin vui lòng liên hệ trực tiếp BQL để được hỗ trợ.</p>
-                </div>
-            <?php endif; ?>
-        </div>
-    </div>
-</section>
-
 <!-- Truyền dữ liệu từ PHP sang JS -->
 <script>
     window.MAP_ELEMENTS = <?php echo json_encode($elements); ?>;
     window.MARKET_DATA = <?php echo json_encode($market); ?>;
+    window.ALL_MARKETS = <?php echo json_encode($markets); ?>;
+    window.ACTIVE_MARKET_ID = <?php echo (int)$marketId; ?>;
     window.BASE_URL = '<?php echo BASE_URL; ?>';
     
     // Đăng ký sự kiện click nút ẩn/hiện sidebar bên ngoài

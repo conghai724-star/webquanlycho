@@ -86,13 +86,7 @@
                         <input type="checkbox" name="permissions[]" value="map_tree" class="perm-cb" checked> Sơ đồ Cây bản đồ
                     </label>
                     <label class="form-check" style="cursor: pointer;">
-                        <input type="checkbox" name="permissions[]" value="banners" class="perm-cb" checked> Quản lý Banner
-                    </label>
-                    <label class="form-check" style="cursor: pointer;">
-                        <input type="checkbox" name="permissions[]" value="registrations" class="perm-cb"> Đăng ký Thuê Sạp
-                    </label>
-                    <label class="form-check" style="cursor: pointer;">
-                        <input type="checkbox" name="permissions[]" value="feedbacks" class="perm-cb"> Khiếu nại & Góp ý
+                        <input type="checkbox" name="permissions[]" value="banners" class="perm-cb" checked> Nội dung Website (Banner, Tin tức, Liên hệ)
                     </label>
                     <label class="form-check" style="cursor: pointer;">
                         <input type="checkbox" name="permissions[]" value="users" class="perm-cb"> Quản lý Tài khoản Web
