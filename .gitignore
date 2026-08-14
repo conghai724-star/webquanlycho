@@ -1,0 +1,54 @@
+# =========================================================================
+# GITIGNORE - QUANLYCHO.VN
+# =========================================================================
+
+# 1. Thư mục cấu hình IDE, AI Assistant & Môi trường lập trình
+.gemini/
+.agents/
+.codex/
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# 2. File cấu hình nhạy cảm / Môi trường cá nhân
+.env
+.env.local
+.env.*.local
+*.local.php
+
+# 3. Thư mục tạm, bộ nhớ đệm và File log
+logs/
+*.log
+scratch/
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+*~
+
+# 4. Thư viện phụ thuộc Node.js & Composer
+node_modules/
+package-lock.json
+vendor/
+composer.lock
+
+# 5. File hệ điều hành
+Thumbs.db
+Desktop.ini
+.DS_Store
+ehthumbs.db
+
+# 6. Dữ liệu upload nhạy cảm của người dùng (giữ thư mục, bỏ file nội dung)
+uploads/*
+!uploads/.gitkeep
+public/uploads/*
+!public/uploads/.gitkeep
+
+# 7. File tài liệu tạm, nháp thiết kế
+*.psd
+*.ai
+*.zip
+*.rar
+*.7z

@@ -1553,6 +1553,21 @@ Class general{
     public function test(){
         return "Hello from General class!";
     }
-	
-	
+
+    public function isWebLoggedIn() {
+        return session::isWebLoggedIn();
+    }
+
+    public function getWebUser($key = null) {
+        return session::getWebUser($key);
+    }
+
+    public function isWebAdmin() {
+        return session::isWebAdmin();
+    }
+
+    public function isWebEditor() {
+        return session::isWebEditor();
+    }
 }
+

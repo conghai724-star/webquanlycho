@@ -4,9 +4,10 @@ Class indexController Extends baseController
 {
 	public function index()
     {
-		// ponytail: legacy HiCRM code removed — all hicrm_* tables don't exist in this DB
-		header("Location: " . BASE_URL . "admin/stalls");
-		exit();
+		// Render the frontend homepage instead of redirecting to admin
+		include_once __SITE_PATH . '/controller/homeController.php';
+		$home = new homeController($this->registry);
+		$home->index();
 	}
 	
 	private function countorderbydate($date)

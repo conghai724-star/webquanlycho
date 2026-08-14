@@ -240,7 +240,6 @@ a:hover {
     background: linear-gradient(90deg, rgba(15, 118, 110, 0.3) 0%, rgba(15, 118, 110, 0.08) 100%) !important;
     color: #ffffff !important;
     font-weight: 600 !important;
-    border-left: 3px solid var(--primary) !important;
 }
 
 .nav-sublink {

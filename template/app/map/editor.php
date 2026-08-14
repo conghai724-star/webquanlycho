@@ -321,26 +321,31 @@ $market = $marketModel->getById($marketId);
             <div class="quick-bind-card">
                 <div style="font-weight: 700; font-size: 13px; color: var(--primary, #0f766e); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
                     <span><i class="fa-solid fa-bolt"></i> Gán Tọa Độ Nhanh</span>
-                    <label style="margin: 0; display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; color: #475569; cursor: pointer;">
-                        <input type="checkbox" id="qb-toggle-mapped" style="width: 14px; height: 14px; cursor: pointer; margin: 0;">
-                        <span>Tìm sạp đã gán</span>
-                    </label>
                 </div>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                    <div class="property-group">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+                    <div class="property-group" style="margin-bottom:0;">
                         <label for="qb-filter-area">Lọc theo Khu</label>
                         <select id="qb-filter-area" class="property-input" style="font-size: 12px; padding: 5px 8px;">
-                            <option value="">-- Tất cả --</option>
+                            <option value="">-- Tất cả các Khu --</option>
                             <?php foreach ($unmappedAreas as $area): ?>
                                 <option value="<?php echo htmlspecialchars($area); ?>"><?php echo htmlspecialchars($area); ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="property-group">
-                        <label for="qb-search-input">Tìm sạp nhanh</label>
-                        <input type="text" id="qb-search-input" class="property-input" placeholder="Nhập mã sạp, tên tiểu thương..." style="font-size: 12px; padding: 5px 8px;">
+                    <div class="property-group" style="margin-bottom:0;">
+                        <label for="qb-filter-status">Trạng thái Gán</label>
+                        <select id="qb-filter-status" class="property-input" style="font-size: 12px; padding: 5px 8px;">
+                            <option value="all">Tất cả sạp</option>
+                            <option value="unmapped">⚡ Chưa gán GPS</option>
+                            <option value="mapped">✓ Đã gán GPS</option>
+                        </select>
                     </div>
+                </div>
+
+                <div class="property-group">
+                    <label for="qb-search-input">Tìm kiếm sạp / tiểu thương</label>
+                    <input type="text" id="qb-search-input" class="property-input" placeholder="Nhập mã sạp, tên tiểu thương..." style="font-size: 12px; padding: 5px 8px;">
                 </div>
 
                 <div class="property-group">
@@ -385,6 +390,7 @@ $market = $marketModel->getById($marketId);
                     <i class="fa-solid fa-location-crosshairs"></i> Ghi nhận & Định vị sạp
                 </button>
             </div>
+
 
             <!-- CÔNG CỤ VẼ MỚI -->
             <div style="font-weight: 700; font-size: 12px; margin-bottom: 10px; color: var(--text-muted, #64748b); text-transform: uppercase; letter-spacing: 0.5px;">Đặt tiện ích mới</div>
@@ -444,9 +450,17 @@ $market = $marketModel->getById($marketId);
     <!-- CANVAS CHÍNH: Bản đồ vệ tinh thực tế -->
     <div class="editor-canvas-area">
         <div class="canvas-toolbar">
-            <div class="toolbar-group">
-                <span style="font-weight: 700; font-size: 13.5px; color: var(--primary, #0f766e);"><i class="fa-solid fa-map-location-dot"></i> Thiết kế bản đồ số chợ (GPS Vệ Tinh)</span>
+            <div class="toolbar-group" style="gap: 8px;">
+                <span style="font-weight: 700; font-size: 13.5px; color: var(--primary, #0f766e);"><i class="fa-solid fa-map-location-dot"></i> Thiết kế bản đồ số (GPS Vệ Tinh):</span>
+                <select id="select-active-market" style="font-size:12px; padding:4px 8px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer; font-weight:600; color:var(--text-heading);" onchange="location.href='<?php echo BASE_URL; ?>admin/map_editor?market_id=' + this.value;">
+                    <?php if (!empty($markets)): foreach ($markets as $m): ?>
+                        <option value="<?php echo $m['market_id']; ?>" <?php echo ($m['market_id'] == ($marketId ?? 0)) ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($m['market_name']); ?>
+                        </option>
+                    <?php endforeach; endif; ?>
+                </select>
             </div>
+
 
             <div class="toolbar-group" style="gap: 4px;">
                 <button class="btn btn-default btn-sm" id="btn-toggle-left" type="button" title="Ẩn/Hiện panel trái" style="border:1px solid #cbd5e1; padding:4px 8px;"><i class="fa-solid fa-table-columns"></i></button>
@@ -901,6 +915,17 @@ $market = $marketModel->getById($marketId);
                 }
                 if (typeof filterQuickBindStalls === 'function') {
                     filterQuickBindStalls();
+                }
+                
+                // Fit bounds to show all elements/actors on the map
+                if (map && elements.length > 0) {
+                    const layers = elements.map(el => el.layer).filter(l => l);
+                    if (layers.length > 0) {
+                        const group = L.featureGroup(layers);
+                        if (group.getBounds().isValid()) {
+                            map.fitBounds(group.getBounds(), { padding: [30, 30] });
+                        }
+                    }
                 }
             });
         }
@@ -1622,9 +1647,9 @@ $market = $marketModel->getById($marketId);
         // Khởi tạo và đồng bộ bộ lọc Gán nhanh phía trên
         let allStalls = [];
         const qbFilterArea = document.getElementById('qb-filter-area');
+        const qbFilterStatus = document.getElementById('qb-filter-status');
         const qbSearchInput = document.getElementById('qb-search-input');
         const qbStallCode = document.getElementById('qb-stall-code');
-        const qbToggleMapped = document.getElementById('qb-toggle-mapped');
 
         if (qbStallCode) {
             // Backup lại danh sách tất cả sạp
@@ -1638,13 +1663,24 @@ $market = $marketModel->getById($marketId);
         }
 
         window.filterQuickBindStalls = function() {
-            const selectedArea = qbFilterArea.value.toLowerCase().trim();
-            const searchQuery = qbSearchInput.value.toLowerCase().trim();
-            const showMappedOnly = qbToggleMapped ? qbToggleMapped.checked : false;
+            const selectedArea = qbFilterArea ? qbFilterArea.value.toLowerCase().trim() : '';
+            const searchQuery = qbSearchInput ? qbSearchInput.value.toLowerCase().trim() : '';
+            const filterStatus = qbFilterStatus ? qbFilterStatus.value : 'all';
             const currentVal = qbStallCode.value;
 
             // Danh sách ID sạp đã được vẽ trên bản đồ
             const mappedIds = elements.map(el => String(el.stall_id)).filter(id => id && id !== 'undefined');
+
+            // Nếu người dùng chọn lọc theo Khu hoặc Tìm kiếm mà ở chế độ "Chưa gán GPS" mà Khu đó không có sạp chưa gán nào:
+            // Tự động chuyển mode sang "Tất cả sạp" để danh sách không bị trống
+            let effectiveFilterStatus = filterStatus;
+            if (selectedArea && filterStatus === 'unmapped') {
+                const hasUnmappedInArea = allStalls.some(s => s.area.toLowerCase() === selectedArea && !mappedIds.includes(String(s.id)));
+                if (!hasUnmappedInArea) {
+                    effectiveFilterStatus = 'all';
+                    if (qbFilterStatus) qbFilterStatus.value = 'all';
+                }
+            }
 
             // Clear options cũ trừ dòng placeholder
             qbStallCode.innerHTML = '<option value="">-- Chọn Sạp --</option>';
@@ -1656,14 +1692,15 @@ $market = $marketModel->getById($marketId);
                 const matchesArea = !selectedArea || stall.area.toLowerCase() === selectedArea;
                 const matchesSearch = !searchQuery || stall.value.toLowerCase().includes(searchQuery) || stall.trader.toLowerCase().includes(searchQuery);
                 
-                // Trạng thái đã gán hay chưa gán
                 const isMapped = mappedIds.includes(String(stall.id));
-                const matchesMappingState = showMappedOnly ? isMapped : !isMapped;
+                let matchesStatus = true;
+                if (effectiveFilterStatus === 'unmapped') matchesStatus = !isMapped;
+                else if (effectiveFilterStatus === 'mapped') matchesStatus = isMapped;
 
-                if (matchesArea && matchesSearch && matchesMappingState) {
+                if (matchesArea && matchesSearch && matchesStatus) {
                     const opt = document.createElement('option');
                     opt.value = stall.value;
-                    opt.textContent = stall.text;
+                    opt.textContent = (isMapped ? '✓ ' : '⚡ ') + stall.text;
                     opt.setAttribute('data-stall-id', stall.id);
                     opt.setAttribute('data-area-name', stall.area);
                     opt.setAttribute('data-trader-name', stall.trader);
@@ -1680,7 +1717,9 @@ $market = $marketModel->getById($marketId);
             // === Đồng bộ danh sách cột trái #unmapped-stalls-list ===
             const unmappedTitle = document.getElementById('unmapped-title');
             if (unmappedTitle) {
-                unmappedTitle.textContent = showMappedOnly ? 'Sạp đã có tọa độ' : 'Sạp chưa có tọa độ';
+                if (effectiveFilterStatus === 'unmapped') unmappedTitle.textContent = 'Sạp chưa có tọa độ';
+                else if (effectiveFilterStatus === 'mapped') unmappedTitle.textContent = 'Sạp đã có tọa độ';
+                else unmappedTitle.textContent = 'Danh sách Sạp chợ';
             }
 
             const leftListItems = document.querySelectorAll('#unmapped-stalls-list .unmapped-stall-item');
@@ -1694,9 +1733,12 @@ $market = $marketModel->getById($marketId);
                 const mArea = !selectedArea || area === selectedArea;
                 const mSearch = !searchQuery || code.includes(searchQuery) || trader.includes(searchQuery);
                 const isMapped = mappedIds.includes(String(stallId));
-                const mState = showMappedOnly ? isMapped : !isMapped;
+                
+                let mStatus = true;
+                if (effectiveFilterStatus === 'unmapped') mStatus = !isMapped;
+                else if (effectiveFilterStatus === 'mapped') mStatus = isMapped;
 
-                if (mArea && mSearch && mState) {
+                if (mArea && mSearch && mStatus) {
                     item.style.display = '';
                     visibleCount++;
                 } else {
@@ -1714,11 +1756,12 @@ $market = $marketModel->getById($marketId);
         if (qbSearchInput) {
             qbSearchInput.addEventListener('input', filterQuickBindStalls);
         }
-        if (qbToggleMapped) {
-            qbToggleMapped.addEventListener('change', filterQuickBindStalls);
+        if (qbFilterStatus) {
+            qbFilterStatus.addEventListener('change', filterQuickBindStalls);
         }
 
-        // Chạy filter ban đầu (chỉ hiện sạp chưa gán)
+        // Chạy filter ban đầu
+
         filterQuickBindStalls();
 
         // ===== BỘ LỌC SẠP TRÊN BẢN ĐỒ =====
@@ -1892,35 +1935,29 @@ $market = $marketModel->getById($marketId);
         activePolyline = null;
     }
 
-    // Click vào danh sách cột trái tự điền vào khung Gán Nhanh
+    // Click vào danh sách sạp cột trái
     window.selectUnmappedStall = function (code) {
-        const qbFilterArea = document.getElementById('qb-filter-area');
-        const qbSearchInput = document.getElementById('qb-search-input');
-        const qbToggleMapped = document.getElementById('qb-toggle-mapped');
-
-        // Reset bộ lọc tìm kiếm và khu vực để tránh ẩn sạp được chọn
-        if (qbFilterArea) qbFilterArea.value = "";
-        if (qbSearchInput) qbSearchInput.value = "";
-        
-        // Xác định trạng thái đã gán hay chưa gán của sạp được click
-        const mappedIds = elements.map(el => String(el.stall_id)).filter(id => id && id !== 'undefined');
         let dbStall = window.DB_STALLS ? window.DB_STALLS.find(s => s.stall_code.toUpperCase() === code.toUpperCase()) : null;
-        if (dbStall && qbToggleMapped) {
-            const isMapped = mappedIds.includes(String(dbStall.stall_id));
-            qbToggleMapped.checked = isMapped;
+        if (!dbStall) return;
+
+        // Tìm xem sạp này đã có trên sơ đồ chưa
+        const existingElement = elements.find(el => el.stall_id == dbStall.stall_id);
+        if (existingElement && existingElement.latitude && existingElement.longitude) {
+            // Sạp đã gán: Di chuyển camera đến sạp và chọn sạp đó
+            map.setView([existingElement.latitude, existingElement.longitude], 21);
+            selectElement(existingElement);
+            showToast(`Đã chọn sạp ${code} trên bản đồ!`, 'info');
+            return;
         }
 
-        if (typeof filterQuickBindStalls === 'function') filterQuickBindStalls();
-
+        // Sạp chưa gán: Chọn sạp trong dropdown Gán Nhanh
         if (qbStallCode) {
             qbStallCode.value = code;
-            // Kích hoạt sự kiện change để tự động lấy diện tích/tọa độ sạp
             qbStallCode.dispatchEvent(new Event('change'));
         }
-
-        // Chuyển tiêu điểm sang ô dán tọa độ GPS
         if (qbGpsData) qbGpsData.focus();
     };
+
 
     // Đưa sạp quay lại cột trái chưa gán
     function addStallBackToUnmappedList(stallId, stallCode) {

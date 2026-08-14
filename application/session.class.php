@@ -87,4 +87,64 @@ class session {
             exit();
         }
     }
+
+    /**
+     * Kiểm tra xem Web Admin / Biên tập viên đã đăng nhập chưa
+     */
+    public static function isWebLoggedIn() {
+        return isset($_SESSION['web_user']) && !empty($_SESSION['web_user']['id']);
+    }
+
+    /**
+     * Lấy thông tin user Web Admin hiện tại
+     */
+    public static function getWebUser($key = null) {
+        if (!self::isWebLoggedIn()) return null;
+        if ($key === null) return $_SESSION['web_user'];
+        return $_SESSION['web_user'][$key] ?? null;
+    }
+
+    /**
+     * Kiểm tra role có phải Web Admin không
+     */
+    public static function isWebAdmin() {
+        return self::isWebLoggedIn() && self::getWebUser('role') === 'admin';
+    }
+
+    /**
+     * Kiểm tra role có phải Editor (Biên tập viên) không
+     */
+    public static function isWebEditor() {
+        return self::isWebLoggedIn() && self::getWebUser('role') === 'editor';
+    }
+
+    /**
+     * Kiểm tra quyền truy cập module cụ thể cho Web Admin
+     */
+    public static function hasWebModule($moduleCode) {
+        if (!self::isWebLoggedIn()) return false;
+        if (self::isWebAdmin()) return true;
+
+        $perms = self::getWebUser('permissions') ?? '';
+        if ($perms === 'all') return true;
+
+        $userModules = array_filter(array_map('trim', explode(',', $perms)));
+        return in_array($moduleCode, $userModules);
+    }
+
+    /**
+     * Yêu cầu quyền truy cập module, nếu không đủ quyền sẽ chặn lỗi 403
+     */
+    public static function requireWebModule($moduleCode) {
+        if (!self::hasWebModule($moduleCode)) {
+            http_response_code(403);
+            $view = new baseView();
+            $view->app('errors/403', [
+                'title' => '403 Forbidden - Truy cập bị từ chối'
+            ]);
+            exit();
+        }
+    }
 }
+
+

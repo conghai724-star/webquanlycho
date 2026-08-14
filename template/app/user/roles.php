@@ -1,118 +1,116 @@
-<!-- Giao diện Quản Lý Vai Trò Chợ -->
-<div style="margin-bottom: 20px;">
-    <a href="<?php echo BASE_URL; ?>system/users" class="btn btn-outline" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
-        <i class="fa-solid fa-arrow-left"></i> Quay lại tài khoản nhân viên
-    </a>
+<?php
+$moduleNames = [
+    'dashboard'     => 'Trang chủ (Dashboard)',
+    'map_editor'    => 'Biên tập Bản đồ số',
+    'map_tree'      => 'Sơ đồ Cây sạp chợ',
+    'banners'       => 'Quản lý Banner',
+    'registrations' => 'Quản lý Đăng ký thuê sạp',
+    'feedbacks'     => 'Quản lý Khiếu nại & Góp ý',
+    'users'         => 'Quản lý Tài khoản Web',
+    'roles'         => 'Quản lý Phân quyền'
+];
+?>
+
+<div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <a href="<?php echo BASE_URL; ?>admin/users" class="btn btn-outline" style="font-size: 13px; padding: 7px 14px; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-users"></i> Danh sách Tài khoản Web
+        </a>
+        <a href="<?php echo BASE_URL; ?>admin/permissions" class="btn btn-outline" style="font-size: 13px; padding: 7px 14px; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-user-shield"></i> Ma trận Phân quyền
+        </a>
+        <a href="<?php echo BASE_URL; ?>admin/roles" class="btn btn-primary" style="font-size: 13px; padding: 7px 14px; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-users-gear"></i> Quản lý Vai trò & Mẫu quyền
+        </a>
+    </div>
 </div>
 
-<?php if (!empty($error)): ?>
-    <div class="alert alert-danger" style="margin-bottom: 20px; padding: 12px 16px; background-color: rgba(234, 67, 53, 0.1); color: #EA4335; border: 1px solid rgba(234, 67, 53, 0.2); border-radius: 4px;">
-        <i class="fa-solid fa-circle-exclamation" style="margin-right: 6px;"></i>
-        <?php echo htmlspecialchars($error); ?>
+
+<?php if (isset($_SESSION['flash_success'])): ?>
+    <div style="background-color: rgba(46, 125, 50, 0.1); border: 1px solid rgba(46, 125, 50, 0.3); color: #2e7d32; padding: 12px 16px; border-radius: 6px; font-size: 13px; margin-bottom: 16px;">
+        <i class="fa-solid fa-circle-check me-2"></i><?php echo $_SESSION['flash_success']; unset($_SESSION['flash_success']); ?>
     </div>
 <?php endif; ?>
 
-<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; align-items: start;">
-    
-    <!-- CỘT 1: DANH SÁCH VAI TRÒ -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; align-items: start;">
+    <!-- CỘT TRÁI: DANH SÁCH VAI TRÒ VÀ MẪU PHÂN QUYỀN -->
     <div class="card">
         <div class="card-header" style="border-bottom: 1px solid var(--border-color); padding: 16px 20px;">
-            <div class="card-title" style="font-size: 16px; font-weight: 600; margin: 0;">Danh sách vai trò và mẫu phân quyền</div>
+            <div class="card-title" style="font-size: 15px; font-weight: 700; color: var(--text-heading);">
+                <i class="fa-solid fa-user-shield me-2" style="color: var(--primary);"></i>Danh sách vai trò và mẫu phân quyền
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
                     <thead>
                         <tr style="text-align: left; background-color: var(--bg-surface-secondary); border-bottom: 1px solid var(--border-color);">
-                            <th style="padding: 12px 16px; width: 60px;">ID</th>
-                            <th style="padding: 12px 16px; width: 180px;">Tên Vai Trò</th>
-                            <th style="padding: 12px 16px; width: 260px;">Quyền mặc định</th>
-                            <th style="padding: 12px 16px;">Mô Tả Chi Tiết</th>
-                            <th style="padding: 12px 16px; width: 100px; text-align: center;">Trạng thái</th>
-                            <th style="padding: 12px 16px; width: 80px; text-align: center;">Hành động</th>
+                            <th style="padding: 12px 16px; width: 40px;">ID</th>
+                            <th style="padding: 12px 16px; width: 180px;">TÊN VAI TRÒ</th>
+                            <th style="padding: 12px 16px;">QUYỀN MẶC ĐỊNH</th>
+                            <th style="padding: 12px 16px; width: 180px;">MÔ TẢ CHI TIẾT</th>
+                            <th style="padding: 12px 16px; width: 100px;">TRẠNG THÁI</th>
+                            <th style="padding: 12px 16px; text-align: right; width: 110px;">HÀNH ĐỘNG</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php 
-                        $modulesMapping = [
-                            'dashboard' => 'Trang chủ (Dashboard)',
-                            'profile' => 'Thông tin cá nhân',
-                            'stall' => 'Quản lý Sạp chợ',
-                            'map_tree' => 'Sơ đồ Cây sạp chợ',
-                            'trader' => 'Quản lý Tiểu thương',
-                            'contract' => 'Hợp đồng Thuê sạp',
-                            'utilities' => 'Chỉ số Điện & Nước',
-                            'finance' => 'Thu - Chi tài chính',
-                            'foodsafety' => 'An toàn thực phẩm',
-                            'logs' => 'Nhật ký hoạt động',
-                            'category' => 'Quản lý Danh mục'
-                        ];
-                        
-                        if (!empty($roles)): 
-                            foreach ($roles as $role): 
-                                $isSystem = false;
-                        ?>
+                        <?php if (!empty($roles)): ?>
+                            <?php foreach ($roles as $r): ?>
                                 <tr style="border-bottom: 1px solid var(--border-color);">
-                                    <td style="padding: 14px 16px; color: var(--text-muted);">
-                                        <?php echo $role['role_id']; ?>
+                                    <td style="padding: 14px 16px; font-weight: 600; color: var(--text-muted);">
+                                        <?php echo $r['id']; ?>
                                     </td>
-                                    <td style="padding: 14px 16px; font-weight: 600; color: var(--text-heading);">
-                                        <?php echo htmlspecialchars($role['role_name']); ?>
+                                    <td style="padding: 14px 16px; font-weight: 700; color: var(--text-heading);">
+                                        <div><?php echo htmlspecialchars($r['role_name']); ?></div>
+                                        <code style="font-size: 11px; font-weight: 400; color: var(--text-muted);"><?php echo htmlspecialchars($r['role_code']); ?></code>
                                     </td>
                                     <td style="padding: 14px 16px;">
                                         <div style="display: flex; flex-wrap: wrap; gap: 4px;">
                                             <?php 
-                                            $perms = array_filter(explode(',', $role['role_permissions'] ?? ''));
-                                            if (!empty($perms)):
-                                                foreach ($perms as $pCode):
-                                                    $friendlyName = $modulesMapping[$pCode] ?? $pCode;
+                                            $perms = $r['permissions'] ?? '';
+                                            if ($perms === 'all') {
+                                                echo '<span class="chip" style="background: rgba(15, 118, 110, 0.1); color: var(--primary); border: 1px solid rgba(15, 118, 110, 0.2); font-weight: 600;">Tất cả phân hệ (Full Access)</span>';
+                                            } else {
+                                                $arr = array_filter(array_map('trim', explode(',', $perms)));
+                                                if (empty($arr)) {
+                                                    echo '<span style="color: var(--text-muted); font-style: italic;">Chưa gán quyền</span>';
+                                                } else {
+                                                    foreach ($arr as $mCode) {
+                                                        $name = $moduleNames[$mCode] ?? $mCode;
+                                                        echo '<span class="chip" style="background: rgba(59, 130, 246, 0.08); color: #1d4ed8; border: 1px solid rgba(59, 130, 246, 0.2); font-size: 11px; padding: 2px 8px; border-radius: 12px;">' . htmlspecialchars($name) . '</span>';
+                                                    }
+                                                }
+                                            }
                                             ?>
-                                                    <span class="chip" style="background-color: rgba(66, 133, 244, 0.08); color: #4285F4; border: 1px solid rgba(66, 133, 244, 0.15); font-size: 11px; padding: 2px 6px;">
-                                                        <?php echo htmlspecialchars($friendlyName); ?>
-                                                    </span>
-                                                <?php endforeach; ?>
-                                            <?php else: ?>
-                                                <span style="color: var(--text-muted); font-size: 11px;">Không có quyền</span>
-                                            <?php endif; ?>
                                         </div>
                                     </td>
                                     <td style="padding: 14px 16px; color: var(--text-muted); font-size: 12px; line-height: 1.4;">
-                                        <?php echo htmlspecialchars($role['role_description'] ?: 'Không có mô tả'); ?>
+                                        <?php echo htmlspecialchars($r['description'] ?: 'Không có mô tả'); ?>
                                     </td>
-                                    <td style="padding: 14px 16px; text-align: center; vertical-align: middle;">
-                                        <?php
-                                        $isActive = ($role['status_code'] ?? 'active') === 'active';
-                                        $statusLabel = $isActive ? 'Hoạt động' : 'Ngừng';
-                                        $statusBg = $isActive ? 'rgba(52,168,83,0.1)' : 'rgba(156,163,175,0.15)';
-                                        $statusColor = $isActive ? '#34A853' : '#9ca3af';
-                                        ?>
-                                        <button onclick="toggleRoleStatus(<?php echo $role['role_id']; ?>, '<?php echo $isActive ? 'inactive' : 'active'; ?>')" 
-                                                style="background: <?php echo $statusBg; ?>; color: <?php echo $statusColor; ?>; border: 1px solid <?php echo $statusColor; ?>33; padding: 2px 10px; border-radius: 10px; font-size: 11px; cursor: pointer; white-space: nowrap;" 
-                                                title="Nhấn để chuyển trạng thái">
-                                            <?php echo $statusLabel; ?>
-                                        </button>
+                                    <td style="padding: 14px 16px;">
+                                        <?php if (($r['status'] ?? 1) == 1): ?>
+                                            <span class="status status-green" style="background: rgba(46, 125, 50, 0.1); color: #2e7d32; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Hoạt động</span>
+                                        <?php else: ?>
+                                            <span class="status status-red" style="background: rgba(198, 40, 40, 0.1); color: #c62828; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Tạm khóa</span>
+                                        <?php endif; ?>
                                     </td>
-                                    <td style="padding: 14px 16px; text-align: center; vertical-align: middle; white-space: nowrap;">
-                                        <a href="javascript:void(0)" 
-                                           onclick='editRole(<?php echo json_encode($role, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)' 
-                                           class="btn btn-sm btn-ghost" 
-                                           style="color: #4285F4; padding: 4px 8px; font-size: 11px; text-decoration: none; display: inline-block; margin-right: 4px;" 
-                                           title="Sửa">
-                                            <i class="fa-solid fa-pen-to-square"></i> Sửa
-                                        </a>
-                                        <a href="<?php echo BASE_URL; ?>adminmaster/role_delete/<?php echo $role['role_id']; ?>" 
-                                           class="btn btn-sm btn-ghost" 
-                                           onclick="return confirm('Bạn có chắc chắn muốn xóa vai trò này?');" 
-                                           style="color: #EA4335; padding: 4px 8px; font-size: 11px; text-decoration: none; display: inline-block;" 
-                                           title="Xóa">
-                                            <i class="fa-solid fa-trash-can"></i> Xóa
-                                        </a>
+                                    <td style="padding: 14px 16px; text-align: right;">
+                                        <div style="display: flex; justify-content: flex-end; gap: 6px;">
+                                            <button onclick='editRole(<?php echo json_encode($r, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)' class="btn btn-outline btn-sm" style="padding: 4px 8px; font-size: 11px; color: #1976d2;" title="Sửa">
+                                                <i class="fa-solid fa-pen"></i> Sửa
+                                            </button>
+                                            <?php if ($r['role_code'] !== 'admin'): ?>
+                                                <a href="<?php echo BASE_URL; ?>admin/role_delete/<?php echo $r['id']; ?>" onclick="return confirm('Bạn có chắc chắn muốn xóa vai trò này?');" class="btn btn-outline btn-sm" style="padding: 4px 8px; font-size: 11px; color: #d32f2f;" title="Xóa">
+                                                    <i class="fa-solid fa-trash"></i> Xóa
+                                                </a>
+                                            <?php endif; ?>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="6" style="padding: 30px; text-align: center; color: var(--text-muted);">Chưa có vai trò nào trong hệ thống.</td>
+                                <td colspan="6" style="padding: 30px; text-align: center; color: var(--text-muted);">Chưa có vai trò nào.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
@@ -121,114 +119,84 @@
         </div>
     </div>
 
-    <!-- CỘT 2: THÊM / SỬA VAI TRÒ -->
+    <!-- CỘT PHẢI: FORM THÊM / SỬA VAI TRÒ MỚI -->
     <div class="card">
         <div class="card-header" style="border-bottom: 1px solid var(--border-color); padding: 16px 20px;">
-            <div class="card-title" id="form-role-title" style="font-size: 16px; font-weight: 600; margin: 0;">Thêm Vai Trò Mới</div>
+            <div class="card-title" id="roleFormTitle" style="font-size: 15px; font-weight: 700; color: var(--text-heading);">Thêm Vai Trò Mới</div>
         </div>
         <div class="card-body" style="padding: 20px;">
-            <form id="form-add-role" action="<?php echo BASE_URL; ?>adminmaster/role_save" method="POST" data-native-submit="true">
-                <?php csrf_field(); ?>
-                <input type="hidden" id="role_id" name="role_id" value="">
-                
-                <!-- Tên vai trò -->
+            <form id="roleForm" action="<?php echo BASE_URL; ?>admin/role_add" method="POST">
+                <input type="hidden" id="role_id" name="id" value="">
+
                 <div class="form-group" style="margin-bottom: 16px;">
-                    <label class="form-label" for="role_name" style="font-weight: 500; display: block; margin-bottom: 6px;">Tên vai trò <span style="color: var(--red)">*</span></label>
-                    <input type="text" id="role_name" name="role_name" class="form-control" placeholder="Ví dụ: Giám sát viên" 
-                           value="<?php echo htmlspecialchars($post_data['role_name'] ?? ''); ?>" required>
+                    <label class="form-label" style="font-weight: 600;">Tên vai trò <span style="color: red">*</span></label>
+                    <input type="text" id="role_name" name="role_name" class="form-control" placeholder="Ví dụ: Giám sát viên" required>
                 </div>
 
-                <!-- Quyền mặc định (Checklist Phân hệ) -->
                 <div class="form-group" style="margin-bottom: 16px;">
-                    <label class="form-label" style="font-weight: 500; display: block; margin-bottom: 8px;">Gán quyền mặc định (Mẫu phân hệ)</label>
-                    <div style="display: flex; flex-direction: column; gap: 8px; padding: 12px; background-color: var(--bg-surface-light, #f8f9fa); border: 1px solid var(--border-color); border-radius: 6px;">
-                        <?php foreach ($modulesMapping as $code => $name): ?>
-                            <label style="display: inline-flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer; color: var(--text-color); margin: 0;">
-                                <input type="checkbox" name="role_modules[]" value="<?php echo $code; ?>" style="width: 15px; height: 15px; accent-color: var(--primary-color);">
-                                <?php echo htmlspecialchars($name); ?>
+                    <label class="form-label" style="font-weight: 600;">Mã vai trò <span style="color: red">*</span></label>
+                    <input type="text" id="role_code" name="role_code" class="form-control" placeholder="Ví dụ: gsv" required>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label" style="font-weight: 700; color: var(--text-heading); display: block; margin-bottom: 8px;">
+                        Gán quyền mặc định (Mẫu phân hệ)
+                    </label>
+                    <div style="background: var(--bg-surface-secondary, #f8f9fa); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto;">
+                        <?php foreach ($moduleNames as $code => $name): ?>
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                                <input type="checkbox" name="permissions[]" value="<?php echo $code; ?>" class="role-perm-checkbox" style="width: 16px; height: 16px; cursor: pointer;">
+                                <span><?php echo htmlspecialchars($name); ?></span>
                             </label>
                         <?php endforeach; ?>
                     </div>
                 </div>
 
-                <!-- Mô tả -->
                 <div class="form-group" style="margin-bottom: 20px;">
-                    <label class="form-label" for="role_description" style="font-weight: 500; display: block; margin-bottom: 6px;">Mô tả chi tiết</label>
-                    <textarea id="role_description" name="role_description" class="form-control" rows="4" placeholder="Nhập các trách nhiệm của vai trò này..." style="resize: vertical; min-height: 80px;"><?php echo htmlspecialchars($post_data['role_description'] ?? ''); ?></textarea>
+                    <label class="form-label" style="font-weight: 600;">Mô tả chi tiết</label>
+                    <textarea id="role_description" name="description" class="form-control" rows="3" placeholder="Nhập các trách nhiệm của vai trò này..."></textarea>
                 </div>
 
                 <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                    <button type="button" id="btn-cancel-edit" class="btn btn-outline" style="display: none; width: 40%; height: 38px;" onclick="cancelEditRole()">
-                        Hủy
-                    </button>
-                    <button type="submit" id="btn-submit-role" class="btn btn-primary" style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 38px;">
-                        <i class="fa-solid fa-plus" id="icon-submit-role"></i> <span id="text-submit-role">Lưu Vai Trò</span>
-                    </button>
+                    <button type="button" onclick="resetRoleForm()" class="btn btn-outline" id="btnCancelRole" style="display: none;">Hủy</button>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="fa-solid fa-floppy-disk me-1"></i> Lưu vai trò</button>
                 </div>
             </form>
         </div>
     </div>
-
 </div>
 
 <script>
-function toggleRoleStatus(roleId, newStatus) {
-    $.ajax({
-        type: 'POST',
-        url: '<?php echo BASE_URL; ?>adminmaster/toggleRoleStatus',
-        data: { role_id: roleId, status: newStatus, csrf_token: '<?php echo $_SESSION["csrf_token"] ?? ""; ?>' },
-        dataType: 'json',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        success: function(data) {
-            if (data.status === 200) { window.location.reload(); }
-            else {
-                var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-                Swal.fire({ icon: 'error', title: 'Lỗi', text: data.error || 'Thao tác thất bại.', background: isDark ? '#1a2332' : '#fff', color: isDark ? '#fff' : '#0f1623' });
-            }
-        }
-    });
+function resetRoleForm() {
+    document.getElementById('roleFormTitle').innerText = 'Thêm Vai Trò Mới';
+    document.getElementById('roleForm').action = '<?php echo BASE_URL; ?>admin/role_add';
+    document.getElementById('role_id').value = '';
+    document.getElementById('role_name').value = '';
+    document.getElementById('role_code').value = '';
+    document.getElementById('role_code').readOnly = false;
+    document.getElementById('role_description').value = '';
+    document.querySelectorAll('.role-perm-checkbox').forEach(cb => cb.checked = false);
+    document.getElementById('btnCancelRole').style.display = 'none';
 }
 
-function editRole(role) {
-    // Cập nhật tiêu đề và trạng thái form
-    $('#form-role-title').text('Sửa Vai Trò: ' + role.role_name);
-    $('#role_id').val(role.role_id);
-    $('#role_name').val(role.role_name);
-    $('#role_description').val(role.role_description);
-    
-    // Uncheck tất cả checkboxes trước
-    $('input[name="role_modules[]"]').prop('checked', false);
-    
-    // Check các module thuộc vai trò này
-    if (role.role_permissions) {
-        var perms = role.role_permissions.split(',');
-        perms.forEach(function(permCode) {
-            $('input[name="role_modules[]"][value="' + permCode.trim() + '"]').prop('checked', true);
-        });
+function editRole(r) {
+    document.getElementById('roleFormTitle').innerText = 'Chỉnh Sửa Vai Trò: ' + r.role_name;
+    document.getElementById('roleForm').action = '<?php echo BASE_URL; ?>admin/role_edit';
+    document.getElementById('role_id').value = r.id;
+    document.getElementById('role_name').value = r.role_name;
+    document.getElementById('role_code').value = r.role_code;
+    if (r.role_code === 'admin') {
+        document.getElementById('role_code').readOnly = true;
+    } else {
+        document.getElementById('role_code').readOnly = false;
     }
-    
-    // Hiện nút Hủy và đổi text nút submit
-    $('#btn-cancel-edit').show();
-    $('#btn-submit-role').css('width', '60%');
-    $('#text-submit-role').text('Cập nhật');
-    $('#icon-submit-role').removeClass('fa-plus').addClass('fa-save');
-    
-    // Cuộn mượt đến form sửa
-    document.getElementById('form-add-role').scrollIntoView({ behavior: 'smooth' });
-}
+    document.getElementById('role_description').value = r.description || '';
 
-function cancelEditRole() {
-    // Reset form về trạng thái Thêm mới
-    $('#form-role-title').text('Thêm Vai Trò Mới');
-    $('#role_id').val('');
-    $('#role_name').val('');
-    $('#role_description').val('');
-    $('input[name="role_modules[]"]').prop('checked', false);
-    
-    // Ẩn nút Hủy và phục hồi width nút submit
-    $('#btn-cancel-edit').hide();
-    $('#btn-submit-role').css('width', '100%');
-    $('#text-submit-role').text('Lưu Vai Trò');
-    $('#icon-submit-role').removeClass('fa-save').addClass('fa-plus');
+    const perms = (r.permissions || '').split(',').map(s => s.trim());
+    document.querySelectorAll('.role-perm-checkbox').forEach(cb => {
+        cb.checked = perms.includes('all') || perms.includes(cb.value);
+    });
+
+    document.getElementById('btnCancelRole').style.display = 'inline-block';
 }
 </script>

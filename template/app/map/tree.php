@@ -214,7 +214,17 @@ $activeMarketId = marketService::currentMarketId();
         <h2 style="margin: 0; font-size: 20px; font-weight: 600; color: var(--text-heading);">Sơ đồ Cây sạp chợ</h2>
         <p style="color: var(--text-muted); font-size: 13px; margin: 4px 0 0;">Tra cứu danh sách sạp trực quan theo mô hình phân cấp Khu - Dãy - Lô.</p>
     </div>
+    <div>
+        <select id="select-active-market-tree" style="font-size:13px; padding:6px 12px; border:1px solid var(--border-color); border-radius:6px; background:var(--bg-surface); cursor:pointer; font-weight:600; color:var(--text-heading);" onchange="location.href='<?php echo BASE_URL; ?>admin/map_tree?market_id=' + this.value;">
+            <?php if (!empty($markets)): foreach ($markets as $m): ?>
+                <option value="<?php echo $m['market_id']; ?>" <?php echo ($m['market_id'] == ($marketId ?? 0)) ? 'selected' : ''; ?>>
+                    <?php echo htmlspecialchars($m['market_name']); ?>
+                </option>
+            <?php endforeach; endif; ?>
+        </select>
+    </div>
 </div>
+
 
 <div class="tree-map-container">
     <!-- CỘT TRÁI: SEARCH VÀ TREE VIEW -->

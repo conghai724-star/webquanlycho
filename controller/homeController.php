@@ -29,16 +29,353 @@ Class homeController Extends baseController
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
 
-	public function index()
+    private function showFrontend($viewName, $activePage = 'home') {
+
+        global $db;
+        $this->view->data['activePage'] = $activePage;
+        if (!isset($this->view->data['settings'])) {
+            $settings = [];
+            try {
+                $rows = $db->select("SELECT setting_key, setting_value FROM website_settings");
+                foreach ($rows as $r) {
+                    $settings[$r['setting_key']] = $r['setting_value'];
+                }
+            } catch (Exception $e) {}
+            $this->view->data['settings'] = $settings;
+        }
+        $settings = $this->view->data['settings'] ?? [];
+        include __SITE_PATH . '/template/frontend/layouts/header.php';
+        include __SITE_PATH . '/template/frontend/layouts/navbar.php';
+        $this->view->show("home/" . $viewName);
+        include __SITE_PATH . '/template/frontend/layouts/footer.php';
+    }
+
+
+    public function index()
     {
-        
+        global $db;
+
+        // 1. Thống kê lượt truy cập (View counter)
+        try {
+            $db->query("UPDATE website_stats SET stat_value = stat_value + 1 WHERE stat_key = 'total_views'");
+            $viewsRow = $db->selectOne("SELECT stat_value FROM website_stats WHERE stat_key = 'total_views'");
+            $this->view->data['total_views'] = $viewsRow ? $viewsRow['stat_value'] : 3541;
+        } catch (Exception $e) {
+            $this->view->data['total_views'] = 3541;
+        }
+
+        // 2. Lấy danh sách banner trượt Trang chủ
+        try {
+            $this->view->data['banners'] = $db->select("SELECT * FROM website_banners WHERE banner_status = 1 AND banner_page IN ('home', 'all') ORDER BY banner_order ASC, id DESC");
+        } catch (Exception $e) {
+            $this->view->data['banners'] = [];
+        }
+
+
+        // 3. Lấy 3 tin tức/thông báo mới nhất
+        try {
+            $this->view->data['posts'] = $db->select("SELECT * FROM website_posts WHERE post_status = 1 ORDER BY created_at DESC LIMIT 3");
+        } catch (Exception $e) {
+            $this->view->data['posts'] = [];
+        }
+
+        // 4. Lấy số liệu thống kê thực tế để hiển thị ở trang chủ
+        try {
+            // Tổng số khu vực (areas)
+            $areasRow = $db->selectOne("SELECT COUNT(*) AS total FROM areas");
+            $this->view->data['total_areas'] = $areasRow ? $areasRow['total'] : 0;
+
+            // Tổng số sạp (stalls)
+            $stallsRow = $db->selectOne("SELECT COUNT(*) AS total FROM stalls");
+            $this->view->data['total_stalls'] = $stallsRow ? $stallsRow['total'] : 0;
+
+            // Tổng tiểu thương hoạt động (traders)
+            $tradersRow = $db->selectOne("SELECT COUNT(*) AS total FROM traders");
+            $this->view->data['total_traders'] = $tradersRow ? $tradersRow['total'] : 0;
+        } catch (Exception $e) {
+            $this->view->data['total_areas'] = 0;
+            $this->view->data['total_stalls'] = 0;
+            $this->view->data['total_traders'] = 0;
+        }
+
+        $this->showFrontend('index', 'home');
     }
     public function introduce(){
-        $this->view->show("gioi-thieu");
+        $this->about();
     }
    
     public function guidelines(){
-        $this->view->show("huong-dan");
+        $this->map_tree();
+    }
+
+    public function about() {
+        global $db;
+        try {
+            $this->view->data['banners'] = $db->select("SELECT * FROM website_banners WHERE banner_status = 1 AND banner_page IN ('about', 'all') ORDER BY banner_order ASC");
+        } catch (Exception $e) {
+            $this->view->data['banners'] = [];
+        }
+
+        try {
+            $sections = $db->select("SELECT * FROM website_about_sections WHERE status = 1 ORDER BY section_order ASC, id ASC");
+            $this->view->data['about_sections'] = $sections;
+        } catch (Exception $e) {
+            $this->view->data['about_sections'] = [];
+        }
+
+        $this->showFrontend('about', 'about');
+    }
+
+    /**
+     * Hiển thị trang Đăng ký Thuê Sạp và xử lý nộp hồ sơ
+     */
+    public function register() {
+        global $db;
+        $success = false;
+        $error = '';
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $fullname = trim($_POST['fullname'] ?? '');
+            $phone = trim($_POST['phone'] ?? '');
+            $email = trim($_POST['email'] ?? '');
+            $cccd = trim($_POST['cccd'] ?? '');
+            $stallCode = trim($_POST['stall_code'] ?? '');
+            $businessItem = trim($_POST['business_item'] ?? $_POST['business_line'] ?? '');
+            $note = trim($_POST['note'] ?? '');
+            $areaName = trim($_POST['area_name'] ?? '');
+            $areaSize = trim($_POST['area_size'] ?? $_POST['area'] ?? '');
+
+            if (!empty($areaName) || !empty($areaSize)) {
+                $extraInfo = "\n[Thông tin sạp]: Khu vực: $areaName | Sạp: $stallCode | Diện tích: {$areaSize}m²";
+                $note = trim($note . $extraInfo);
+            }
+
+            if (!empty($fullname) && !empty($phone)) {
+                $db->query("
+                    INSERT INTO stall_registrations (fullname, phone, email, cccd, stall_code, business_item, note, status)
+                    VALUES (:fullname, :phone, :email, :cccd, :stall_code, :business_item, :note, 'pending')
+                ", [
+                    'fullname' => $fullname,
+                    'phone' => $phone,
+                    'email' => $email,
+                    'cccd' => $cccd,
+                    'stall_code' => $stallCode,
+                    'business_item' => $businessItem,
+                    'note' => $note
+                ]);
+                $success = true;
+            } else {
+                $error = 'Vui lòng điền đầy đủ Họ tên và Số điện thoại.';
+            }
+        }
+
+        // Lấy danh sách các khu vực CÒN SẠP TRỐNG (stall_status_id = 3)
+        $areas = [];
+        try {
+            $areas = $db->select("
+                SELECT a.area_id, a.area_name, a.area_description,
+                       COUNT(s.stall_id) AS empty_count
+                FROM areas a
+                INNER JOIN stalls s ON a.area_id = s.stall_area_id
+                WHERE s.stall_status_id = 3
+                GROUP BY a.area_id, a.area_name, a.area_description
+                HAVING empty_count > 0
+                ORDER BY a.area_id ASC
+            ");
+        } catch (Exception $e) {}
+
+        // Lấy danh sách các sạp CÒN TRỐNG (stall_status_id = 3)
+        $stalls = [];
+        try {
+            $stalls = $db->select("
+                SELECT s.stall_id, s.stall_code, s.stall_area_id, s.stall_area_size, s.stall_base_price, s.stall_status_id,
+                       COALESCE(ss.status_name, 'Trống') AS status_name
+                FROM stalls s
+                LEFT JOIN system_statuses ss ON s.stall_status_id = ss.status_id
+                WHERE s.stall_status_id = 3
+                ORDER BY s.stall_area_id ASC, s.stall_code ASC
+            ");
+        } catch (Exception $e) {}
+
+
+        $this->view->data['areas'] = $areas;
+        $this->view->data['stalls'] = $stalls;
+        $this->view->data['success'] = $success;
+        $this->view->data['error'] = $error;
+
+        $this->showFrontend('register', 'register');
+    }
+
+    /**
+     * Tiếp nhận Đăng ký Thuê Sạp từ Website công khai (API/AJAX Fallback)
+     */
+    public function submit_registration() {
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            global $db;
+            $fullname = trim($_POST['fullname'] ?? '');
+            $phone = trim($_POST['phone'] ?? '');
+            $email = trim($_POST['email'] ?? '');
+            $cccd = trim($_POST['cccd'] ?? '');
+            $businessItem = trim($_POST['business_item'] ?? '');
+            $note = trim($_POST['note'] ?? '');
+
+            if (!empty($fullname) && !empty($phone)) {
+                $db->query("
+                    INSERT INTO stall_registrations (fullname, phone, email, cccd, business_item, note, status)
+                    VALUES (:fullname, :phone, :email, :cccd, :business_item, :note, 'pending')
+                ", [
+                    'fullname' => $fullname,
+                    'phone' => $phone,
+                    'email' => $email,
+                    'cccd' => $cccd,
+                    'business_item' => $businessItem,
+                    'note' => $note
+                ]);
+                $_SESSION['flash_success'] = 'Gửi yêu cầu đăng ký thuê sạp thành công! BQL sẽ liên hệ lại với quý khách.';
+            } else {
+                $_SESSION['flash_error'] = 'Vui lòng nhập đầy đủ họ tên và số điện thoại.';
+            }
+        }
+        header('Location: ' . BASE_URL . 'home/index');
+        exit();
+    }
+
+    /**
+     * Tiếp nhận Khiếu nại / Góp ý từ Website công khai
+     */
+    public function submit_feedback() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            global $db;
+            $fullname = trim($_POST['fullname'] ?? '');
+            $phone = trim($_POST['phone'] ?? '');
+            $email = trim($_POST['email'] ?? '');
+            $type = in_array($_POST['type'] ?? '', ['feedback', 'complaint']) ? $_POST['type'] : 'feedback';
+            $title = trim($_POST['title'] ?? '');
+            $content = trim($_POST['content'] ?? '');
+
+            if (!empty($title) && !empty($content)) {
+                $db->query("
+                    INSERT INTO website_feedbacks (type, title, fb_fullname, fb_phone, fb_email, fb_content, fb_status)
+                    VALUES (:type, :title, :fullname, :phone, :email, :content, 1)
+                ", [
+                    'type' => $type,
+                    'title' => $title,
+                    'fullname' => $fullname,
+                    'phone' => $phone,
+                    'email' => $email,
+                    'content' => $content
+                ]);
+                $_SESSION['flash_success'] = 'Cảm ơn quý khách đã gửi ý kiến phản ánh / đóng góp cho BQL!';
+            } else {
+                $_SESSION['flash_error'] = 'Vui lòng nhập đầy đủ tiêu đề và nội dung phản ánh.';
+            }
+        }
+        header('Location: ' . BASE_URL . 'home/contact');
+        exit();
+    }
+
+
+    public function map() {
+        global $db;
+        include_once __SITE_PATH . '/model/mapModel.php';
+        include_once __SITE_PATH . '/model/marketModel.php';
+        $mapModel = new mapModel();
+        $marketModel = new marketModel();
+        $marketId = marketService::currentMarketId();
+        
+        $this->view->data['elements'] = $mapModel->getElements();
+        $this->view->data['market'] = $marketModel->getById($marketId);
+        
+        // Lấy danh sách Phân khu/Khu vực để phục vụ bộ lọc giống admin
+        $this->view->data['areas'] = $db->select("SELECT area_id, area_name, area_description FROM areas ORDER BY area_name ASC");
+        
+        // Lấy danh sách Ngành hàng kinh doanh để phục vụ bộ lọc giống admin
+        $this->view->data['businessLines'] = $db->select("SELECT line_id, line_name FROM business_lines ORDER BY line_name ASC");
+
+        $this->showFrontend('map', 'map');
+    }
+
+    public function map_tree() {
+        $this->showFrontend('tree', 'map_tree');
+    }
+
+    public function traders() {
+        global $db;
+        $isLoggedIn = $this->helper->isLoggedIn();
+        
+        $search = isset($_GET['search']) ? trim((string)$_GET['search']) : '';
+        $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+        $limit = 12;
+        $offset = ($page - 1) * $limit;
+
+        $whereClause = "";
+        $queryParams = [];
+        if ($search !== '') {
+            $whereClause = " WHERE t.trader_fullname LIKE :search OR t.trader_code LIKE :search OR bl.line_name LIKE :search ";
+            $queryParams['search'] = '%' . $search . '%';
+        }
+
+        // Count total traders matching search
+        try {
+            $countSql = "SELECT COUNT(*) AS total FROM traders t LEFT JOIN business_lines bl ON t.trader_business_line_id = bl.line_id" . $whereClause;
+            if ($search !== '') {
+                $totalRow = $db->selectOne($countSql, $queryParams);
+            } else {
+                $totalRow = $db->selectOne($countSql);
+            }
+            $totalTraders = $totalRow ? (int)$totalRow['total'] : 0;
+        } catch (Exception $e) {
+            $totalTraders = 0;
+        }
+
+        $totalPages = ceil($totalTraders / $limit);
+        if ($page > $totalPages && $totalPages > 0) {
+            $page = $totalPages;
+            $offset = ($page - 1) * $limit;
+        }
+
+        // Fetch paginated traders
+        try {
+            $sql = "SELECT t.trader_code, t.trader_fullname AS fullname, t.trader_phone AS phone, t.trader_address AS address, bl.line_name AS business_line_name
+                FROM traders t
+                LEFT JOIN business_lines bl ON t.trader_business_line_id = bl.line_id" . 
+                $whereClause . "
+                ORDER BY t.trader_fullname ASC 
+                LIMIT $limit OFFSET $offset";
+            
+            if ($search !== '') {
+                $traders = $db->select($sql, $queryParams);
+            } else {
+                $traders = $db->select($sql);
+            }
+        } catch (Exception $e) {
+            $traders = [];
+        }
+
+        if (!$isLoggedIn) {
+            foreach ($traders as &$trader) {
+                if (!empty($trader['phone'])) {
+                    $trader['phone'] = substr($trader['phone'], 0, 4) . ' *** ***';
+                } else {
+                    $trader['phone'] = 'Chưa cập nhật';
+                }
+                $trader['address'] = 'Đăng nhập để xem';
+            }
+        }
+        
+        $this->view->data['traders'] = $traders;
+        $this->view->data['isLoggedIn'] = $isLoggedIn;
+        $this->view->data['currentPage'] = $page;
+        $this->view->data['totalPages'] = $totalPages;
+        $this->view->data['totalTraders'] = $totalTraders;
+        $this->view->data['searchQuery'] = $search;
+        $this->showFrontend('traders', 'traders');
+    }
+
+    public function login() {
+        header("Location: " . BASE_URL . "login");
+        exit();
     }
     public function unverified_account()
     {
@@ -315,9 +652,39 @@ Class homeController Extends baseController
         $this->view->data['online_meetings'] = is_array($meetings) ? $meetings : array();
         $this->view->show("san-viec-lam-online");
     }
-    public function contact(){
-        $this->view->show("lien-he");
+    public function contact() {
+        global $db;
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $fullname = isset($_POST['fullname']) ? trim((string)$_POST['fullname']) : '';
+            $phone = isset($_POST['phone']) ? trim((string)$_POST['phone']) : '';
+            $email = isset($_POST['email']) ? trim((string)$_POST['email']) : '';
+            $title = isset($_POST['title']) ? trim((string)$_POST['title']) : '';
+            $type = in_array($_POST['type'] ?? '', ['feedback', 'complaint', 'other']) ? $_POST['type'] : 'feedback';
+            $content = isset($_POST['content']) ? trim((string)$_POST['content']) : '';
+
+
+            if ($fullname === '' || $phone === '' || $content === '') {
+                $this->view->data['error'] = 'Vui lòng điền đầy đủ các thông tin bắt buộc (*).';
+            } else {
+                try {
+                    $db->query("INSERT INTO `website_feedbacks` (`type`, `title`, `fb_fullname`, `fb_phone`, `fb_email`, `fb_content`, `fb_status`, `created_at`) 
+                                VALUES (:type, :title, :fullname, :phone, :email, :content, 1, NOW())", [
+                        'type' => $type,
+                        'title' => $title,
+                        'fullname' => $fullname,
+                        'phone' => $phone,
+                        'email' => $email === '' ? null : $email,
+                        'content' => $content
+                    ]);
+                    $this->view->data['success'] = true;
+                } catch (Exception $e) {
+                    $this->view->data['error'] = 'Có lỗi xảy ra khi gửi phản ánh. Vui lòng thử lại sau.';
+                }
+            }
+        }
+        $this->showFrontend('contact', 'contact');
     }
+
     public function events($para = array()){
         global $db;
         $detailId = is_array($para) && isset($para[1]) ? intval($para[1]) : 0;
@@ -441,12 +808,45 @@ Class homeController Extends baseController
         echo json_encode(array('status' => 'error', 'message' => 'Dữ liệu không hợp lệ.'));
         exit();
     }
-    public function register(){
+
+    public function posts() {
+
+
         global $db;
-        $db->query("SELECT * FROM hicrm_employers ORDER BY created_at DESC");
-        $company = $db->fetch_object();
-        $this->view->data['company'] = $company;
-        $this->view->show("dang-ky");
+        try {
+            $this->view->data['posts'] = $db->select("SELECT * FROM website_posts WHERE post_status = 1 ORDER BY created_at DESC");
+        } catch (Exception $e) {
+            $this->view->data['posts'] = [];
+        }
+        $this->showFrontend('posts', 'posts');
+    }
+
+    public function post_detail($args) {
+        global $db;
+        $argsVal = array_values($args);
+        $slug = isset($argsVal[0]) ? trim((string)$argsVal[0]) : '';
+        if ($slug === '') {
+            header("Location: " . BASE_URL);
+            exit();
+        }
+
+        try {
+            $post = $db->selectOne("SELECT * FROM website_posts WHERE post_slug = :slug AND post_status = 1", ['slug' => $slug]);
+            if (!$post) {
+                header("Location: " . BASE_URL);
+                exit();
+            }
+            $this->view->data['post'] = $post;
+            $this->view->data['title'] = htmlspecialchars($post['post_title']) . ' — Cổng thông tin Chợ';
+            
+            // Get other recent posts
+            $recentPosts = $db->select("SELECT * FROM website_posts WHERE post_slug != :slug AND post_status = 1 ORDER BY created_at DESC LIMIT 3", ['slug' => $slug]);
+            $this->view->data['recentPosts'] = $recentPosts ? $recentPosts : [];
+        } catch (Exception $e) {
+            header("Location: " . BASE_URL);
+            exit();
+        }
+        $this->showFrontend('post_detail', 'posts');
     }
     private function currentForgotPasswordUser()
     {

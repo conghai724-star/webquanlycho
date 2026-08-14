@@ -1,82 +1,63 @@
 <?php
 /**
- * Controller xử lý các trang quản trị của Ban Quản Lý
+ * Controller xử lý Quản trị Trang Web, Biên tập Bản đồ số & Các phân hệ Nội dung Web
+ * Phân quyền module chuẩn hệ thống Admin cũ (RBAC)
  */
 Class adminController extends baseController {
+
     public function __construct($registry) {
         parent::__construct($registry);
 
-        // Bảo vệ toàn bộ các action trong adminController (trừ login)
         $action = isset($this->registry->router->action) ? $this->registry->router->action : '';
-        if ($action !== 'login') {
-            if (!$this->helper->isLoggedIn() || !in_array($this->helper->get('actor_code'), ['admin', 'admin_market', 'super_market'])) {
-                header('Location: ' . BASE_URL . 'login');
+
+        // Không bảo vệ trang đăng nhập
+        if ($action === 'login') {
+            return;
+        }
+
+        // 1. Kiểm tra đăng nhập Web Admin
+        if (!session::isWebLoggedIn()) {
+            header('Location: ' . BASE_URL . 'admin/login');
+            exit();
+        }
+
+        // 2. Phân quyền chi tiết theo Module chuẩn hệ thống cũ
+        $actionModuleMap = [
+            'index'               => 'dashboard',
+            'dashboard'           => 'dashboard',
+            'map_editor'          => 'map_editor',
+            'map_tree'            => 'map_tree',
+            
+            'banners'             => 'banners',
+            'banner_add'          => 'banners',
+            'banner_edit'         => 'banners',
+            'banner_delete'       => 'banners',
+            
+            'registrations'       => 'registrations',
+            'registration_status' => 'registrations',
+            'registration_delete' => 'registrations',
+            
+            'feedbacks'           => 'feedbacks',
+            'feedback_status'     => 'feedbacks',
+            'feedback_delete'     => 'feedbacks',
+            
+            'users'               => 'users',
+            'user_add'            => 'users',
+            'user_edit'           => 'users',
+            'user_delete'         => 'users',
+            
+            'roles'               => 'roles',
+            'permissions'         => 'roles'
+        ];
+
+        if (isset($actionModuleMap[$action])) {
+            $requiredModule = $actionModuleMap[$action];
+            if (!session::hasWebModule($requiredModule)) {
+                http_response_code(403);
+                $this->view->app('errors/403', [
+                    'title' => '403 Forbidden - Bạn không có quyền truy cập chức năng này'
+                ]);
                 exit();
-            }
-
-            // Phân quyền chi tiết cho tài khoản nhân viên thường (actor_code == 'admin')
-            if ($this->helper->get('actor_code') === 'admin') {
-                // Bản đồ ánh xạ Action -> Module Code tương ứng
-                $actionModuleMap = [
-                    'index'                 => 'dashboard',
-                    'dashboard'             => 'dashboard',
-                    'profile'               => 'profile',
-                    'change_password'       => 'profile',
-                    
-                    'stalls'                => 'stall',
-                    'stall_add'             => 'stall',
-                    'stall_edit'            => 'stall',
-                    'map_editor'            => 'stall',
-                    
-                    'map_tree'              => 'map_tree',
-                    
-                    'traders'               => 'trader',
-                    'trader_add'            => 'trader',
-                    'trader_edit'           => 'trader',
-                    'trader_export_excel'   => 'trader',
-                    'trader_export_pdf'     => 'trader',
-                    
-                    'contracts'             => 'contract',
-                    'contract_add'          => 'contract',
-                    'contract_print'        => 'contract',
-                    
-                    'utilities'             => 'utilities',
-                    'utility_add'           => 'utilities',
-                    
-                    'bills'                 => 'finance',
-                    'bill_add'              => 'finance',
-                    'transactions'          => 'finance',
-                    'transaction_add'       => 'finance',
-                    'income'                => 'finance',
-                    'expense'               => 'finance',
-                    'income_categories'     => 'finance',
-                    'income_report'         => 'finance',
-                    'export_s07x'           => 'finance',
-                    
-                    'foodsafety'            => 'foodsafety',
-                    'foodsafety_add'        => 'foodsafety',
-                    'foodsafety_edit'       => 'foodsafety',
-                    
-                    'categories'            => 'category',
-                ];
-
-                if (isset($actionModuleMap[$action])) {
-                    $requiredModule = $actionModuleMap[$action];
-                    if (!marketService::checkModuleAccess($requiredModule)) {
-                        // Nếu gọi qua AJAX, trả về JSON 403, ngược lại hiển thị trang lỗi 403
-                        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
-                            header('Content-Type: application/json');
-                            http_response_code(403);
-                            echo json_encode(['error' => 'Bạn không có quyền truy cập chức năng này.']);
-                        } else {
-                            http_response_code(403);
-                            $this->view->app('errors/403', [
-                                'title' => '403 Forbidden - Truy cập bị từ chối'
-                            ]);
-                        }
-                        exit();
-                    }
-                }
             }
         }
     }
@@ -84,1482 +65,1187 @@ Class adminController extends baseController {
     public function index() {
         $this->dashboard();
     }
-    
-    public function login()
-	{ 
-		// Nếu đã đăng nhập đúng role, chuyển hướng thẳng vào dashboard tương ứng
-		if ($this->helper->isLoggedIn()) {
-			$actorCode = $this->helper->get('actor_code');
-			if (in_array($actorCode, ['super_market', 'admin_market'])) {
-				header('Location: ' . BASE_URL . 'system/dashboard');
-				exit();
-			} elseif ($actorCode === 'admin') {
-				header('Location: ' . BASE_URL . 'admin/dashboard');
-				exit();
-			}
-		}
-		$this->view->app("auth/login");
-	}
 
+    /**
+     * Trang Dashboard tổng quan Web Admin
+     */
     public function dashboard() {
-        $marketId = $this->helper->currentMarketId();
-        if ($marketId === 0 && ($this->helper->get('actor_code') === 'super_market' || $this->helper->get('actor_code') === 'admin_market')) {
-            header('Location: ' . BASE_URL . 'system/dashboard');
+        $db = database::getInstance();
+
+        $totalWebUsers = 0;
+        $totalMapElements = 0;
+        $totalBanners = 0;
+        $pendingRegistrations = 0;
+        $newFeedbacks = 0;
+
+        try {
+            $userStats = $db->selectOne("SELECT COUNT(*) as total FROM web_users");
+            $totalWebUsers = (int)($userStats['total'] ?? 0);
+        } catch (Exception $e) {}
+
+        try {
+            $mapStats = $db->selectOne("SELECT COUNT(*) as total FROM market_map_elements");
+            $totalMapElements = (int)($mapStats['total'] ?? 0);
+        } catch (Exception $e) {}
+
+        try {
+            $bannerStats = $db->selectOne("SELECT COUNT(*) as total FROM website_banners WHERE banner_status = 1");
+            $totalBanners = (int)($bannerStats['total'] ?? 0);
+        } catch (Exception $e) {}
+
+        try {
+            $regStats = $db->selectOne("SELECT COUNT(*) as total FROM stall_registrations WHERE status = 'pending'");
+            $pendingRegistrations = (int)($regStats['total'] ?? 0);
+        } catch (Exception $e) {}
+
+        try {
+            $fbStats = $db->selectOne("SELECT COUNT(*) as total FROM website_feedbacks WHERE status = 'new' OR fb_status = 1");
+            $newFeedbacks = (int)($fbStats['total'] ?? 0);
+        } catch (Exception $e) {}
+
+        $this->view->app('dashboard/index', [
+            'title' => 'Tổng quan Quản trị Web & Bản đồ số',
+            'stats' => [
+                'total_web_users' => $totalWebUsers,
+                'total_map_elements' => $totalMapElements,
+                'total_banners' => $totalBanners,
+                'pending_registrations' => $pendingRegistrations,
+                'new_feedbacks' => $newFeedbacks
+            ]
+        ]);
+    }
+
+    /**
+     * Trang Đăng nhập Web Admin
+     */
+    public function login() {
+        if (session::isWebLoggedIn()) {
+            header('Location: ' . BASE_URL . 'admin/dashboard');
             exit();
         }
-        $db = database::getInstance();
-        
-        $stallStats = $db->selectOne("
-            SELECT COUNT(*) as total_stalls,
-                   SUM(CASE WHEN ss.status_code = 'rented' THEN 1 ELSE 0 END) as rented_stalls,
-                   SUM(CASE WHEN ss.status_code = 'empty' THEN 1 ELSE 0 END) as empty_stalls,
-                   SUM(CASE WHEN ss.status_code = 'repairing' THEN 1 ELSE 0 END) as repairing_stalls
-            FROM stalls s
-            JOIN areas a ON s.stall_area_id = a.area_id
-            JOIN system_statuses ss ON s.stall_status_id = ss.status_id
-            WHERE a.area_market_id = :market_id AND s.stall_status_id != 99
-        ", ['market_id' => $marketId]);
-        
-        $traderStats = $db->selectOne("
-            SELECT COUNT(DISTINCT t.trader_id) as total_traders
-            FROM traders t
-            JOIN contracts c ON c.contract_trader_id = t.trader_id
-            JOIN stalls s ON c.contract_stall_id = s.stall_id
-            JOIN areas a ON s.stall_area_id = a.area_id
-            JOIN system_statuses cs ON c.contract_status_id = cs.status_id
-            WHERE a.area_market_id = :market_id AND cs.status_code = 'active'
-        ", ['market_id' => $marketId]);
-        
-        $revenueStats = $db->selectOne("
-            SELECT SUM(b.bill_total_amount) as total_revenue
-            FROM bills b
-            JOIN contracts c ON b.bill_contract_id = c.contract_id
-            JOIN stalls s ON c.contract_stall_id = s.stall_id
-            JOIN areas a ON s.stall_area_id = a.area_id
-            WHERE a.area_market_id = :market_id 
-              AND b.bill_status = 'paid'
-              AND DATE_FORMAT(b.bill_invoice_date, '%Y-%m') = DATE_FORMAT(CURRENT_DATE(), '%Y-%m')
-        ", ['market_id' => $marketId]);
 
-        $stats = [
-            'total_stalls' => (int)($stallStats['total_stalls'] ?? 0),
-            'rented_stalls' => (int)($stallStats['rented_stalls'] ?? 0),
-            'empty_stalls' => (int)($stallStats['empty_stalls'] ?? 0),
-            'repairing_stalls' => (int)($stallStats['repairing_stalls'] ?? 0),
-            'total_traders' => (int)($traderStats['total_traders'] ?? 0),
-            'revenue_this_month' => (float)($revenueStats['total_revenue'] ?? 0),
-        ];
+        $error = '';
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $username = trim($_POST['username'] ?? $_POST['email'] ?? '');
+            $password = $_POST['password'] ?? '';
 
-        $this->view('dashboard/index', [
-            'title' => 'Bảng Điều Khiển',
-            'stats' => $stats
-        ]);
-        
-    }
+            if (empty($username) || empty($password)) {
+                $error = 'Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.';
+            } else {
+                $db = database::getInstance();
+                $user = null;
+                try {
+                    $user = $db->selectOne("SELECT * FROM web_users WHERE (username = :u OR email = :u) AND status = 1", ['u' => $username]);
+                } catch (Exception $e) {}
 
-    /**
-     * Trang tùy biến chủ đề giao diện (Theme generator)
-     */
-    public function theme() {
-        $this->view('backend/setting/theme', [
-            'title' => 'Tùy Biến Giao Diện'
-        ]);
-    }
+                if ($user) {
+                    $storedHash = $user['password'];
+                    $passwordOk = (strlen($storedHash) === 32) ? (md5($password) === $storedHash) : (password_verify($password, $storedHash) || md5($password) === $storedHash);
 
-    /**
-     * Phân hệ Quản lý Sạp chợ
-     */
-    public function stalls() {
-        $areaId = $_GET['area_id'] ?? $_GET['stall_area_id'] ?? '';
-        $status = $_GET['status'] ?? '';
-        $search = $_GET['q'] ?? '';
-
-        $stallModel = new stallModel();
-        
-        $stalls = [];
-        $areas = [];
-        $statuses = [];
-        $stats = [
-            'total' => 0,
-            'rented' => 0,
-            'empty' => 0,
-            'repairing' => 0,
-            'locked' => 0
-        ];
-
-        $marketId = marketService::currentMarketId();
-
-        try {
-            $stalls = $stallModel->getAll($areaId ?: null, $status ?: null, $search ?: null, $marketId);
-            $areas = $stallModel->getAreas($marketId);
-            $statuses = $stallModel->getStallStatuses();
-
-            // Lấy toàn bộ sạp của chợ này để tính thống kê
-            $allStalls = $stallModel->getAll(null, null, null, $marketId);
-            $stats['total'] = count($allStalls);
-            foreach ($allStalls as $s) {
-                if ($s['status'] === 'rented') $stats['rented']++;
-                elseif ($s['status'] === 'empty') $stats['empty']++;
-                elseif ($s['status'] === 'repairing') $stats['repairing']++;
-                elseif ($s['status'] === 'locked') $stats['locked']++;
+                    if ($passwordOk) {
+                        $_SESSION['web_user'] = [
+                            'id' => $user['id'],
+                            'username' => $user['username'],
+                            'fullname' => $user['fullname'],
+                            'email' => $user['email'],
+                            'phone' => $user['phone'],
+                            'role' => $user['role'],
+                            'permissions' => $user['permissions'] ?? ''
+                        ];
+                        header('Location: ' . BASE_URL . 'admin/dashboard');
+                        exit();
+                    }
+                }
+                $error = 'Thông tin đăng nhập không chính xác hoặc tài khoản bị khóa.';
             }
-        } catch (Exception $e) {
-            error_log('[stalls] EXCEPTION: ' . $e->getMessage());
         }
 
-        // Phân trang
-        $limit = 15;
-        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-        if ($page < 1) $page = 1;
-        $totalRecords = count($stalls);
-        $totalPages = ceil($totalRecords / $limit);
-        if ($page > $totalPages && $totalPages > 0) $page = $totalPages;
-        $offset = ($page - 1) * $limit;
-        $paginatedStalls = array_slice($stalls, $offset, $limit);
-
-        $this->view('backend/stall/index', [
-            'title' => 'Quản Lý Sạp Chợ',
-            'stalls' => $paginatedStalls,
-            'areas' => $areas,
-            'statuses' => $statuses,
-            'stats' => $stats,
-            'search' => $search,
-            'area_filter' => $areaId,
-            'status_filter' => $status,
-            'page' => $page,
-            'totalPages' => $totalPages,
-            'totalRecords' => $totalRecords
+        $this->view->app('auth/login', [
+            'title' => 'Đăng nhập Quản trị Web',
+            'error' => $error
         ]);
     }
 
     /**
-     * Phân hệ Hợp đồng thuê sạp
+     * Đăng xuất Web Admin
      */
-    public function contracts() {
-        $status = $_GET['status'] ?? '';
-        $search = $_GET['q'] ?? '';
-        $contractModel = new contractModel();
-        
-        $contracts = [];
-        $statuses = [];
-        
-        $marketId = marketService::currentMarketId();
-
-        try {
-            $contracts = $contractModel->getAll($status ?: null, $search ?: null, $marketId);
-            $statuses = $contractModel->getContractStatuses();
-        } catch (Exception $e) {
-            error_log('[contracts] EXCEPTION: ' . $e->getMessage());
-        }
-
-        // Phân trang
-        $limit = 15;
-        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-        if ($page < 1) $page = 1;
-        $totalRecords = count($contracts);
-        $totalPages = ceil($totalRecords / $limit);
-        if ($page > $totalPages && $totalPages > 0) $page = $totalPages;
-        $offset = ($page - 1) * $limit;
-        $paginatedContracts = array_slice($contracts, $offset, $limit);
-
-        $this->view('backend/contract/index', [
-            'title' => 'Hợp Đồng Thuê Sạp',
-            'contracts' => $paginatedContracts,
-            'statuses' => $statuses,
-            'status_filter' => $status,
-            'search' => $search,
-            'page' => $page,
-            'totalPages' => $totalPages,
-            'totalRecords' => $totalRecords
-        ]);
-    }
-
-    /**
-     * Phân hệ Ghi số Điện & Nước
-     */
-    public function utilities() {
-        $readings = [
-            ['stall_id' => 1, 'period' => '06/2026', 'stall_code' => 'SẠP-A01', 'old_electric' => 1540, 'new_electric' => 1690, 'old_water' => 240, 'new_water' => 255, 'recorded_date' => '25/06/2026', 'recorder' => 'Lê Thị Bình'],
-            ['stall_id' => 2, 'period' => '06/2026', 'stall_code' => 'SẠP-B01', 'old_electric' => 3200, 'new_electric' => 3450, 'old_water' => 410, 'new_water' => 432, 'recorded_date' => '25/06/2026', 'recorder' => 'Lê Thị Bình'],
-        ];
-
-        $this->view('backend/finance/utilities', [
-            'title' => 'Chỉ Số Điện & Nước',
-            'readings' => $readings
-        ]);
-    }
-
-    /**
-     * Phân hệ Hóa đơn dịch vụ
-     */
-    public function bills() {
-        $bills = [
-            ['stall_id' => 1, 'bill_code' => 'HĐ-0626-001', 'stall_code' => 'SẠP-A01', 'trader_name' => 'Nguyễn Thị Thu Hà', 'period' => '06/2026', 'bill_total_amount' => 3650000, 'bill_due_date' => '10/07/2026', 'bill_status' => 'unpaid'],
-            ['stall_id' => 2, 'bill_code' => 'HĐ-0626-002', 'stall_code' => 'SẠP-B01', 'trader_name' => 'Trần Văn Hoàng', 'period' => '06/2026', 'bill_total_amount' => 5480000, 'bill_due_date' => '10/07/2026', 'bill_status' => 'paid'],
-        ];
-
-        $this->view('backend/finance/bills', [
-            'title' => 'Hóa Đơn Dịch Vụ',
-            'bills' => $bills
-        ]);
-    }
-
-    /**
-     * Phân hệ Phiếu thu - Phiếu chi
-     */
-    public function transactions() {
-        $transactions = [
-            ['stall_id' => 1, 'transaction_code' => 'PT-0001', 'type' => 'receipt', 'target' => 'Trần Văn Hoàng (SẠP-B01)', 'amount' => 5480000, 'note' => 'Thu tiền hóa đơn tháng 06/2026', 'date' => '28/06/2026', 'creator' => 'Nguyễn Văn An'],
-            ['stall_id' => 2, 'transaction_code' => 'PC-0001', 'type' => 'payment', 'target' => 'Công ty Điện lực Hà Nội', 'amount' => 12500000, 'note' => 'Thanh toán tiền điện tổng của chợ tháng 06/2026', 'date' => '29/06/2026', 'creator' => 'Nguyễn Văn An'],
-        ];
-
-        $this->view('backend/finance/transactions', [
-            'title' => 'Thu - Chi Tài Chính',
-            'transactions' => $transactions
-        ]);
-    }
-
-    public function foodsafety() {
-        $search = $_GET['q'] ?? '';
-        $docType = $_GET['doc_type'] ?? '';
-        $status = $_GET['status'] ?? '';
-        
-        $foodsafetyModel = new foodsafetyModel();
-        $categoryModel = new categoryModel();
-        
-        $certificates = [];
-        $statuses = [];
-        $documentTypes = [];
-
-        $marketId = marketService::currentMarketId();
-
-        try {
-            // Tự động cập nhật trạng thái hết hạn trước khi hiển thị
-            $foodsafetyModel->autoUpdateExpiryStatus();
-            
-            $certificates = $foodsafetyModel->getCertificates(null, $docType ?: null, $status ?: null, $search ?: null, $marketId);
-            $statuses = $foodsafetyModel->getAttpStatuses();
-            $documentTypes = $categoryModel->getItems('document_type');
-        } catch (Exception $e) {
-            error_log('[foodsafety] EXCEPTION: ' . $e->getMessage());
-        }
-
-        // Phân trang
-        $limit = 15;
-        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-        if ($page < 1) $page = 1;
-        $totalRecords = count($certificates);
-        $totalPages = ceil($totalRecords / $limit);
-        if ($page > $totalPages && $totalPages > 0) $page = $totalPages;
-        $offset = ($page - 1) * $limit;
-        $paginatedCertificates = array_slice($certificates, $offset, $limit);
-
-        $this->view('backend/foodsafety/index', [
-            'title' => 'An Toàn Thực Phẩm',
-            'certificates' => $paginatedCertificates,
-            'statuses' => $statuses,
-            'documentTypes' => $documentTypes,
-            'search' => $search,
-            'doc_type_filter' => $docType,
-            'status_filter' => $status,
-            'page' => $page,
-            'totalPages' => $totalPages,
-            'totalRecords' => $totalRecords
-        ]);
-    }
-
-    /**
-     * Phân hệ Quản lý tài khoản & phân quyền
-     */
-    public function users() {
-        header("Location: " . BASE_URL . "system/users");
+    public function logout() {
+        unset($_SESSION['web_user']);
+        header('Location: ' . BASE_URL . 'admin/login');
         exit();
     }
 
-    /**
-     * Thêm Sạp chợ mới (chỉ GET - hiển thị form)
-     */
-    public function stall_add() {
-        $stallModel = new stallModel();
-        $categoryModel = new categoryModel();
-        $areas = [];
-        $statuses = [];
-        $stallTypes = [];
+    // =========================================================================
+    // 1. QUẢN LÝ BẢN ĐỒ SỐ (DIGITAL MAP EDITOR)
+    // =========================================================================
 
-        $marketId = marketService::currentMarketId();
-        $nextStallCode = '';
+    public function map_editor() {
+        $db = database::getInstance();
+
+        // 1. Xác định Chợ hiện tại
+        $marketId = (int)($_GET['market_id'] ?? $_SESSION['active_market_id'] ?? 0);
+
+        $markets = [];
         try {
-            $areas = $stallModel->getAreas($marketId);
-            $statuses = $stallModel->getStallStatuses();
-            $stallTypes = $categoryModel->getItems('stall_type');
+            $markets = $db->select("SELECT market_id, market_name FROM markets WHERE market_status_code != 'deleted' ORDER BY market_name ASC");
+        } catch (Exception $e) {}
 
+        if (empty($marketId) && !empty($markets)) {
+            $marketId = (int)$markets[0]['market_id'];
+        }
+        $_SESSION['active_market_id'] = $marketId;
+
+        $market = null;
+        if ($marketId > 0) {
+            try {
+                $market = $db->selectOne("SELECT * FROM markets WHERE market_id = :id", ['id' => $marketId]);
+            } catch (Exception $e) {}
+        }
+
+        // 2. Lấy danh sách Phân khu & Ngành hàng
+        $areas = [];
+        try {
+            $areas = $db->select("SELECT area_id, area_name, area_block FROM areas WHERE area_market_id = :id ORDER BY area_name ASC", ['id' => $marketId]);
+        } catch (Exception $e) {}
+
+        $businessLines = [];
+        try {
+            $businessLines = $db->select("SELECT line_id, line_name FROM business_lines ORDER BY line_name ASC");
+        } catch (Exception $e) {}
+
+        // 3. Lấy danh sách toàn bộ sạp chợ thuộc chợ này
+        $stalls = [];
+        if ($marketId > 0) {
+            try {
+                $stalls = $db->select("
+                    SELECT s.stall_id, s.stall_code, s.stall_area_size, s.stall_area_id, s.stall_status_id,
+                           s.stall_base_price,
+                           a.area_name, a.area_block, a.area_lot,
+                           COALESCE(s.stall_area_size, 10.0) as area_size,
+                           t.trader_fullname AS trader_name,
+                           ss.status_code, ss.status_name,
+                           mme.element_id
+                    FROM stalls s
+                    LEFT JOIN areas a ON s.stall_area_id = a.area_id
+                    LEFT JOIN system_statuses ss ON s.stall_status_id = ss.status_id
+                    LEFT JOIN contracts c ON c.contract_stall_id = s.stall_id AND c.contract_status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'contract' AND status_code = 'active')
+                    LEFT JOIN traders t ON c.contract_trader_id = t.trader_id
+                    LEFT JOIN market_map_elements mme ON mme.element_stall_id = s.stall_id
+                    WHERE a.area_market_id = :market_id AND (s.stall_status_id IS NULL OR s.stall_status_id != 99)
+                    ORDER BY s.stall_code ASC
+                ", ['market_id' => $marketId]);
+
+            } catch (Exception $e) {}
+        }
+
+        $unmappedStalls = array_values(array_filter($stalls, function($st) {
+            return empty($st['element_id']);
+        }));
+
+        $this->view->app('map/editor', [
+            'title' => 'Biên Tập Bản Đồ Số',
+            'markets' => $markets,
+            'market' => $market,
+            'marketId' => $marketId,
+            'areas' => $areas,
+            'businessLines' => $businessLines,
+            'stalls' => array_values($stalls),
+            'unmappedStalls' => $unmappedStalls
+        ]);
+    }
+
+    public function map_tree() {
+        $db = database::getInstance();
+        $marketId = (int)($_GET['market_id'] ?? $_SESSION['active_market_id'] ?? 0);
+
+        $markets = [];
+        try {
+            $markets = $db->select("SELECT market_id, market_name FROM markets WHERE market_status_code != 'deleted' ORDER BY market_name ASC");
+        } catch (Exception $e) {}
+
+        if (empty($marketId) && !empty($markets)) {
+            $marketId = (int)$markets[0]['market_id'];
+        }
+        $_SESSION['active_market_id'] = $marketId;
+
+        include_once __SITE_PATH . '/model/mapModel.php';
+        $mapModel = new mapModel();
+        $tree = $mapModel->getStallTree();
+
+        $this->view->app('map/tree', [
+            'title' => 'Cây Sơ Đồ Bản Đồ',
+            'markets' => $markets,
+            'marketId' => $marketId,
+            'tree' => $tree
+        ]);
+    }
+
+
+    // =========================================================================
+    // 2. QUẢN LÝ BANNER (HOMEPAGE & INTRODUCE)
+    // =========================================================================
+
+    public function banners() {
+        $db = database::getInstance();
+        $banners = [];
+        try {
+            $banners = $db->select("SELECT * FROM website_banners ORDER BY banner_order ASC, id DESC");
+        } catch (Exception $e) {}
+
+        $this->view->app('banner/index', [
+            'title' => 'Quản Lý Banner Quảng Cáo',
+            'banners' => $banners
+        ]);
+    }
+
+    public function banner_add() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $db = database::getInstance();
-            $market = $db->selectOne("SELECT market_code FROM markets WHERE market_id = :market_id", ['market_id' => $marketId]);
-            if ($market && !empty($market['market_code'])) {
-                $cleanCode = preg_replace('/[^a-zA-Z0-9]/', '', $market['market_code']);
-                $cleanCode = strtoupper($cleanCode);
+            $title = trim($_POST['banner_title'] ?? '');
+            $description = trim($_POST['banner_description'] ?? '');
+            $image = trim($_POST['banner_image'] ?? '');
+            $link = trim($_POST['banner_link'] ?? '');
+            $page = $_POST['banner_page'] ?? 'home';
+            $order = (int)($_POST['banner_order'] ?? 1);
+            $status = (int)($_POST['banner_status'] ?? 1);
 
-                $sqlMax = "SELECT stall_code FROM stalls s 
-                           JOIN areas a ON s.stall_area_id = a.area_id 
-                           WHERE a.area_market_id = :market_id AND s.stall_code LIKE :prefix";
-                $existingStalls = $db->select($sqlMax, [
-                    'market_id' => $marketId,
-                    'prefix' => $cleanCode . '-%'
-                ]);
-
-                $maxNumber = 0;
-                foreach ($existingStalls as $stall) {
-                    $code = $stall['stall_code'];
-                    $parts = explode('-', $code);
-                    $numPart = end($parts);
-                    if (is_numeric($numPart)) {
-                        $val = (int)$numPart;
-                        if ($val > $maxNumber) {
-                            $maxNumber = $val;
-                        }
+            // Xử lý upload tệp ảnh trực tiếp nếu có
+            if (isset($_FILES['banner_file']) && $_FILES['banner_file']['error'] === UPLOAD_ERR_OK) {
+                $tmpName = $_FILES['banner_file']['tmp_name'];
+                $name = basename($_FILES['banner_file']['name']);
+                $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+                $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+                if (in_array($ext, $allowed)) {
+                    $newName = 'banner_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
+                    $targetDir = 'd:/xampp/htdocs/quanlycho.vn/public/uploads/banners/';
+                    if (!file_exists($targetDir)) {
+                        mkdir($targetDir, 0777, true);
+                    }
+                    if (move_uploaded_file($tmpName, $targetDir . $newName)) {
+                        $image = BASE_URL . 'public/uploads/banners/' . $newName;
                     }
                 }
-                $nextNumber = $maxNumber + 1;
-                $nextStallCode = $cleanCode . '-' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
             }
-        } catch (Exception $e) {
-            error_log('[stall_add] EXCEPTION: ' . $e->getMessage());
+
+            if (!empty($title) && !empty($image)) {
+                $db->query("
+                    INSERT INTO website_banners (banner_title, banner_description, banner_image, banner_link, banner_page, banner_order, banner_status)
+                    VALUES (:title, :description, :image, :link, :page, :order, :status)
+                ", [
+                    'title' => $title,
+                    'description' => $description,
+                    'image' => $image,
+                    'link' => $link,
+                    'page' => $page,
+                    'order' => $order,
+                    'status' => $status
+                ]);
+                $_SESSION['flash_success'] = 'Thêm banner mới thành công.';
+            }
+        }
+        header('Location: ' . BASE_URL . 'admin/banners');
+        exit();
+    }
+
+    public function banner_edit() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $db = database::getInstance();
+            $id = (int)($_POST['id'] ?? 0);
+            $title = trim($_POST['banner_title'] ?? '');
+            $description = trim($_POST['banner_description'] ?? '');
+            $image = trim($_POST['banner_image'] ?? '');
+            $link = trim($_POST['banner_link'] ?? '');
+            $page = $_POST['banner_page'] ?? 'home';
+            $order = (int)($_POST['banner_order'] ?? 1);
+            $status = (int)($_POST['banner_status'] ?? 1);
+
+            // Xử lý upload tệp ảnh mới nếu có
+            if (isset($_FILES['banner_file']) && $_FILES['banner_file']['error'] === UPLOAD_ERR_OK) {
+                $tmpName = $_FILES['banner_file']['tmp_name'];
+                $name = basename($_FILES['banner_file']['name']);
+                $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+                $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+                if (in_array($ext, $allowed)) {
+                    $newName = 'banner_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
+                    $targetDir = 'd:/xampp/htdocs/quanlycho.vn/public/uploads/banners/';
+                    if (!file_exists($targetDir)) {
+                        mkdir($targetDir, 0777, true);
+                    }
+                    if (move_uploaded_file($tmpName, $targetDir . $newName)) {
+                        $image = BASE_URL . 'public/uploads/banners/' . $newName;
+                    }
+                }
+            }
+
+            if ($id > 0 && !empty($title) && !empty($image)) {
+                $db->query("
+                    UPDATE website_banners 
+                    SET banner_title = :title, banner_description = :description, banner_image = :image, banner_link = :link, banner_page = :page, banner_order = :order, banner_status = :status
+                    WHERE id = :id
+                ", [
+                    'title' => $title,
+                    'description' => $description,
+                    'image' => $image,
+                    'link' => $link,
+                    'page' => $page,
+                    'order' => $order,
+                    'status' => $status,
+                    'id' => $id
+                ]);
+                $_SESSION['flash_success'] = 'Cập nhật banner thành công.';
+            }
+        }
+        header('Location: ' . BASE_URL . 'admin/banners');
+        exit();
+    }
+
+
+    public function banner_delete($args = []) {
+        $id = (int)($args[1] ?? $_GET['id'] ?? 0);
+        if ($id > 0) {
+            $db = database::getInstance();
+            $db->query("DELETE FROM website_banners WHERE id = :id", ['id' => $id]);
+            $_SESSION['flash_success'] = 'Xóa banner thành công.';
+        }
+        header('Location: ' . BASE_URL . 'admin/banners');
+        exit();
+    }
+
+    public function update_banner_status() {
+        header('Content-Type: application/json; charset=utf-8');
+        $raw = file_get_contents('php://input');
+        $data = json_decode($raw, true);
+
+        $id = (int)($data['id'] ?? 0);
+        $status = (int)($data['status'] ?? 0);
+
+        if ($id <= 0) {
+            echo json_encode(['status' => 400, 'message' => 'ID banner không hợp lệ.']);
+            exit();
         }
 
-        $statusModel = new statusModel();
-        $emptyStatusId = $statusModel->getIdByCode('stall', 'empty');
+        $db = database::getInstance();
+        $db->query("UPDATE website_banners SET banner_status = :status WHERE id = :id", [
+            'status' => $status,
+            'id' => $id
+        ]);
 
-        $this->view('backend/stall/add', [
-            'title'      => 'Khai Báo Sạp Chợ Mới',
-            'data'       => [
-                'stall_area_id' => '', 
-                'stall_code' => $nextStallCode, 
-                'stall_type_id' => '', 
-                'stall_area_size' => '', 
-                'stall_base_price' => '', 
-                'stall_status_id' => $emptyStatusId, 
-                'stall_map_coordinate_x' => '', 
-                'stall_map_coordinate_y' => ''
-            ],
-            'areas'      => $areas,
-            'statuses'   => $statuses,
-            'stallTypes' => $stallTypes
+        echo json_encode(['status' => 200, 'message' => 'Cập nhật trạng thái banner thành công.']);
+        exit();
+    }
+
+    public function about_settings() {
+        $db = database::getInstance();
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $sections = $_POST['sections'] ?? [];
+            $keepIds = [];
+
+            foreach ($sections as $index => $sec) {
+                $id = (int)($sec['id'] ?? 0);
+                $title = trim($sec['title'] ?? '');
+                $content = trim($sec['content'] ?? '');
+                $order = (int)($sec['order'] ?? ($index + 1));
+                $status = isset($sec['status']) ? (int)$sec['status'] : 1;
+
+                if (empty($title)) continue;
+
+                if ($id > 0) {
+                    $db->query("
+                        UPDATE website_about_sections 
+                        SET section_title = :title, section_content = :content, section_order = :order, status = :status
+                        WHERE id = :id
+                    ", [
+                        'title' => $title,
+                        'content' => $content,
+                        'order' => $order,
+                        'status' => $status,
+                        'id' => $id
+                    ]);
+                    $keepIds[] = $id;
+                } else {
+                    $db->query("
+                        INSERT INTO website_about_sections (section_title, section_content, section_order, status)
+                        VALUES (:title, :content, :order, :status)
+                    ", [
+                        'title' => $title,
+                        'content' => $content,
+                        'order' => $order,
+                        'status' => $status
+                    ]);
+                    $newId = $db->lastInsertId();
+                    if ($newId) $keepIds[] = $newId;
+                }
+            }
+
+            // Xóa các mục đã bị gỡ trên giao diện Admin
+            if (!empty($keepIds)) {
+                $inClause = implode(',', array_map('intval', $keepIds));
+                $db->query("DELETE FROM website_about_sections WHERE id NOT IN ($inClause)");
+            }
+
+            $_SESSION['flash_success'] = 'Cập nhật danh sách các mục bài viết Giới thiệu thành công!';
+            header('Location: ' . BASE_URL . 'admin/about_settings');
+            exit();
+        }
+
+        $sections = [];
+        try {
+            $sections = $db->select("SELECT * FROM website_about_sections ORDER BY section_order ASC, id ASC");
+        } catch (Exception $e) {}
+
+        $this->view->app('banner/about_settings', [
+            'title' => 'Quản Lý Các Mục Bài Giới Thiệu Chợ',
+            'sections' => $sections
         ]);
     }
 
     /**
-     * Chỉnh sửa Sạp chợ (chỉ GET - hiển thị form)
+     * Cấu hình Thông tin liên hệ Website (Địa chỉ, Hotline, Email, Giờ mở cửa...)
      */
-    public function stall_edit($stall_id) {
-        if (is_array($stall_id)) {
-            $stall_id = reset($stall_id);
-        }
-        if (!$stall_id) {
-            header('Location: ' . BASE_URL . 'admin/stalls');
-            exit();
-        }
+    public function contact_settings() {
+        $db = database::getInstance();
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $settings = $_POST['settings'] ?? [];
+            foreach ($settings as $key => $val) {
+                $k = trim($key);
+                $v = trim($val);
+                if (empty($k)) continue;
 
-        $stallModel = new stallModel();
-        $categoryModel = new categoryModel();
-        $stall = null;
-        $areas = [];
-        $statuses = [];
-        $stallTypes = [];
-        $rentalHistory = [];
-
-        $marketId = marketService::currentMarketId();
-        try {
-            $stall = $stallModel->getById($stall_id);
-            if (!$stall) {
-                throw new Exception('Không tìm thấy sạp chợ yêu cầu.');
+                $exist = $db->selectOne("SELECT setting_key FROM website_settings WHERE setting_key = :k", ['k' => $k]);
+                if ($exist) {
+                    $db->query("UPDATE website_settings SET setting_value = :v, updated_at = NOW() WHERE setting_key = :k", ['v' => $v, 'k' => $k]);
+                } else {
+                    $db->query("INSERT INTO website_settings (setting_key, setting_value, updated_at) VALUES (:k, :v, NOW())", ['k' => $k, 'v' => $v]);
+                }
             }
-            $areas = $stallModel->getAreas($marketId);
-            $statuses = $stallModel->getStallStatuses();
-            $stallTypes = $categoryModel->getItems('stall_type');
-            $rentalHistory = $stallModel->getRentalHistory($stall_id);
-        } catch (Exception $e) {
-            session::set('error_message', $e->getMessage());
-            header('Location: ' . BASE_URL . 'admin/stalls');
+
+            $_SESSION['flash_success'] = 'Cập nhật Thông tin liên hệ thành công!';
+            header('Location: ' . BASE_URL . 'admin/contact_settings');
             exit();
         }
 
-        $this->view('backend/stall/edit', [
-            'title'         => 'Chỉnh Sửa Sạp Chợ',
-            'stall'         => $stall,
-            'areas'         => $areas,
-            'statuses'      => $statuses,
-            'stallTypes'    => $stallTypes,
-            'rentalHistory' => $rentalHistory
+        $rows = [];
+        try {
+            $rows = $db->select("SELECT setting_key, setting_value FROM website_settings");
+        } catch (Exception $e) {}
+
+        $settings = [];
+        foreach ($rows as $r) {
+            $settings[$r['setting_key']] = $r['setting_value'];
+        }
+
+        $this->view->app('banner/contact_settings', [
+            'title' => 'Cấu Hình Thông Tin Liên Hệ',
+            'settings' => $settings
         ]);
     }
 
-    /**
-     * Lập Hợp đồng mới
-     */
-    public function contract_add() {
-        $traders = [];
-        $emptyStalls = [];
-        
+    // =========================================================================
+    // 2.5 QUẢN LÝ TIN TỨC & BÀI VIẾT (POSTS)
+    // =========================================================================
+
+    private function createPostSlug($str, $id = 0) {
+        $str = trim(mb_strtolower($str, 'UTF-8'));
+        $str = preg_replace('/(à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ)/', 'a', $str);
+        $str = preg_replace('/(è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ)/', 'e', $str);
+        $str = preg_replace('/(ì|í|ị|ỉ|ĩ)/', 'i', $str);
+        $str = preg_replace('/(ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ)/', 'o', $str);
+        $str = preg_replace('/(ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ)/', 'u', $str);
+        $str = preg_replace('/(ỳ|ý|ỵ|ỷ|ỹ)/', 'y', $str);
+        $str = preg_replace('/(đ)/', 'd', $str);
+        $str = preg_replace('/[^a-z0-9-\s]/', '', $str);
+        $str = preg_replace('/[\s-]+/', '-', $str);
+        $slug = trim($str, '-');
+        if (empty($slug)) $slug = 'tin-tuc-' . time();
+
+        $db = database::getInstance();
+        $query = "SELECT id FROM website_posts WHERE post_slug = :slug";
+        $params = ['slug' => $slug];
+        if ($id > 0) {
+            $query .= " AND id != :id";
+            $params['id'] = $id;
+        }
+        $exist = $db->selectOne($query, $params);
+        if ($exist) {
+            $slug .= '-' . rand(100, 999);
+        }
+        return $slug;
+    }
+
+    public function posts() {
+        $db = database::getInstance();
+        $keyword = trim($_GET['keyword'] ?? '');
+        $statusFilter = $_GET['status'] ?? '';
+
+        $sql = "SELECT * FROM website_posts WHERE 1=1";
+        $params = [];
+
+        if (!empty($keyword)) {
+            $sql .= " AND (post_title LIKE :kw OR post_summary LIKE :kw)";
+            $params['kw'] = "%$keyword%";
+        }
+
+        if ($statusFilter !== '') {
+            $sql .= " AND post_status = :st";
+            $params['st'] = (int)$statusFilter;
+        }
+
+        $sql .= " ORDER BY id DESC";
+
+        $posts = [];
         try {
-            $marketId = marketService::currentMarketId();
-            $traderModel = new traderModel();
-            // Lấy tiểu thương hoạt động
-            $traders = $traderModel->getAllTraders('', '', 'active', $marketId);
+            $posts = $db->select($sql, $params);
+        } catch (Exception $e) {}
+
+        $this->view->app('post/index', [
+            'title' => 'Quản Lý Tin Tức & Bài Viết',
+            'posts' => $posts,
+            'keyword' => $keyword,
+            'statusFilter' => $statusFilter
+        ]);
+    }
+
+    public function post_add() {
+        $db = database::getInstance();
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $title = trim($_POST['post_title'] ?? '');
+            $summary = trim($_POST['post_summary'] ?? '');
+            $content = trim($_POST['post_content'] ?? '');
+            $status = isset($_POST['post_status']) ? (int)$_POST['post_status'] : 1;
+            $slug = $this->createPostSlug($title);
+            $imageUrl = trim($_POST['image_url'] ?? '');
+
+            // Xử lý upload ảnh nếu có
+            if (!empty($_FILES['post_image']['name']) && $_FILES['post_image']['error'] === UPLOAD_ERR_OK) {
+                $file = $_FILES['post_image'];
+                $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+                $allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+                if (in_array($ext, $allowed)) {
+                    $newName = 'post_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
+                    $uploadDir = __SITE_PATH . '/public/uploads/posts/';
+                    if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+                    if (move_uploaded_file($file['tmp_name'], $uploadDir . $newName)) {
+                        $imageUrl = BASE_URL . 'public/uploads/posts/' . $newName;
+                    }
+                }
+            }
+
+            if (!empty($title)) {
+                $db->query("
+                    INSERT INTO website_posts (post_title, post_slug, post_summary, post_content, post_image, post_status, created_at, updated_at)
+                    VALUES (:title, :slug, :summary, :content, :image, :status, NOW(), NOW())
+                ", [
+                    'title' => $title,
+                    'slug' => $slug,
+                    'summary' => $summary,
+                    'content' => $content,
+                    'image' => $imageUrl,
+                    'status' => $status
+                ]);
+                $_SESSION['flash_success'] = 'Đăng bài viết mới thành công!';
+                header('Location: ' . BASE_URL . 'admin/posts');
+                exit();
+            }
+        }
+
+        $this->view->app('post/form', [
+            'title' => 'Thêm Bài Viết Mới',
+            'post' => null
+        ]);
+    }
+
+    public function post_edit($args = []) {
+        $db = database::getInstance();
+        $id = (int)($args[1] ?? $_GET['id'] ?? 0);
+        $post = $db->selectOne("SELECT * FROM website_posts WHERE id = :id", ['id' => $id]);
+        if (!$post) {
+            header('Location: ' . BASE_URL . 'admin/posts');
+            exit();
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $title = trim($_POST['post_title'] ?? '');
+            $summary = trim($_POST['post_summary'] ?? '');
+            $content = trim($_POST['post_content'] ?? '');
+            $status = isset($_POST['post_status']) ? (int)$_POST['post_status'] : 1;
+            $slug = trim($_POST['post_slug'] ?? '');
+            if (empty($slug)) $slug = $this->createPostSlug($title, $id);
+            $imageUrl = $post['post_image'];
+
+            // Xử lý upload ảnh mới nếu có
+            if (!empty($_FILES['post_image']['name']) && $_FILES['post_image']['error'] === UPLOAD_ERR_OK) {
+                $file = $_FILES['post_image'];
+                $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+                $allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+                if (in_array($ext, $allowed)) {
+                    $newName = 'post_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
+                    $uploadDir = __SITE_PATH . '/public/uploads/posts/';
+                    if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+                    if (move_uploaded_file($file['tmp_name'], $uploadDir . $newName)) {
+                        $imageUrl = BASE_URL . 'public/uploads/posts/' . $newName;
+                    }
+                }
+            } elseif (!empty($_POST['image_url'])) {
+                $imageUrl = trim($_POST['image_url']);
+            }
+
+            if (!empty($title)) {
+                $db->query("
+                    UPDATE website_posts 
+                    SET post_title = :title, post_slug = :slug, post_summary = :summary, 
+                        post_content = :content, post_image = :image, post_status = :status, updated_at = NOW()
+                    WHERE id = :id
+                ", [
+                    'title' => $title,
+                    'slug' => $slug,
+                    'summary' => $summary,
+                    'content' => $content,
+                    'image' => $imageUrl,
+                    'status' => $status,
+                    'id' => $id
+                ]);
+                $_SESSION['flash_success'] = 'Cập nhật bài viết thành công!';
+                header('Location: ' . BASE_URL . 'admin/posts');
+                exit();
+            }
+        }
+
+        $this->view->app('post/form', [
+            'title' => 'Chỉnh Sửa Bài Viết #' . $id,
+            'post' => $post
+        ]);
+    }
+
+    public function post_delete($args = []) {
+        $id = (int)($args[1] ?? $_GET['id'] ?? 0);
+        if ($id > 0) {
+            $db = database::getInstance();
+            $db->query("DELETE FROM website_posts WHERE id = :id", ['id' => $id]);
+            $_SESSION['flash_success'] = 'Xóa bài viết thành công!';
+        }
+        header('Location: ' . BASE_URL . 'admin/posts');
+        exit();
+    }
+
+    public function post_toggle($args = []) {
+        header('Content-Type: application/json; charset=utf-8');
+        $id = (int)($args[1] ?? $_POST['id'] ?? 0);
+        $status = (int)($_POST['status'] ?? 0);
+
+        if ($id <= 0) {
+            echo json_encode(['status' => 400, 'message' => 'ID không hợp lệ.']);
+            exit();
+        }
+
+        $db = database::getInstance();
+        $db->query("UPDATE website_posts SET post_status = :st, updated_at = NOW() WHERE id = :id", [
+            'st' => $status,
+            'id' => $id
+        ]);
+
+        echo json_encode(['status' => 200, 'message' => 'Cập nhật trạng thái bài viết thành công.']);
+        exit();
+    }
+
+    public function post_upload_inline_image() {
+        header('Content-Type: application/json; charset=utf-8');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_FILES['inline_image'])) {
+            echo json_encode(['status' => 400, 'message' => 'Không tìm thấy tệp tải lên.']);
+            exit();
+        }
+
+        $file = $_FILES['inline_image'];
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['status' => 400, 'message' => 'Lỗi khi tải file (Mã: ' . $file['error'] . ')']);
+            exit();
+        }
+
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+        if (!in_array($ext, $allowed)) {
+            echo json_encode(['status' => 400, 'message' => 'Định dạng ảnh không hợp lệ (Chỉ hỗ trợ JPG, PNG, WEBP, GIF).']);
+            exit();
+        }
+
+        $newName = 'inline_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
+        $uploadDir = __SITE_PATH . '/public/uploads/posts/';
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+
+        if (move_uploaded_file($file['tmp_name'], $uploadDir . $newName)) {
+            $url = BASE_URL . 'public/uploads/posts/' . $newName;
+            echo json_encode(['status' => 200, 'url' => $url, 'message' => 'Tải ảnh thành công!']);
+        } else {
+            echo json_encode(['status' => 500, 'message' => 'Không thể lưu file trên máy chủ.']);
+        }
+        exit();
+    }
+
+    // =========================================================================
+
+    // 3. QUẢN LÝ ĐĂNG KÝ THUÊ SẠP
+    // =========================================================================
+
+
+
+    public function registrations() {
+        $db = database::getInstance();
+        $statusFilter = $_GET['status'] ?? '';
+        $sql = "SELECT * FROM stall_registrations";
+        $params = [];
+
+        if (!empty($statusFilter)) {
+            $sql .= " WHERE status = :st";
+            $params['st'] = $statusFilter;
+        }
+        $sql .= " ORDER BY id DESC";
+
+        $registrations = [];
+        try {
+            $registrations = $db->select($sql, $params);
+        } catch (Exception $e) {}
+
+        $this->view->app('registration/index', [
+            'title' => 'Quản Lý Đăng Ký Thuê Sạp',
+            'registrations' => $registrations
+        ]);
+    }
+
+    public function registration_status() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $db = database::getInstance();
+            $id = (int)($_POST['id'] ?? 0);
+            $status = $_POST['status'] ?? 'pending';
+            $adminNote = trim($_POST['admin_note'] ?? '');
+
+            if ($id > 0) {
+                $db->query("
+                    UPDATE stall_registrations 
+                    SET status = :status, admin_note = :note 
+                    WHERE id = :id
+                ", [
+                    'status' => $status,
+                    'note' => $adminNote,
+                    'id' => $id
+                ]);
+                $_SESSION['flash_success'] = 'Cập nhật trạng thái đăng ký thuê sạp thành công.';
+            }
+        }
+        header('Location: ' . BASE_URL . 'admin/registrations');
+        exit();
+    }
+
+    public function registration_delete($args = []) {
+        $id = (int)($args[1] ?? $_GET['id'] ?? 0);
+        if ($id > 0) {
+            $db = database::getInstance();
+            $db->query("DELETE FROM stall_registrations WHERE id = :id", ['id' => $id]);
+            $_SESSION['flash_success'] = 'Xóa yêu cầu đăng ký thuê sạp thành công.';
+        }
+        header('Location: ' . BASE_URL . 'admin/registrations');
+        exit();
+    }
+
+    // =========================================================================
+    // 4. QUẢN LÝ KHIẾU NẠI & GÓP Ý
+    // =========================================================================
+
+    public function feedbacks() {
+        $db = database::getInstance();
+        $typeFilter = $_GET['type'] ?? '';
+        $sql = "SELECT * FROM website_feedbacks";
+        $params = [];
+
+        if (!empty($typeFilter)) {
+            $sql .= " WHERE type = :tp";
+            $params['tp'] = $typeFilter;
+        }
+        $sql .= " ORDER BY id DESC";
+
+        $feedbacks = [];
+        try {
+            $feedbacks = $db->select($sql, $params);
+        } catch (Exception $e) {}
+
+        $this->view->app('feedback/index', [
+            'title' => 'Quản Lý Khiếu Nại & Góp Ý',
+            'feedbacks' => $feedbacks
+        ]);
+    }
+
+    public function feedback_status() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $db = database::getInstance();
+            $id = (int)($_POST['id'] ?? 0);
+            $status = $_POST['status'] ?? 'resolved';
+            $reply = trim($_POST['reply_content'] ?? '');
+            $fbStatusVal = ($status === 'resolved') ? 3 : (($status === 'processing') ? 2 : 1);
+
+            if ($id > 0) {
+                $db->query("
+                    UPDATE website_feedbacks 
+                    SET status = :status, fb_status = :fb_status, reply_content = :reply 
+                    WHERE id = :id
+                ", [
+                    'status' => $status,
+                    'fb_status' => $fbStatusVal,
+                    'reply' => $reply,
+                    'id' => $id
+                ]);
+                $_SESSION['flash_success'] = 'Cập nhật nội dung phản hồi thành công.';
+            }
+        }
+        header('Location: ' . BASE_URL . 'admin/feedbacks');
+        exit();
+    }
+
+
+    public function feedback_delete($args = []) {
+        $id = (int)($args[1] ?? $_GET['id'] ?? 0);
+        if ($id > 0) {
+            $db = database::getInstance();
+            $db->query("DELETE FROM website_feedbacks WHERE id = :id", ['id' => $id]);
+            $_SESSION['flash_success'] = 'Xóa phản ánh khiếu nại/góp ý thành công.';
+        }
+        header('Location: ' . BASE_URL . 'admin/feedbacks');
+        exit();
+    }
+
+    // =========================================================================
+    // 5. QUẢN LÝ TÀI KHOẢN & PHÂN QUYỀN WEB (RBAC)
+    // =========================================================================
+
+    public function users() {
+        $db = database::getInstance();
+        $users = [];
+        try {
+            $users = $db->select("SELECT * FROM web_users ORDER BY id DESC");
+        } catch (Exception $e) {}
+
+        $this->view->app('user/index', [
+            'title' => 'Quản Lý Tài Khoản Web & Phân Quyền',
+            'users' => $users
+        ]);
+    }
+
+    public function user_add() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $db = database::getInstance();
+            $username = trim($_POST['username'] ?? '');
+            $fullname = trim($_POST['fullname'] ?? '');
+            $email = trim($_POST['email'] ?? '');
+            $phone = trim($_POST['phone'] ?? '');
+            $password = $_POST['password'] ?? '';
+            $role = in_array($_POST['role'] ?? '', ['admin', 'editor']) ? $_POST['role'] : 'editor';
+            $status = isset($_POST['status']) ? (int)$_POST['status'] : 1;
             
-            $stallModel = new stallModel();
-            // Lấy các sạp trống
-            $emptyStalls = $stallModel->getAll(null, 'empty', null, $marketId);
-        } catch (Exception $e) {
-            error_log('[contract_add] EXCEPTION: ' . $e->getMessage());
-        }
+            // Xử lý danh sách module permissions
+            $permsInput = $_POST['permissions'] ?? [];
+            $permissionsStr = is_array($permsInput) ? implode(',', array_filter($permsInput)) : ($permsInput ?: '');
+            if ($role === 'admin') $permissionsStr = 'all';
 
-        $this->view('backend/contract/add', [
-            'title' => 'Lập Hợp Đồng Thuê Sạp',
-            'traders' => $traders,
-            'emptyStalls' => $emptyStalls
-        ]);
-    }
-
-    /**
-     * Ghi chỉ số điện nước mới (Mockup Form)
-     */
-    public function utility_add() {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            session::set('success_message', 'Ghi nhận chỉ số điện nước thành công!');
-            header('Location: ' . BASE_URL . 'admin/utilities');
-            exit();
-        }
-        $this->view('backend/finance/utility_add', ['title' => 'Ghi Số Điện Nước Mới']);
-    }
-
-    /**
-     * Lập hóa đơn mới (Mockup Form / View Action)
-     */
-    public function bill_add() {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            session::set('success_message', 'Lập hóa đơn mới thành công!');
-            header('Location: ' . BASE_URL . 'admin/bills');
-            exit();
-        }
-
-        $contracts = [];
-        try {
-            $contractModel = new contractModel();
-            $contracts = $contractModel->getAll();
-        } catch (Exception $e) {
-            $contracts = [
-                ['stall_id' => 1, 'contract_code' => 'HĐ-2026-0001', 'trader_name' => 'Nguyễn Thị Thu Hà', 'stall_code' => 'SẠP-A01'],
-                ['stall_id' => 2, 'contract_code' => 'HĐ-2026-0002', 'trader_name' => 'Trần Văn Hoàng', 'stall_code' => 'SẠP-B01'],
-            ];
-        }
-
-        $this->view('backend/finance/bill_add', [
-            'title' => 'Lập Hóa Đơn Mới',
-            'contracts' => $contracts
-        ]);
-    }
-
-    /**
-     * Lập phiếu thu - chi (Mockup Form)
-     */
-    public function transaction_add() {
-        $type = $_GET['type'] ?? 'receipt';
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $msg = ($_POST['type'] === 'receipt') ? 'Lập phiếu thu thành công!' : 'Lập phiếu chi thành công!';
-            session::set('success_message', $msg);
-            header('Location: ' . BASE_URL . 'admin/transactions');
-            exit();
-        }
-        $this->view('backend/finance/transaction_add', [
-            'title' => ($type === 'receipt') ? 'Lập Phiếu Thu Tài Chính' : 'Lập Phiếu Chi Tài Chính',
-            'type' => $type
-        ]);
-    }
-
-    public function foodsafety_add() {
-        $traders = [];
-        $documentTypes = [];
-        $marketId = marketService::currentMarketId();
-        try {
-            $traderModel = new traderModel();
-            // Lấy danh sách tiểu thương đang hoạt động thuộc chợ hiện tại
-            $traders = $traderModel->getAllTraders(null, null, 'active', $marketId);
-
-            $categoryModel = new categoryModel();
-            $documentTypes = $categoryModel->getItems('document_type');
-        } catch (Exception $e) {
-            error_log('[foodsafety_add] EXCEPTION: ' . $e->getMessage());
-        }
-
-        $this->view('backend/foodsafety/add', [
-            'title' => 'Khai Báo Chứng Nhận ATTP',
-            'traders' => $traders,
-            'documentTypes' => $documentTypes
-        ]);
-    }
-
-    public function foodsafety_edit() {
-        $id = $_GET['id'] ?? null;
-        if (!$id) {
-            header('Location: ' . BASE_URL . 'admin/foodsafety');
-            exit();
-        }
-
-        $certificate = null;
-        $traders = [];
-        $documentTypes = [];
-        $marketId = marketService::currentMarketId();
-        try {
-            $foodsafetyModel = new foodsafetyModel();
-            $certificate = $foodsafetyModel->getById($id);
-            if (!$certificate) {
-                header('Location: ' . BASE_URL . 'admin/foodsafety');
+            if (empty($username) || empty($fullname) || empty($password)) {
+                $_SESSION['flash_error'] = 'Vui lòng điền đầy đủ các thông tin bắt buộc.';
+                header('Location: ' . BASE_URL . 'admin/user_add');
                 exit();
             }
 
-            $traderModel = new traderModel();
-            // Lấy danh sách tiểu thương đang hoạt động thuộc chợ hiện tại
-            $traders = $traderModel->getAllTraders('', '', 'active', $marketId);
-
-            $categoryModel = new categoryModel();
-            $documentTypes = $categoryModel->getItems('document_type');
-        } catch (Exception $e) {
-            error_log('[foodsafety_edit] EXCEPTION: ' . $e->getMessage());
-        }
-
-        $this->view('backend/foodsafety/edit', [
-            'title' => 'Chỉnh Sửa Chứng Nhận ATTP',
-            'certificate' => $certificate,
-            'traders' => $traders,
-            'documentTypes' => $documentTypes
-        ]);
-    }
-
-    /**
-     * Trang thiết lập sơ đồ chợ tương tác dành cho Admin
-     */
-    public function map_editor() {
-        $stalls = [];
-        $unmappedStalls = [];
-        try {
-            $mapModel = new mapModel();
-            $unmappedStalls = $mapModel->getUnmappedStalls();
-            
-            $db = database::getInstance();
-            $stalls = $db->select("SELECT s.stall_id, s.stall_code, s.stall_type, s.stall_area_size, s.stall_base_price, 
-                                          ss.status_name, ss.status_code AS status_code, sc.color_class,
-                                          a.area_name, a.area_block, a.area_lot,
-                                          t.trader_fullname AS trader_name, t.trader_phone AS trader_phone,
-                                          con.contract_number, con.end_date AS contract_end_date
-                                   FROM stalls s 
-                                   LEFT JOIN areas a ON s.stall_area_id = a.area_id
-                                   JOIN system_statuses ss ON s.stall_status_id = ss.status_id 
-                                   LEFT JOIN status_colors sc ON ss.status_color_id = sc.color_id
-                                   LEFT JOIN contracts con ON con.stall_id = s.stall_id AND con.status_id = (SELECT status_id FROM system_statuses WHERE status_domain = 'contract' AND status_code = 'active')
-                                   LEFT JOIN traders t ON con.trader_id = t.trader_id
-                                   WHERE s.stall_status_id != 99 
-                                   ORDER BY s.stall_code ASC");
-        } catch (Exception $e) {
-            error_log('[map_editor] EXCEPTION: ' . $e->getMessage());
-        }
-
-        $this->view('backend/map/editor', [
-            'title' => 'Thiết lập Sơ đồ chợ tương tác',
-            'unmappedStalls' => $unmappedStalls,
-            'stalls' => $stalls
-        ]);
-    }
-
-    /**
-     * Trang sơ đồ cây sạp chợ tương tác dành cho Admin
-     */
-    public function map_tree() {
-        $this->view('backend/map/tree', [
-            'title' => 'Sơ đồ Cây sạp chợ tương tác'
-        ]);
-    }
-
-    /**
-     * Tạo tài khoản nhân viên mới
-     */
-    public function user_add() {
-        header("Location: " . BASE_URL . "system/user_add");
-        exit();
-    }
-
-    public function user_edit($id = null) {
-        header("Location: " . BASE_URL . "system/user_edit/" . $id);
-        exit();
-    }
-
-    public function user_toggle_status($id = null) {
-        header("Location: " . BASE_URL . "system/user_toggle_status/" . $id);
-        exit();
-    }
-
-    /**
-     * Phân hệ Quản lý Tiểu thương
-     */
-    public function traders() {
-        $traderModel = new traderModel();
-        
-        $search = $_GET['q'] ?? '';
-        $business_line = $_GET['business_line'] ?? '';
-        $status = $_GET['status'] ?? '';
-        
-        $traders = [];
-        $business_lines = [];
-        $statuses = [];
-        
-        $marketId = marketService::currentMarketId();
-
-        try {
-            // Lấy danh sách tiểu thương theo bộ lọc
-            $traders = $traderModel->getAllTraders($search, $business_line, $status, $marketId);
-            $statuses = $traderModel->getTraderStatuses();
-            
-            // Lấy danh sách các ngành hàng từ DB
-            $business_lines = $traderModel->getBusinessLines();
-        } catch (Exception $e) {
-            // Fallback khi lỗi cơ sở dữ liệu
-            error_log('[traders] EXCEPTION: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
-            $traders = [];
-            $business_lines = [];
-            $statuses = [];
-        }
-
-        // Phân trang
-        $limit = 15;
-        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-        if ($page < 1) $page = 1;
-        $totalRecords = count($traders);
-        $totalPages = ceil($totalRecords / $limit);
-        if ($page > $totalPages && $totalPages > 0) $page = $totalPages;
-        $offset = ($page - 1) * $limit;
-        $paginatedTraders = array_slice($traders, $offset, $limit);
-
-        $this->view('backend/trader/index', [
-            'title' => 'Quản Lý Tiểu Thương',
-            'traders' => $paginatedTraders,
-            'business_lines' => $business_lines,
-            'statuses' => $statuses,
-            'search' => $search,
-            'business_line_filter' => $business_line,
-            'status_filter' => $status,
-            'page' => $page,
-            'totalPages' => $totalPages,
-            'totalRecords' => $totalRecords
-        ]);
-    }
-
-    /**
-     * Thêm tiểu thương mới (chỉ GET - hiển thị form)
-     */
-    public function trader_add() {
-        $statuses = [];
-        $business_lines = [];
-        $nextTraderCode = '';
-
-        $marketId = marketService::currentMarketId();
-        try {
-            $traderModel = new traderModel();
-            $statuses = $traderModel->getTraderStatuses();
-            $business_lines = $traderModel->getBusinessLines();
-
-            $db = database::getInstance();
-            $market = $db->selectOne("SELECT market_code FROM markets WHERE market_id = :market_id", ['market_id' => $marketId]);
-            if ($market && !empty($market['market_code'])) {
-                $cleanCode = preg_replace('/[^a-zA-Z0-9]/', '', $market['market_code']);
-                $cleanCode = strtoupper($cleanCode);
-                $prefix = 'TT-' . $cleanCode;
-
-                $sqlMax = "SELECT trader_code FROM traders 
-                           WHERE trader_market_id = :market_id AND trader_code LIKE :prefix";
-                $existingTraders = $db->select($sqlMax, [
-                    'market_id' => $marketId,
-                    'prefix' => $prefix . '-%'
-                ]);
-
-                $maxNumber = 0;
-                foreach ($existingTraders as $t) {
-                    $code = $t['trader_code'];
-                    $parts = explode('-', $code);
-                    $numPart = end($parts);
-                    if (is_numeric($numPart)) {
-                        $val = (int)$numPart;
-                        if ($val > $maxNumber) {
-                            $maxNumber = $val;
-                        }
-                    }
-                }
-                $nextNumber = $maxNumber + 1;
-                $nextTraderCode = $prefix . '-' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+            $exists = $db->selectOne("SELECT id FROM web_users WHERE username = :u", ['u' => $username]);
+            if ($exists) {
+                $_SESSION['flash_error'] = 'Tên đăng nhập đã tồn tại.';
+                header('Location: ' . BASE_URL . 'admin/user_add');
+                exit();
             }
-        } catch (Exception $e) {
-            error_log('[trader_add] EXCEPTION: ' . $e->getMessage());
-        }
 
-        $statusModel = new statusModel();
-        $activeTraderStatusId = $statusModel->getIdByCode('trader', 'active');
+            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+            $db->query("
+                INSERT INTO web_users (username, password, fullname, email, phone, role, permissions, status)
+                VALUES (:username, :password, :fullname, :email, :phone, :role, :permissions, :status)
+            ", [
+                'username' => $username,
+                'password' => $hashedPassword,
+                'fullname' => $fullname,
+                'email' => $email,
+                'phone' => $phone,
+                'role' => $role,
+                'permissions' => $permissionsStr,
+                'status' => $status
+            ]);
 
-        $this->view('backend/trader/add', [
-            'title'          => 'Thêm Tiểu Thương Mới',
-            'data'           => [
-                'trader_code' => $nextTraderCode, 
-                'fullname' => '', 
-                'phone' => '', 
-                'cccd' => '', 
-                'address' => '', 
-                'business_line_id' => '', 
-                'description' => '', 
-                'status_id' => $activeTraderStatusId
-            ],
-            'statuses'       => $statuses,
-            'business_lines' => $business_lines
-        ]);
-    }
-
-    /**
-     * Sửa thông tin tiểu thương (chỉ GET - hiển thị form)
-     */
-    public function trader_edit($id) {
-        if (is_array($id)) {
-            $id = reset($id);
-        }
-        if (!$id) {
-            header('Location: ' . BASE_URL . 'admin/traders');
+            $_SESSION['flash_success'] = 'Thêm mới tài khoản và phân quyền thành công.';
+            header('Location: ' . BASE_URL . 'admin/users');
             exit();
         }
 
-        $traderModel = new traderModel();
-
+        $webRoles = [];
         try {
-            $trader = $traderModel->getTraderById($id);
-            if (!$trader) {
-                throw new Exception(message::error('not_found', 'trader'));
-            }
-        } catch (Exception $e) {
-            session::set('error_message', $e->getMessage());
-            header('Location: ' . BASE_URL . 'admin/traders');
-            exit();
-        }
-
-        $statuses = [];
-        $business_lines = [];
-        try {
-            $statuses = $traderModel->getTraderStatuses();
-            $business_lines = $traderModel->getBusinessLines();
+            $webRoles = $db->select("SELECT * FROM web_roles WHERE status = 1 ORDER BY id ASC");
         } catch (Exception $e) {}
 
-        $this->view('backend/trader/edit', [
-            'title'          => 'Chỉnh Sửa Tiểu Thương',
-            'trader'         => $trader,
-            'statuses'       => $statuses,
-            'business_lines' => $business_lines
+        $this->view->app('user/add', [
+            'title' => 'Thêm Tài Khoản Web Mới',
+            'webRoles' => $webRoles
         ]);
     }
 
-    /**
-     * Xuất danh sách tiểu thương ra file Excel (.xlsx thật sự)
-     */
-    public function trader_export_excel() {
-        $traderModel = new traderModel();
-        $search = $_GET['q'] ?? '';
-        $business_line = $_GET['business_line'] ?? '';
-        $status = $_GET['status'] ?? '';
-
-        try {
-            $traders = $traderModel->getAllTraders($search, $business_line, $status);
-        } catch (Exception $e) {
-            $traders = [];
-        }
-
-        $headers = ['Mã tiểu thương', 'Họ và tên', 'Số điện thoại', 'Số CCCD', 'Địa chỉ', 'Ngành hàng', 'Trạng thái', 'Công nợ (đ)'];
-        $rows = [];
-        foreach ($traders as $t) {
-            $rows[] = [
-                $t['trader_code'],
-                $t['trader_fullname'],
-                $t['trader_phone'],
-                $t['trader_cccd'],
-                $t['trader_address'] ?? '',
-                $t['business_line_name'] ?? 'Chưa cập nhật',
-                $t['status_name'] ?? 'Không rõ',
-                (int)($t['total_debt'] ?? 0)
-            ];
-        }
-
-        SimpleXlsx::download('danh_sach_tieu_thuong.xlsx', $headers, $rows);
-    }
-
-    /**
-     * Xuất danh sách tiểu thương ra file PDF (tải xuống trực tiếp)
-     */
-    public function trader_export_pdf() {
-        $traderModel = new traderModel();
-        $search = $_GET['q'] ?? '';
-        $business_line = $_GET['business_line'] ?? '';
-        $status = $_GET['status'] ?? '';
-
-        try {
-            $traders = $traderModel->getAllTraders($search, $business_line, $status);
-        } catch (Exception $e) {
-            $traders = [];
-        }
-
-        // Mô tả bộ lọc
-        $filterParts = [];
-        if ($search) $filterParts[] = 'Từ khóa: ' . $search;
-        if ($status) $filterParts[] = 'Trạng thái: ' . $status;
-        if ($business_line && !empty($traders)) {
-            $filterParts[] = 'Ngành hàng: ' . ($traders[0]['business_line_name'] ?? $business_line);
-        }
-        $filterDesc = implode(' | ', $filterParts);
-
-        // Sinh nội dung HTML cho PDF
-        ob_start();
-        $title = 'Báo cáo danh sách tiểu thương';
-        require DIR_TEMPLATE . '/trader/print.php';
-        $html = ob_get_clean();
-
-        // Nạp mPDF từ vendor của dự án khác trên cùng máy chủ
-        $autoload = 'D:/xampp/htdocs/vieclam.vn/application/vendor/autoload.php';
-        if (!file_exists($autoload)) {
-            // Fallback: mở trang HTML nếu mPDF không có
-            header('Content-Type: text/html; charset=utf-8');
-            echo $html;
-            exit();
-        }
-
-        require_once $autoload;
-
-        // mPDF cũ có Deprecated warning trên PHP 8.x — tắt tạm để không in ra output
-        // ponytail: bỏ dòng này khi nâng cấp lên mPDF 8.x mới hơn
-        $prevErrLevel = error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
-        ob_start(); // bắt bất kỳ output thừa nào (whitespace, warning leak)
-
-        $mpdf = new \Mpdf\Mpdf([
-            'mode'          => 'utf-8',
-            'format'        => 'A4-L',   // A4 ngang để bảng không bị chật
-            'margin_left'   => 12,
-            'margin_right'  => 12,
-            'margin_top'    => 14,
-            'margin_bottom' => 14,
-        ]);
-        $mpdf->SetTitle('Báo cáo tiểu thương');
-        $mpdf->WriteHTML($html);
-
-        ob_end_clean(); // xóa hết output cũ trước khi gửi binary PDF
-        error_reporting($prevErrLevel);
-
-        $mpdf->Output('danh_sach_tieu_thuong.pdf', \Mpdf\Output\Destination::DOWNLOAD);
-        exit();
-    }
-
-
-
-    /**
-     * Đổi mật khẩu cá nhân
-     */
-    public function change_password() {
-        $error = '';
-        $success = '';
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $oldPassword = $_POST['old_password'] ?? '';
-            $newPassword = $_POST['new_password'] ?? '';
-            $confirmPassword = $_POST['confirm_password'] ?? '';
-
-            $validator = new validator();
-            $validator->required('old_password', $oldPassword, 'Vui lòng nhập mật khẩu hiện tại.')
-                      ->required('new_password', $newPassword, 'Vui lòng nhập mật khẩu mới.')
-                      ->minLength('new_password', $newPassword, 6, 'Mật khẩu mới phải từ 6 ký tự trở lên.')
-                      ->required('confirm_password', $confirmPassword, 'Vui lòng xác nhận mật khẩu mới.')
-                      ->matches('confirm_password', $confirmPassword, $newPassword, 'Xác nhận mật khẩu mới không khớp.');
-
-            if ($validator->isValid()) {
-                $userModel = new userModel();
-                $userId = session::get('user_id');
-                $user = $userModel->getByUsername(session::get('username'));
-
-                if ($user && password_verify($oldPassword, $user['password'])) {
-                    try {
-                        $userModel->updatePassword($userId, $newPassword);
-                        $success = 'Đổi mật khẩu thành công!';
-                    } catch (Exception $e) {
-                        $error = 'Lỗi hệ thống: ' . $e->getMessage();
-                    }
-                } else {
-                    $error = 'Mật khẩu hiện tại không chính xác.';
-                }
-            } else {
-                $errors = $validator->getErrors();
-                $error = reset($errors);
-            }
-        }
-
-        $this->view('backend/auth/change_password', [
-            'title' => 'Đổi Mật Khẩu',
-            'error' => $error,
-            'success' => $success
-        ]);
-    }
-    /**
-     * Quản lý các danh mục hệ thống (Khu vực, Loại sạp, Ngành hàng, Loại giấy tờ)
-     */
-    public function categories() {
-        $categoryModel = new categoryModel();
-
-        // Chuẩn bị dữ liệu ban đầu cho các danh mục
-        $areas = $categoryModel->getItems('area');
-        $stallTypes = $categoryModel->getItems('stall_type');
-        $businessLines = $categoryModel->getItems('business_line');
-        $documentTypes = $categoryModel->getItems('document_type');
-
-        $this->view('backend/category/index', [
-            'title'         => 'Quản Lý Danh Mục',
-            'areas'         => $areas,
-            'stallTypes'    => $stallTypes,
-            'businessLines' => $businessLines,
-            'documentTypes' => $documentTypes
-        ]);
-    }
-
-    /**
-     * Giao diện phân quyền phân hệ cho nhân viên (chỉ dành cho admin_market và super_market)
-     */
-    public function permissions() {
-        header("Location: " . BASE_URL . "system/permissions");
-        exit();
-    }
-
-    public function save_permissions() {
-        header("Location: " . BASE_URL . "system/save_permissions");
-        exit();
-    }
-
-    public function markets() {
-        header("Location: " . BASE_URL . "system/markets");
-        exit();
-    }
-
-    public function market_add() {
-        header("Location: " . BASE_URL . "system/market_add");
-        exit();
-    }
-
-    public function market_edit($id) {
-        header("Location: " . BASE_URL . "system/market_edit/" . $id);
-        exit();
-    }
-
-    public function contract_print($contract_id) {
-        if (is_array($contract_id)) {
-            $contract_id = reset($contract_id);
-        }
-        if (!$contract_id) {
-            header('Location: ' . BASE_URL . 'admin/contracts');
-            exit();
-        }
-
-        $contractModel = new contractModel();
-        $contract = $contractModel->getById($contract_id);
-        if (!$contract) {
-            header('Location: ' . BASE_URL . 'admin/contracts');
-            exit();
-        }
-
+    public function user_edit($args = []) {
+        $userId = (int)($args[1] ?? $_GET['id'] ?? 0);
         $db = database::getInstance();
-        $marketId = $contract['area_market_id'] ?? 0;
-        
-        $allConfigs = $db->select("SELECT * FROM market_contract_configs WHERE market_id = :mId AND status_id != 99 ORDER BY config_id ASC", ['mId' => $marketId]);
-        
-        $configId = isset($_GET['config_id']) ? (int)$_GET['config_id'] : 0;
-        $selectedConfig = null;
-        
-        if ($configId > 0) {
-            foreach ($allConfigs as $cfg) {
-                if ((int)$cfg['config_id'] === $configId) {
-                    $selectedConfig = $cfg;
-                    break;
-                }
-            }
-        }
-        
-        if (!$selectedConfig && !empty($allConfigs)) {
-            foreach ($allConfigs as $cfg) {
-                if ((int)$cfg['is_default'] === 1) {
-                    $selectedConfig = $cfg;
-                    break;
-                }
-            }
-            if (!$selectedConfig) {
-                $selectedConfig = $allConfigs[0];
-            }
-        }
-        
-        // Fallback defaults if no configs found in DB
-        if (!$selectedConfig) {
-            $selectedConfig = [
-                'gov_agency_1' => 'UBND PHƯỜNG KON TUM',
-                'gov_agency_2' => 'PHÒNG KT,HT&ĐT',
-                'contract_title_suffix' => 'TẠI CÁC CHỢ HẠNG 3 PHƯỜNG KON TUM',
-                'rep_a_header' => 'Đại diện Tổ quản lý các chợ hạng 3 trên địa bàn phường Kon Tum - Trưởng phòng Kinh tế, Hạ tầng và Đô thị (gọi tắt là Bên A):',
-                'rep_a_name_1' => 'Phan Thành Trung',
-                'rep_a_position_1' => 'Tổ trưởng',
-                'rep_a_name_2' => 'Trương Thảo Linh',
-                'rep_a_position_2' => 'Tài chính - Kế Toán',
-                'rep_a_address' => '342 Nguyễn Huệ, phường Kon Tum, tỉnh Kon Tum',
-                'rep_a_phone' => '',
-                'rep_a_fax' => '',
-                'rep_a_bank_account' => '',
-                'rep_a_bank_name' => '',
-                'legal_grounds' => "Căn cứ Bộ Luật dân sự ngày 24 tháng 11 năm 2015;\nCăn cứ Nghị định số 60/2024/NĐ-CP ngày 05 tháng 6 năm 2024 của Chính phủ về phát triển và quản lý chợ;\nCăn cứ Quyết định số 131/QĐ-UBND ngày 06/8/2025 của UBND phường Kon Tum về việc thành lập Tổ quản lý các chợ hạng 3 trên địa bàn phường Kon Tum;\nCăn cứ nhu cầu sử dụng diện tích bán hàng của hộ kinh doanh và xét khả năng đáp ứng của đơn vị."
-            ];
-        }
-
-        // standalone view without theme panels
-        require_once DIR_TEMPLATE . '/contract/print.php';
-        exit();
-    }
-
-    public function contract_export_docx($contract_id) {
-        if (is_array($contract_id)) {
-            $contract_id = reset($contract_id);
-        }
-        if (!$contract_id) {
-            header('Location: ' . BASE_URL . 'admin/contracts');
-            exit();
-        }
-
-        $contractModel = new contractModel();
-        $contract = $contractModel->getById($contract_id);
-        if (!$contract) {
-            header('Location: ' . BASE_URL . 'admin/contracts');
-            exit();
-        }
-
-        $db = database::getInstance();
-        $marketId = $contract['area_market_id'] ?? 0;
-        
-        $allConfigs = $db->select("SELECT * FROM market_contract_configs WHERE market_id = :mId AND status_id != 99 ORDER BY config_id ASC", ['mId' => $marketId]);
-        
-        $configId = isset($_GET['config_id']) ? (int)$_GET['config_id'] : 0;
-        $selectedConfig = null;
-        
-        if ($configId > 0) {
-            foreach ($allConfigs as $cfg) {
-                if ((int)$cfg['config_id'] === $configId) {
-                    $selectedConfig = $cfg;
-                    break;
-                }
-            }
-        }
-        
-        if (!$selectedConfig && !empty($allConfigs)) {
-            foreach ($allConfigs as $cfg) {
-                if ((int)$cfg['is_default'] === 1) {
-                    $selectedConfig = $cfg;
-                    break;
-                }
-            }
-            if (!$selectedConfig) {
-                $selectedConfig = $allConfigs[0];
-            }
-        }
-        
-        if (!$selectedConfig) {
-            $selectedConfig = [
-                'gov_agency_1' => 'UBND PHƯỜNG KON TUM',
-                'gov_agency_2' => 'PHÒNG KT,HT&ĐT',
-                'contract_title_suffix' => 'TẠI CÁC CHỢ HẠNG 3 PHƯỜNG KON TUM',
-                'rep_a_header' => 'Đại diện Tổ quản lý các chợ hạng 3 trên địa bàn phường Kon Tum - Trưởng phòng Kinh tế, Hạ tầng và Đô thị (gọi tắt là Bên A):',
-                'rep_a_name_1' => 'Phan Thành Trung',
-                'rep_a_position_1' => 'Tổ trưởng',
-                'rep_a_name_2' => 'Trương Thảo Linh',
-                'rep_a_position_2' => 'Tài chính - Kế Toán',
-                'rep_a_address' => '342 Nguyễn Huệ, phường Kon Tum, tỉnh Kon Tum',
-                'rep_a_phone' => '',
-                'rep_a_fax' => '',
-                'rep_a_bank_account' => '',
-                'rep_a_bank_name' => '',
-                'payment_due_day' => '10',
-                'payment_grace_period' => '10',
-                'legal_grounds' => "Căn cứ Bộ Luật dân sự ngày 24 tháng 11 năm 2015;\nCăn cứ Nghị định số 60/2024/NĐ-CP ngày 05 tháng 6 năm 2024 của Chính phủ về phát triển và quản lý chợ;\nCăn cứ Quyết định số 131/QĐ-UBND ngày 06/8/2025 của UBND phường Kon Tum về việc thành lập Tổ quản lý các chợ hạng 3 trên địa bàn phường Kon Tum;\nCăn cứ nhu cầu sử dụng diện tích bán hàng của hộ kinh doanh và xét khả năng đáp ứng của đơn vị."
-            ];
-        }
-
-        docxExport::exportContract($contract, $selectedConfig);
-        exit();
-    }
-
-    protected function view($templatePath, $data = []) {
-        // Giải nén mảng thành các biến độc lập
-        extract($data);
-
-        // Nạp layout trên
-        if (file_exists(DIR_TEMPLATE . '/layouts/header.php')) {
-            require_once DIR_TEMPLATE . '/layouts/header.php';
-        }
-        if (file_exists(DIR_TEMPLATE . '/layouts/sidebar.php')) {
-            require_once DIR_TEMPLATE . '/layouts/sidebar.php';
-        }
-        if (file_exists(DIR_TEMPLATE . '/layouts/navbar.php')) {
-            require_once DIR_TEMPLATE . '/layouts/navbar.php';
-        }
-
-        // Nạp nội dung trang con
-        $templatePathClean = str_replace('backend/', '', $templatePath);
-        $viewFile = DIR_TEMPLATE . '/' . $templatePathClean . '.php';
-        if (file_exists($viewFile)) {
-            require_once $viewFile;
-        } else {
-            echo "<div class='container-fluid'><p class='text-danger'>Không tìm thấy giao diện: {$templatePathClean} (gốc: {$templatePath})</p></div>";
-        }
-
-        // Nạp layout dưới
-        if (file_exists(DIR_TEMPLATE . '/layouts/footer.php')) {
-            require_once DIR_TEMPLATE . '/layouts/footer.php';
-        }
-    }
-     /**
-     * Sổ thu: tải dữ liệu thật, có lọc và phân trang 20 phiếu/trang.
-     */
-    public function income() {
-        $this->incomeLedger('income');
-    }
-
-    /** Sổ chi được tách trang với sổ thu để dễ nghiệp vụ và phân quyền sau này. */
-    public function expense() {
-        $this->incomeLedger('expense');
-    }
-
-    private function incomeLedger($type) {
-        $marketId = marketService::currentMarketId();
-        $filters = [
-            'q' => trim($_GET['q'] ?? ''), 'category_id' => (int)($_GET['category_id'] ?? 0),
-            'from_date' => $_GET['from_date'] ?? '', 'to_date' => $_GET['to_date'] ?? ''
-        ];
-        $page = max(1, (int)($_GET['page'] ?? 1));
-        $model = new incomeModel(); // ensureSchema() makes a fresh database ready automatically.
-        $result = $model->vouchers($marketId, $type, $filters, $page, 20);
-        $this->view('backend/income/ledger', [
-            'title' => $type === 'income' ? 'Quản Lý Thu' : 'Quản Lý Chi',
-            'ledgerType' => $type, 'categories' => $model->categories($marketId, $type),
-            'vouchers' => $result['rows'], 'total' => $result['total'], 'pages' => $result['pages'],
-            'page' => $page, 'filters' => $filters
-        ]);
-    }
-
-    /** Danh mục thu và chi có chung một giao diện, tách bằng hai tab. */
-    public function income_categories() {
-        $marketId = marketService::currentMarketId();
-        $model = new incomeModel();
-        $this->view('backend/income/categories', [
-            'title' => 'Danh Mục Thu Chi',
-            'incomeCategories' => $model->categories($marketId, 'income'),
-            'expenseCategories' => $model->categories($marketId, 'expense')
-        ]);
-    }
-
-    /** Form xuất S07-X + Dashboard thống kê thu chi theo tháng. */
-    public function income_report() {
-        $marketId = marketService::currentMarketId();
-        $year = (int)($_GET['year'] ?? date('Y'));
-        $categoryId = (int)($_GET['category_id'] ?? 0) ?: null;
-        $month = (int)($_GET['month'] ?? 0) ?: null;
-
-        $model = new incomeModel();
-        $monthly = $model->getMonthlyReport($marketId, $year, $categoryId);
-
-        $totalIncome = $totalExpense = 0;
-        foreach ($monthly as $m) { $totalIncome += $m['income']; $totalExpense += $m['expense']; }
-
-        // Daily breakdown when a specific month is selected
-        $daily = $month ? $model->getDailyReport($marketId, $year, $month, $categoryId) : null;
-
-        $service = new incomeReportService();
-        $this->view('backend/income/report', [
-            'title' => 'Báo Cáo Thu Chi',
-            'unit' => $service->getUnitConfig($marketId),
-            'year' => $year,
-            'month' => $month,
-            'categoryId' => $categoryId,
-            'monthly' => $monthly,
-            'daily' => $daily,
-            'totalIncome' => $totalIncome,
-            'totalExpense' => $totalExpense,
-            'categories' => $model->allCategories($marketId),
-        ]);
-    }
-
-    /** Streams the .xlsx response; calculations/rendering stay in incomeReportService. */
-    public function export_s07x() {
-        $marketId = marketService::currentMarketId();
-        $year = (int)($_GET['year'] ?? date('Y'));
-        try {
-            (new incomeReportService())->downloadS07X($marketId, [
-                'year' => $year,
-                'fund_name' => trim($_GET['fund_name'] ?? ''),
-                'opening_balance' => (float)str_replace([',',' '], '', $_GET['opening_balance'] ?? 0),
-                'from_date' => $_GET['from_date'] ?? $year.'-01-01',
-                'to_date' => $_GET['to_date'] ?? $year.'-12-31'
-            ]);
-        } catch (Exception $e) {
-            http_response_code(500);
-            echo '<h3>Không thể xuất báo cáo S07-X</h3><p>'.htmlspecialchars($e->getMessage()).'</p>';
-        }
-    }
-
-    /**
-     * Trang thông tin cá nhân của người dùng đang đăng nhập
-     */
-    public function profile() {
-        $userId = session::get('user_id');
-        $db = database::getInstance();
-
-        // Lấy thông tin tài khoản
-        $user = $db->selectOne("
-            SELECT u.*, u.user_username AS username, u.user_fullname AS fullname, u.user_email AS email, sa.actor_name, sa.actor_code 
-            FROM users u
-            LEFT JOIN system_actors sa ON u.user_actor_id = sa.actor_id
-            WHERE u.user_id = :id
-        ", ['id' => $userId]);
+        $user = $db->selectOne("SELECT * FROM web_users WHERE id = :id", ['id' => $userId]);
 
         if (!$user) {
-            header('Location: ' . BASE_URL . 'login');
+            header('Location: ' . BASE_URL . 'admin/users');
             exit();
         }
 
-        // Lấy danh sách chợ trực thuộc
-        $assignedMarkets = $db->select("
-            SELECT m.market_id, m.market_name 
-            FROM user_markets um
-            JOIN markets m ON um.user_market_market_id = m.market_id
-            WHERE um.user_market_user_id = :id AND m.market_status_code = 'active'
-            ORDER BY m.market_name ASC
-        ", ['id' => $userId]);
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $fullname = trim($_POST['fullname'] ?? '');
+            $email = trim($_POST['email'] ?? '');
+            $phone = trim($_POST['phone'] ?? '');
+            $password = $_POST['password'] ?? '';
+            $role = trim($_POST['role'] ?? 'editor');
+            $status = isset($_POST['status']) ? (int)$_POST['status'] : 1;
 
-        // Lấy danh sách các quyền phân hệ của user này
-        $userPermsRows = $db->select("
-            SELECT permission_market_id, permission_module_code 
-            FROM user_market_permissions 
-            WHERE permission_user_id = :id
-        ", ['id' => $userId]);
+            $permsInput = $_POST['permissions'] ?? [];
+            $permissionsStr = is_array($permsInput) ? implode(',', array_filter($permsInput)) : ($permsInput ?: '');
+            if ($role === 'admin') $permissionsStr = 'all';
 
-        $permissions = [];
-        foreach ($userPermsRows as $p) {
-            $permissions[$p['permission_market_id']][] = $p['permission_module_code'];
+            if (!empty($password)) {
+                $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+                $db->query("
+                    UPDATE web_users 
+                    SET fullname = :fullname, email = :email, phone = :phone, password = :password, role = :role, permissions = :permissions, status = :status
+                    WHERE id = :id
+                ", [
+                    'fullname' => $fullname,
+                    'email' => $email,
+                    'phone' => $phone,
+                    'password' => $hashedPassword,
+                    'role' => $role,
+                    'permissions' => $permissionsStr,
+                    'status' => $status,
+                    'id' => $userId
+                ]);
+            } else {
+                $db->query("
+                    UPDATE web_users 
+                    SET fullname = :fullname, email = :email, phone = :phone, role = :role, permissions = :permissions, status = :status
+                    WHERE id = :id
+                ", [
+                    'fullname' => $fullname,
+                    'email' => $email,
+                    'phone' => $phone,
+                    'role' => $role,
+                    'permissions' => $permissionsStr,
+                    'status' => $status,
+                    'id' => $userId
+                ]);
+            }
+
+            $_SESSION['flash_success'] = 'Cập nhật tài khoản và phân quyền thành công.';
+            header('Location: ' . BASE_URL . 'admin/users');
+            exit();
         }
 
-        // Tên thân thiện của các phân hệ chức năng
-        $moduleNames = [
-            'trader' => 'Tiểu thương',
-            'stall' => 'Sạp chợ',
-            'contract' => 'Hợp đồng',
-            'finance' => 'Tài chính',
-            'foodsafety' => 'An toàn thực phẩm'
-        ];
+        $webRoles = [];
+        try {
+            $webRoles = $db->select("SELECT * FROM web_roles WHERE status = 1 ORDER BY id ASC");
+        } catch (Exception $e) {}
 
-        // Định dạng dữ liệu để nạp vào template
-        $this->view('backend/user/profile', [
-            'title' => 'Thông tin cá nhân',
+        $this->view->app('user/edit', [
+            'title' => 'Chỉnh Sửa Tài Khoản & Phân Quyền Web',
             'user' => $user,
-            'assignedMarkets' => $assignedMarkets,
-            'permissions' => $permissions,
-            'moduleNames' => $moduleNames
+            'webRoles' => $webRoles
         ]);
     }
 
-    // =========================================================================
-    // QUẢN LÝ MẪU IN HỢP ĐỒNG (APIS CHO ADMIN CẤP 2 & CẤP 1)
-    // =========================================================================
 
-    /**
-     * API thêm mẫu in hợp đồng (AJAX POST)
-     */
-    public function addContractConfig() {
-        $this->render->abort405('POST', 'create', 'contract_config');
-        $this->render->abort403(marketService::isSuperAdmin() || marketService::isAdminMarket(), 'create', 'contract_config');
-
-        $data = $this->getContractConfigData();
-
-        $validator = new validator();
-        $validator->required('template_name', $data['template_name'], 'Tên mẫu không được để trống.')
-                  ->required('market_id', $data['market_id'], 'Thiếu ID chợ.');
-
-        $this->render->abort400($validator, 'create', 'contract_config');
-
-        $marketId = $data['market_id'];
-        if (!marketService::isSuperAdmin()) {
-            $accMarkets = marketService::getAccessibleMarketIds();
-            if (!in_array((int)$marketId, $accMarkets)) {
-                $this->render->apiResponse('create', 'contract_config', false, 'Bạn không có quyền thực hiện hành động này tại chợ này.', 403);
-            }
-        }
-
-        try {
+    public function user_delete($args = []) {
+        $userId = (int)($args[1] ?? $_GET['id'] ?? 0);
+        if ($userId > 0 && $userId != session::getWebUser('id')) {
             $db = database::getInstance();
-
-            // Nếu đánh dấu mặc định, bỏ mặc định các mẫu khác cùng chợ
-            if ($data['is_default']) {
-                $db->query("UPDATE market_contract_configs SET is_default = 0 WHERE market_id = :mId", ['mId' => $marketId]);
-            }
-
-            $db->query("INSERT INTO market_contract_configs 
-                (market_id, template_name, gov_agency_1, gov_agency_2, contract_title_suffix, rep_a_header, rep_a_name_1, rep_a_position_1, rep_a_name_2, rep_a_position_2, rep_a_address, rep_a_phone, rep_a_fax, rep_a_bank_account, rep_a_bank_name, legal_grounds, is_default, payment_due_day, payment_grace_period)
-                VALUES (:market_id, :template_name, :gov_agency_1, :gov_agency_2, :contract_title_suffix, :rep_a_header, :rep_a_name_1, :rep_a_position_1, :rep_a_name_2, :rep_a_position_2, :rep_a_address, :rep_a_phone, :rep_a_fax, :rep_a_bank_account, :rep_a_bank_name, :legal_grounds, :is_default, :payment_due_day, :payment_grace_period)", $data);
-
-            general::log('create_contract_config', "Tạo mẫu in hợp đồng: {$data['template_name']} (Chợ ID: {$marketId})");
-            $this->render->apiResponse('create', 'contract_config', true);
-        } catch (Exception $e) {
-            $this->render->abort500($e, 'create', 'contract_config');
+            $db->query("DELETE FROM web_users WHERE id = :id", ['id' => $userId]);
+            $_SESSION['flash_success'] = 'Xóa tài khoản thành công.';
         }
+        header('Location: ' . BASE_URL . 'admin/users');
+        exit();
     }
 
-    /**
-     * API cập nhật mẫu in hợp đồng (AJAX POST)
-     */
-    public function editContractConfig() {
-        $this->render->abort405('POST', 'update', 'contract_config');
-        $this->render->abort403(marketService::isSuperAdmin() || marketService::isAdminMarket(), 'update', 'contract_config');
+    public function roles() {
+        $db = database::getInstance();
+        $roles = [];
+        try {
+            $roles = $db->select("SELECT * FROM web_roles ORDER BY id ASC");
+        } catch (Exception $e) {}
 
-        $configId = $_POST['config_id'] ?? '';
-        $this->render->abort400(!empty($configId), 'update', 'contract_config', 'Thiếu ID cấu hình.');
+        $this->view->app('user/roles', [
+            'title' => 'Quản Lý Vai Trò Trang Web',
+            'roles' => $roles
+        ]);
+    }
+
+    public function role_add() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $db = database::getInstance();
+            $roleName = trim($_POST['role_name'] ?? '');
+            $roleCode = trim($_POST['role_code'] ?? '');
+            $description = trim($_POST['description'] ?? '');
+            $permsInput = $_POST['permissions'] ?? [];
+
+            $permsStr = is_array($permsInput) ? implode(',', array_filter($permsInput)) : '';
+
+            if (!empty($roleName) && !empty($roleCode)) {
+                try {
+                    $db->query("
+                        INSERT INTO web_roles (role_name, role_code, permissions, description, status)
+                        VALUES (:role_name, :role_code, :permissions, :description, 1)
+                    ", [
+                        'role_name' => $roleName,
+                        'role_code' => strtolower($roleCode),
+                        'permissions' => $permsStr,
+                        'description' => $description
+                    ]);
+                    $_SESSION['flash_success'] = 'Thêm vai trò mới thành công.';
+                } catch (Exception $e) {
+                    $_SESSION['flash_error'] = 'Lỗi: Mã vai trò đã tồn tại hoặc dữ liệu không hợp lệ.';
+                }
+            }
+        }
+        header('Location: ' . BASE_URL . 'admin/roles');
+        exit();
+    }
+
+    public function role_edit() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $db = database::getInstance();
+            $id = (int)($_POST['id'] ?? 0);
+            $roleName = trim($_POST['role_name'] ?? '');
+            $roleCode = trim($_POST['role_code'] ?? '');
+            $description = trim($_POST['description'] ?? '');
+            $permsInput = $_POST['permissions'] ?? [];
+
+            $permsStr = is_array($permsInput) ? implode(',', array_filter($permsInput)) : '';
+
+            if ($id > 0 && !empty($roleName)) {
+                try {
+                    $db->query("
+                        UPDATE web_roles
+                        SET role_name = :role_name, role_code = :role_code, permissions = :permissions, description = :description
+                        WHERE id = :id
+                    ", [
+                        'role_name' => $roleName,
+                        'role_code' => strtolower($roleCode),
+                        'permissions' => $permsStr,
+                        'description' => $description,
+                        'id' => $id
+                    ]);
+                    $_SESSION['flash_success'] = 'Cập nhật vai trò thành công.';
+                } catch (Exception $e) {}
+            }
+        }
+        header('Location: ' . BASE_URL . 'admin/roles');
+        exit();
+    }
+
+    public function role_delete($args = []) {
+        $id = (int)($args[1] ?? $_GET['id'] ?? 0);
+        if ($id > 0) {
+            $db = database::getInstance();
+            $db->query("DELETE FROM web_roles WHERE id = :id AND role_code != 'admin'", ['id' => $id]);
+            $_SESSION['flash_success'] = 'Xóa vai trò thành công.';
+        }
+        header('Location: ' . BASE_URL . 'admin/roles');
+        exit();
+    }
+
+    public function permissions() {
+        $db = database::getInstance();
+        $users = [];
+        $webRoles = [];
+        try {
+            $users = $db->select("SELECT id, username, fullname, email, role, permissions, status FROM web_users ORDER BY id ASC");
+            $webRoles = $db->select("SELECT * FROM web_roles WHERE status = 1 ORDER BY id ASC");
+        } catch (Exception $e) {}
+
+        $this->view->app('user/permissions', [
+            'title' => 'Cấu Hình Phân Quyền Web',
+            'users' => $users,
+            'webRoles' => $webRoles
+        ]);
+    }
+
+    public function update_user_permission() {
+        header('Content-Type: application/json; charset=utf-8');
+        $raw = file_get_contents('php://input');
+        $data = json_decode($raw, true);
+
+        $userId = (int)($data['user_id'] ?? 0);
+        $module = trim($data['module'] ?? '');
+        $status = (int)($data['status'] ?? 0);
+
+        if ($userId <= 0 || empty($module)) {
+            echo json_encode(['status' => 400, 'message' => 'Dữ liệu không hợp lệ.']);
+            exit();
+        }
 
         $db = database::getInstance();
-        $config = $db->selectOne("SELECT * FROM market_contract_configs WHERE config_id = :id", ['id' => $configId]);
-        if (!$config) {
-            $this->render->apiResponse('update', 'contract_config', false, 'Không tìm thấy cấu hình cần cập nhật.', 404);
+        $user = $db->select("SELECT id, permissions, role FROM web_users WHERE id = :id", ['id' => $userId]);
+        if (empty($user)) {
+            echo json_encode(['status' => 404, 'message' => 'Tài khoản không tồn tại.']);
+            exit();
         }
 
-        $marketId = $config['market_id'];
-        if (!marketService::isSuperAdmin()) {
-            $accMarkets = marketService::getAccessibleMarketIds();
-            if (!in_array((int)$marketId, $accMarkets)) {
-                $this->render->apiResponse('update', 'contract_config', false, 'Bạn không có quyền cập nhật mẫu in tại chợ này.', 403);
+        $currentPerms = array_filter(array_map('trim', explode(',', $user[0]['permissions'] ?? '')));
+
+        if ($status === 1) {
+            if (!in_array($module, $currentPerms)) {
+                $currentPerms[] = $module;
             }
+        } else {
+            $currentPerms = array_values(array_filter($currentPerms, function($m) use ($module) {
+                return $m !== $module;
+            }));
         }
 
-        $data = $this->getContractConfigData();
+        $newPermsStr = implode(',', $currentPerms);
+        $db->query("UPDATE web_users SET permissions = :perms WHERE id = :id", [
+            'perms' => $newPermsStr,
+            'id' => $userId
+        ]);
 
-        $validator = new validator();
-        $validator->required('template_name', $data['template_name'], 'Tên mẫu không được để trống.');
-
-        $this->render->abort400($validator, 'update', 'contract_config');
-
-        try {
-            if ($data['is_default']) {
-                $db->query("UPDATE market_contract_configs SET is_default = 0 WHERE market_id = :mId", ['mId' => $marketId]);
-            }
-
-            $data['config_id'] = $configId;
-            $db->query("UPDATE market_contract_configs SET
-                template_name = :template_name, gov_agency_1 = :gov_agency_1, gov_agency_2 = :gov_agency_2,
-                contract_title_suffix = :contract_title_suffix, rep_a_header = :rep_a_header,
-                rep_a_name_1 = :rep_a_name_1, rep_a_position_1 = :rep_a_position_1,
-                rep_a_name_2 = :rep_a_name_2, rep_a_position_2 = :rep_a_position_2,
-                rep_a_address = :rep_a_address, rep_a_phone = :rep_a_phone, rep_a_fax = :rep_a_fax,
-                rep_a_bank_account = :rep_a_bank_account, rep_a_bank_name = :rep_a_bank_name,
-                legal_grounds = :legal_grounds, is_default = :is_default,
-                payment_due_day = :payment_due_day, payment_grace_period = :payment_grace_period
-                WHERE config_id = :config_id", $data);
-
-            general::log('update_contract_config', "Cập nhật mẫu in hợp đồng ID: {$configId}");
-            $this->render->apiResponse('update', 'contract_config', true);
-        } catch (Exception $e) {
-            $this->render->abort500($e, 'update', 'contract_config');
-        }
+        echo json_encode(['status' => 200, 'message' => 'Đã cập nhật quyền thành công.', 'permissions' => $currentPerms]);
+        exit();
     }
 
-    /**
-     * API xóa mẫu in hợp đồng (AJAX POST)
-     */
-    public function deleteContractConfig() {
-        $this->render->abort405('POST', 'delete', 'contract_config');
-        // Chỉ Super Admin được phép xóa
-        $this->render->abort403(marketService::isSuperAdmin(), 'delete', 'contract_config');
+    public function apply_role_template() {
+        header('Content-Type: application/json; charset=utf-8');
+        $raw = file_get_contents('php://input');
+        $data = json_decode($raw, true);
 
-        $configId = $_POST['config_id'] ?? '';
-        $this->render->abort400(!empty($configId), 'delete', 'contract_config', 'Thiếu ID cấu hình cần xóa.');
+        $userId = (int)($data['user_id'] ?? 0);
+        $roleCode = trim($data['role_code'] ?? '');
 
-        try {
-            $db = database::getInstance();
-            $db->query("UPDATE market_contract_configs SET status_id = 99 WHERE config_id = :id", ['id' => $configId]);
-            general::log('delete_contract_config', "Xóa mẫu in hợp đồng ID: {$configId}");
-            $this->render->apiResponse('delete', 'contract_config', true);
-        } catch (Exception $e) {
-            $this->render->abort500($e, 'delete', 'contract_config');
+        if ($userId <= 0 || empty($roleCode)) {
+            echo json_encode(['status' => 400, 'message' => 'Dữ liệu không hợp lệ.']);
+            exit();
         }
-    }
-
-    /**
-     * API chuyển trạng thái mẫu in hợp đồng (AJAX POST)
-     */
-    public function toggleContractConfigStatus() {
-        $this->render->abort405('POST', 'update', 'contract_config');
-        $this->render->abort403(marketService::isSuperAdmin() || marketService::isAdminMarket(), 'update', 'contract_config');
-
-        $configId = $_POST['config_id'] ?? '';
-        $newStatusCode = $_POST['status'] ?? '';
-        $this->render->abort400(!empty($configId) && in_array($newStatusCode, ['active', 'inactive']), 'update', 'contract_config', 'Dữ liệu không hợp lệ.');
 
         $db = database::getInstance();
-        $config = $db->selectOne("SELECT * FROM market_contract_configs WHERE config_id = :id", ['id' => $configId]);
-        if (!$config) {
-            $this->render->apiResponse('update', 'contract_config', false, 'Không tìm thấy cấu hình.', 404);
+        $role = $db->select("SELECT * FROM web_roles WHERE role_code = :code", ['code' => $roleCode]);
+        if (empty($role)) {
+            echo json_encode(['status' => 404, 'message' => 'Mẫu vai trò không tồn tại.']);
+            exit();
         }
 
-        if (!marketService::isSuperAdmin()) {
-            $accMarkets = marketService::getAccessibleMarketIds();
-            if (!in_array((int)$config['market_id'], $accMarkets)) {
-                $this->render->apiResponse('update', 'contract_config', false, 'Không có quyền.', 403);
-            }
-        }
+        $permsStr = $role[0]['permissions'] ?? '';
+        $db->query("UPDATE web_users SET role = :role, permissions = :perms WHERE id = :id", [
+            'role' => ($roleCode === 'admin') ? 'admin' : 'editor',
+            'perms' => $permsStr,
+            'id' => $userId
+        ]);
 
-        // Lấy status_id từ system_statuses
-        $newStatus = $db->selectOne("SELECT status_id FROM system_statuses WHERE status_domain = 'contract_config' AND status_code = :code", ['code' => $newStatusCode]);
-        if (!$newStatus) {
-            $this->render->apiResponse('update', 'contract_config', false, 'Trạng thái không hợp lệ.', 400);
-        }
-
-        try {
-            $db->query("UPDATE market_contract_configs SET status_id = :sid WHERE config_id = :id", [
-                'sid' => $newStatus['status_id'],
-                'id' => $configId
-            ]);
-            general::log('toggle_contract_config_status', "Chuyển trạng thái mẫu in ID: {$configId} → {$newStatusCode}");
-            $this->render->apiResponse('update', 'contract_config', true);
-        } catch (Exception $e) {
-            $this->render->abort500($e, 'update', 'contract_config');
-        }
-    }
-
-    /**
-     * Helper: Lấy dữ liệu từ POST cho contract config
-     */
-    private function getContractConfigData() {
-        return [
-            'market_id'             => $_POST['market_id'] ?? '',
-            'template_name'         => trim($_POST['template_name'] ?? ''),
-            'gov_agency_1'          => trim($_POST['gov_agency_1'] ?? ''),
-            'gov_agency_2'          => trim($_POST['gov_agency_2'] ?? ''),
-            'contract_title_suffix' => trim($_POST['contract_title_suffix'] ?? ''),
-            'rep_a_header'          => trim($_POST['rep_a_header'] ?? ''),
-            'rep_a_name_1'          => trim($_POST['rep_a_name_1'] ?? ''),
-            'rep_a_position_1'      => trim($_POST['rep_a_position_1'] ?? ''),
-            'rep_a_name_2'          => trim($_POST['rep_a_name_2'] ?? ''),
-            'rep_a_position_2'      => trim($_POST['rep_a_position_2'] ?? ''),
-            'rep_a_address'         => trim($_POST['rep_a_address'] ?? ''),
-            'rep_a_phone'           => trim($_POST['rep_a_phone'] ?? ''),
-            'rep_a_fax'             => trim($_POST['rep_a_fax'] ?? ''),
-            'rep_a_bank_account'    => trim($_POST['rep_a_bank_account'] ?? ''),
-            'rep_a_bank_name'       => trim($_POST['rep_a_bank_name'] ?? ''),
-            'legal_grounds'         => trim($_POST['legal_grounds'] ?? ''),
-            'is_default'            => (int)($_POST['is_default'] ?? 0),
-            'payment_due_day'       => trim($_POST['payment_due_day'] ?? '10'),
-            'payment_grace_period'  => trim($_POST['payment_grace_period'] ?? '10')
-        ];
+        $permsArr = array_filter(array_map('trim', explode(',', $permsStr)));
+        echo json_encode(['status' => 200, 'message' => 'Đã áp dụng mẫu vai trò thành công.', 'permissions' => $permsArr]);
+        exit();
     }
 }
 
