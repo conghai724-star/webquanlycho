@@ -141,11 +141,15 @@
                 </div>
             <?php else: ?>
                 <div class="stalls-grid" id="traderGrid">
-                    <?php foreach ($traders as $t): ?>
-                        <div class="stall-card trader-card" data-fullname="<?php echo htmlspecialchars(mb_strtolower($t['fullname'], 'UTF-8')); ?>" data-line="<?php echo htmlspecialchars(mb_strtolower($t['business_line_name'] ?? '', 'UTF-8')); ?>">
+                    <?php 
+                    $isHideTraderName = ($settings['hide_trader_name'] ?? '0') === '1';
+                    foreach ($traders as $t): 
+                        $displayTraderName = $isHideTraderName ? 'Hộ kinh doanh (' . htmlspecialchars($t['trader_code']) . ')' : htmlspecialchars($t['fullname']);
+                    ?>
+                        <div class="stall-card trader-card" data-fullname="<?php echo htmlspecialchars(mb_strtolower($displayTraderName, 'UTF-8')); ?>" data-line="<?php echo htmlspecialchars(mb_strtolower($t['business_line_name'] ?? '', 'UTF-8')); ?>">
                             <div class="stall-top" style="margin-bottom: 8px;">
                                 <div>
-                                    <div class="stall-code" style="color: var(--blue-700); font-size: 17px;"><?php echo htmlspecialchars($t['fullname']); ?></div>
+                                    <div class="stall-code" style="color: var(--blue-700); font-size: 17px;"><?php echo $displayTraderName; ?></div>
                                     <div class="stall-zone" style="margin-top: 4px; font-weight: 600; font-size: 13px;">Mã: <?php echo htmlspecialchars($t['trader_code']); ?></div>
                                 </div>
                                 <span class="badge" style="background: #E8F5E9; color: #2E7D32;">Hoạt động</span>

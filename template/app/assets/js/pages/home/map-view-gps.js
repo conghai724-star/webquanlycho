@@ -907,10 +907,10 @@
             detailAreaSize.textContent = numArea > 0 ? (numArea + ' m²') : 'Đang cập nhật';
         }
         if (detailPrice) {
-            if (totalPrice > 0) {
-                detailPrice.innerHTML = `${totalPrice.toLocaleString('vi-VN')} đ/tháng <span style="font-size:11px; font-weight:normal; color:#64748b;">(${unitPrice.toLocaleString('vi-VN')} đ/m²)</span>`;
+            if (item.price_hidden || totalPrice <= 0) {
+                detailPrice.textContent = 'Liên hệ Ban Quản Lý';
             } else {
-                detailPrice.textContent = 'Theo quy định BQL';
+                detailPrice.innerHTML = `${totalPrice.toLocaleString('vi-VN')} đ/tháng <span style="font-size:11px; font-weight:normal; color:#64748b;">(${unitPrice.toLocaleString('vi-VN')} đ/m²)</span>`;
             }
         }
 

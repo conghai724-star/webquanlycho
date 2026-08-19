@@ -58,7 +58,12 @@ Class adminController extends baseController {
             'user_delete'               => 'users',
             
             'roles'                     => 'roles',
-            'permissions'               => 'roles'
+            'permissions'               => 'roles',
+            
+            'sync'                      => 'banners',
+            'ajax_save_sync_settings'   => 'banners',
+            'ajax_test_app_connection'  => 'banners',
+            'ajax_run_sync_db'          => 'banners'
         ];
 
         if (isset($actionModuleMap[$action])) {
@@ -1382,6 +1387,74 @@ Class adminController extends baseController {
             'role_name' => $roleInfo['role_name'],
             'permissions' => $permsArr
         ]);
+        exit();
+    }
+
+    /**
+     * Trang Cấu hình Đồng bộ Dữ liệu & Quyền riêng tư
+     */
+    public function sync() {
+        include_once __SITE_PATH . '/model/syncService.php';
+        $settings = syncService::getSettings();
+        $this->view->app('sync/index', [
+            'title' => 'Đồng Bộ CSDL & Cài Đặt Hiển Thị',
+            'settings' => $settings
+        ]);
+    }
+
+    /**
+     * AJAX lưu cài đặt ẩn tên tiểu thương / giá sạp
+     */
+    public function ajax_save_sync_settings() {
+        header('Content-Type: application/json; charset=utf-8');
+        include_once __SITE_PATH . '/model/syncService.php';
+
+        $hideTrader = isset($_POST['hide_trader_name']) ? (int)$_POST['hide_trader_name'] : 0;
+        $hidePrice  = isset($_POST['hide_stall_price']) ? (int)$_POST['hide_stall_price'] : 0;
+
+        syncService::saveSetting('hide_trader_name', (string)$hideTrader);
+        syncService::saveSetting('hide_stall_price', (string)$hidePrice);
+
+        echo json_encode([
+            'status' => 200,
+            'success' => true,
+            'message' => 'Lưu cài đặt hiển thị thành công.'
+        ]);
+        exit();
+    }
+
+    /**
+     * AJAX kiểm tra kết nối đến CSDL App
+     */
+    public function ajax_test_app_connection() {
+        header('Content-Type: application/json; charset=utf-8');
+        include_once __SITE_PATH . '/model/syncService.php';
+
+        $host = trim($_POST['app_db_host'] ?? '127.0.0.1:3307');
+        $name = trim($_POST['app_db_name'] ?? 'quanlycho.vn');
+        $user = trim($_POST['app_db_user'] ?? 'root');
+        $pass = $_POST['app_db_password'] ?? '';
+
+        // Lưu tạm thông tin cấu hình
+        syncService::saveSetting('app_db_host', $host);
+        syncService::saveSetting('app_db_name', $name);
+        syncService::saveSetting('app_db_user', $user);
+        syncService::saveSetting('app_db_password', $pass);
+
+        $res = syncService::testConnection($host, $name, $user, $pass);
+        echo json_encode($res);
+        exit();
+    }
+
+    /**
+     * AJAX thực thi Đồng bộ CSDL từ App sang Web
+     */
+    public function ajax_run_sync_db() {
+        header('Content-Type: application/json; charset=utf-8');
+        include_once __SITE_PATH . '/model/syncService.php';
+
+        $res = syncService::syncFromApp();
+        echo json_encode($res);
         exit();
     }
 }

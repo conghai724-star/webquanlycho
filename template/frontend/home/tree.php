@@ -505,8 +505,8 @@ $(document).ready(function() {
         else if (stall.status === 'repairing') badgeClass = 'badge-warning';
         else if (stall.status === 'locked') badgeClass = 'badge-danger';
 
-        const size = parseFloat(stall.area_size).toLocaleString('vi-VN') + ' m²';
-        const price = parseFloat(stall.base_price).toLocaleString('vi-VN') + ' đ / tháng';
+        const size = (parseFloat(stall.stall_area_size || stall.area_size || 0)).toLocaleString('vi-VN') + ' m²';
+        const price = (stall.price_formatted) ? stall.price_formatted : ((parseFloat(stall.stall_base_price || stall.base_price || 0) > 0) ? (parseFloat(stall.stall_base_price || stall.base_price).toLocaleString('vi-VN') + ' đ / tháng') : 'Liên hệ Ban Quản Lý');
         const deposit = stall.deposit ? parseFloat(stall.deposit).toLocaleString('vi-VN') + ' đ' : 'Chưa đóng cọc';
 
         let tabHeaders = `

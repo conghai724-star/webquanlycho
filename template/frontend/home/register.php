@@ -175,10 +175,16 @@
                             </div>
                             <div class="stall-meta" style="border-top: 1px solid var(--gray-200); border-bottom: 1px solid var(--gray-200); padding: 10px 0; margin-bottom: 14px; font-size: 13px; color: var(--gray-600);">
                                 <div style="margin-bottom: 5px;">Diện tích: <b style="color: var(--gray-900);"><?php echo $vc['stall_area_size']; ?> m²</b></div>
-                                <div style="margin-bottom: 3px;">
-                                    Giá thuê: <b style="color: var(--primary, #0f766e); font-size: 14px;"><?php echo number_format($tPrice, 0, ',', '.'); ?> đ</b>/tháng
-                                </div>
-                                <div style="font-size: 11px; color: var(--gray-500);">(Đơn giá: <?php echo number_format($uPrice, 0, ',', '.'); ?> đ/m²)</div>
+                                <?php if (($settings['hide_stall_price'] ?? '0') === '1'): ?>
+                                    <div style="margin-bottom: 3px;">
+                                        Giá thuê: <b style="color: var(--primary, #0f766e); font-size: 14px;">Liên hệ BQL</b>
+                                    </div>
+                                <?php else: ?>
+                                    <div style="margin-bottom: 3px;">
+                                        Giá thuê: <b style="color: var(--primary, #0f766e); font-size: 14px;"><?php echo number_format($tPrice, 0, ',', '.'); ?> đ</b>/tháng
+                                    </div>
+                                    <div style="font-size: 11px; color: var(--gray-500);">(Đơn giá: <?php echo number_format($uPrice, 0, ',', '.'); ?> đ/m²)</div>
+                                <?php endif; ?>
                             </div>
                             <button type="button" onclick="selectStallCard('<?php echo htmlspecialchars($vc['stall_code']); ?>', <?php echo (int)$vc['market_id']; ?>, <?php echo (int)$vc['area_id']; ?>)" class="btn btn-primary btn-sm" style="width: 100%; font-size: 13px; font-weight: 700; padding: 9px 0; display: flex; align-items: center; justify-content: center; gap: 6px;">
                                 <i class="fa-solid fa-check"></i> Chọn thuê sạp này
@@ -325,8 +331,9 @@
             var numSize = (size && parseFloat(size) > 0) ? parseFloat(size) : 0;
             var totalMonthly = (unitPrice > 0 && numSize > 0) ? (unitPrice * numSize) : unitPrice;
 
-            var formattedTotalPrice = totalMonthly > 0 ? (new Intl.NumberFormat('vi-VN').format(totalMonthly) + ' đ/tháng') : 'Theo quy định BQL';
-            var formattedUnitPrice = unitPrice > 0 ? (new Intl.NumberFormat('vi-VN').format(unitPrice) + ' đ/m²/tháng') : '';
+            var isHidePrice = <?php echo (($settings['hide_stall_price'] ?? '0') === '1') ? 'true' : 'false'; ?>;
+            var formattedTotalPrice = isHidePrice ? 'Liên hệ Ban Quản Lý' : (totalMonthly > 0 ? (new Intl.NumberFormat('vi-VN').format(totalMonthly) + ' đ/tháng') : 'Theo quy định BQL');
+            var formattedUnitPrice = (isHidePrice || unitPrice <= 0) ? '' : (new Intl.NumberFormat('vi-VN').format(unitPrice) + ' đ/m²/tháng');
             
             boxStallDesc.innerHTML = '• <b>Diện tích sạp:</b> ' + (numSize > 0 ? (numSize + ' m²') : 'Đang cập nhật') + 
                                      '<br>• <b>Giá thuê dự kiến:</b> <span style="font-size: 15px; color: #166534; font-weight: 800;">' + formattedTotalPrice + '</span>' + (formattedUnitPrice ? ' <span style="color:#64748b; font-size:12px;">(Đơn giá: ' + formattedUnitPrice + ')</span>' : '') +

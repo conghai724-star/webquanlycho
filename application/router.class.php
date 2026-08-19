@@ -55,18 +55,25 @@ class router {
  */
  public function loader()
  {
-	/*** check the route ***/
-	$this->getController();
+ 	/*** check the route ***/
+ 	$this->getController();
 
-	/*** if the file is not there diaf ***/
-	if (is_readable($this->file) == false)
-	{
-		$this->file = $this->path.'/error404.php';
-                $this->controller = 'error404';
-	}
+ 	$controllerDir = realpath($this->path);
+ 	$realFile = realpath($this->file);
 
-	/*** include the controller ***/
-	include $this->file;
+ 	/*** if the file is not there or outside controller directory ***/
+ 	if ($realFile === false || strpos($realFile, $controllerDir) !== 0 || is_readable($realFile) == false)
+ 	{
+ 		$this->file = $this->path.'/error404.php';
+ 		$this->controller = 'error404';
+ 	}
+ 	else
+ 	{
+ 		$this->file = $realFile;
+ 	}
+
+ 	/*** include the controller ***/
+ 	include $this->file;
 
 	/*** a new controller class instance ***/
 	$class = $this->controller . 'Controller';
@@ -127,6 +134,8 @@ private function getController() {
 			}
 		}
 	}
+	$route = str_replace('\\', '/', urldecode((string)$route));
+	$route = trim($route, '/');
 
 	if (empty($route))
 	{
@@ -534,10 +543,18 @@ private function getController() {
 	{
 		$this->controller = 'index';
 	}
+	$this->controller = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)$this->controller);
+	if (empty($this->controller)) {
+		$this->controller = 'index';
+	}
 
 	/*** Get action ***/
 	if (empty($this->action))
 	{
+		$this->action = 'index';
+	}
+	$this->action = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)$this->action);
+	if (empty($this->action)) {
 		$this->action = 'index';
 	}
 

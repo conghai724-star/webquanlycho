@@ -55,14 +55,15 @@ public static function getInstance() {
 
 
 function show($name) {
-	// echo __SITE_PATH;
-	$path = __SITE_PATH . '/template/' .ThemeMaster. '/' . $name . '.php';
-	// echo 'link:'. $path;
-	if (file_exists($path) == false)
-	{
-		$path = __SITE_PATH . '/template/' .ThemeMaster. '/404.php';
-		//throw new Exception('Template not found in '. $path);
-		//return false;
+	$baseDir = realpath(__SITE_PATH . '/template/' . ThemeMaster);
+	$path = __SITE_PATH . '/template/' . ThemeMaster . '/' . ltrim($name, '/') . '.php';
+	$realPath = realpath($path);
+
+	// Kiểm tra bắt buộc: File phải tồn tại và nằm TRONG thư mục template
+	if ($realPath === false || strpos($realPath, $baseDir) !== 0 || !is_file($realPath)) {
+		$path = $baseDir . '/404.php';
+	} else {
+		$path = $realPath;
 	}
 
 	// Load variables
@@ -71,17 +72,25 @@ function show($name) {
 		$$key = $value;
 	}
 
-	include ($path);               
+	if (file_exists($path)) {
+		include ($path);
+	}
 }
+
 function adminmaster($name, array $data = array()) {
 	$this->app($name, $data);
 }
+
 function app($name, array $data = array()) {
-	
-	$path = __SITE_PATH . '/template/' .AdminTheme. '/' . $name . '.php';
-	if (file_exists($path) == false)
-	{
-		$path = __SITE_PATH . '/template/' .AdminTheme. '/404.php';
+	$baseDir = realpath(__SITE_PATH . '/template/' . AdminTheme);
+	$path = __SITE_PATH . '/template/' . AdminTheme . '/' . ltrim($name, '/') . '.php';
+	$realPath = realpath($path);
+
+	// Kiểm tra bắt buộc: File phải tồn tại và nằm TRONG thư mục admin template
+	if ($realPath === false || strpos($realPath, $baseDir) !== 0 || !is_file($realPath)) {
+		$path = $baseDir . '/404.php';
+	} else {
+		$path = $realPath;
 	}
 	
 	foreach (array_merge($this->data, $data) as $key => $value)
@@ -96,7 +105,9 @@ function app($name, array $data = array()) {
 		include __SITE_PATH . '/template/' . AdminTheme . '/layouts/navbar.php';
 	}
 
-	include ($path);
+	if (file_exists($path)) {
+		include ($path);
+	}
 
 	if (!$isStandaloneView) {
 		include __SITE_PATH . '/template/' . AdminTheme . '/layouts/footer.php';

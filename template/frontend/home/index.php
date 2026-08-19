@@ -330,10 +330,16 @@
                         ?>
                         <div class="stall-meta" style="border-top: 1px solid var(--gray-200); border-bottom: 1px solid var(--gray-200); padding: 12px 0; margin-bottom: 16px; font-size: 13.5px; color: var(--gray-600);">
                             <div style="margin-bottom: 6px;">Diện tích: <b style="color: var(--gray-900);"><?php echo $st['stall_area_size']; ?> m²</b></div>
-                            <div style="margin-bottom: 4px;">
-                                Giá thuê: <b style="color: var(--primary, #0f766e); font-size: 14.5px;"><?php echo number_format($totalPrice, 0, ',', '.'); ?> đ</b>/tháng
-                            </div>
-                            <div style="font-size: 11.5px; color: var(--gray-500);">(Đơn giá: <?php echo number_format($unitPrice, 0, ',', '.'); ?> đ/m²)</div>
+                            <?php if (($settings['hide_stall_price'] ?? '0') === '1'): ?>
+                                <div style="margin-bottom: 4px;">
+                                    Giá thuê: <b style="color: var(--primary, #0f766e); font-size: 14.5px;">Liên hệ BQL</b>
+                                </div>
+                            <?php else: ?>
+                                <div style="margin-bottom: 4px;">
+                                    Giá thuê: <b style="color: var(--primary, #0f766e); font-size: 14.5px;"><?php echo number_format($totalPrice, 0, ',', '.'); ?> đ</b>/tháng
+                                </div>
+                                <div style="font-size: 11.5px; color: var(--gray-500);">(Đơn giá: <?php echo number_format($unitPrice, 0, ',', '.'); ?> đ/m²)</div>
+                            <?php endif; ?>
                         </div>
                         <div style="display: flex; gap: 8px;">
                             <a href="<?php echo BASE_URL; ?>home/map" class="btn btn-outline btn-sm" style="flex: 1; padding: 8px 0; font-size: 12px; text-align: center;"><i class="fa-solid fa-location-dot"></i> Bản đồ</a>

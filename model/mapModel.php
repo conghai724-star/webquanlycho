@@ -45,7 +45,28 @@ class mapModel {
                 " . $whereClause . "
                 ORDER BY mme.element_id ASC";
         
-        return $this->db->select($sql, $params);
+        $elements = $this->db->select($sql, $params);
+
+        // Áp dụng cấu hình quyền riêng tư từ website_settings
+        include_once __SITE_PATH . '/model/syncService.php';
+        $privacy = syncService::getSettings();
+        $hideTrader = ($privacy['hide_trader_name'] ?? '0') === '1';
+        $hidePrice  = ($privacy['hide_stall_price'] ?? '0') === '1';
+
+        if ($hideTrader || $hidePrice) {
+            foreach ($elements as &$el) {
+                if ($hideTrader && !empty($el['trader_name'])) {
+                    $el['trader_name'] = 'Đang kinh doanh';
+                }
+                if ($hidePrice) {
+                    $el['stall_base_price'] = 0;
+                    $el['price_hidden'] = true;
+                }
+            }
+            unset($el);
+        }
+
+        return $elements;
     }
 
     /**
@@ -269,11 +290,12 @@ class mapModel {
                 'code' => $row['stall_code'],
                 'type' => $row['stall_type'] ?: 'Quầy hàng',
                 'size' => (float)$row['stall_area_size'],
-                'price' => (float)$row['stall_base_price'],
+                'price' => $hidePrice ? 0 : (float)$row['stall_base_price'],
+                'price_formatted' => $hidePrice ? 'Liên hệ BQL' : number_format((float)$row['stall_base_price'], 0, ',', '.') . ' đ',
                 'status_code' => $row['status_code'],
                 'status_name' => $row['status_name'],
                 'color_class' => $row['color_class'],
-                'trader_name' => $row['trader_name'] ?: ''
+                'trader_name' => ($hideTrader && !empty($row['trader_name'])) ? 'Đang kinh doanh' : ($row['trader_name'] ?: '')
             ];
         }
 
@@ -302,6 +324,22 @@ class mapModel {
         
         $marketId = marketService::currentMarketId();
         $sql .= " AND a.area_market_id = " . (int)$marketId;
-        return $this->db->selectOne($sql, ['id' => $stallId]);
+        $details = $this->db->selectOne($sql, ['id' => $stallId]);
+
+        if ($details) {
+            include_once __SITE_PATH . '/model/syncService.php';
+            $privacy = syncService::getSettings();
+            if (($privacy['hide_trader_name'] ?? '0') === '1') {
+                if (!empty($details['trader_fullname'])) {
+                    $details['trader_fullname'] = 'Đang kinh doanh';
+                }
+            }
+            if (($privacy['hide_stall_price'] ?? '0') === '1') {
+                $details['stall_base_price'] = 'Liên hệ BQL';
+                $details['price_formatted'] = 'Liên hệ BQL';
+            }
+        }
+
+        return $details;
     }
 }

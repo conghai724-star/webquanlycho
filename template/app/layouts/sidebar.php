@@ -90,14 +90,21 @@
         <?php endif; ?>
 
         <!-- Nhóm Tài khoản & Phân quyền -->
-        <?php if (session::hasWebModule('users') || session::hasWebModule('roles')): ?>
+        <?php if (session::hasWebModule('users') || session::hasWebModule('roles') || session::hasWebModule('banners')): ?>
             <div class="nav-group">
                 <div class="nav-label">Hệ thống</div>
                 
-                <a class="nav-link <?php echo (isset($title) && (strpos($title, 'Tài Khoản') !== false || strpos($title, 'Phân Quyền') !== false || strpos($title, 'Vai Trò') !== false)) ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/users" data-rail-label="Tài khoản">
-                    <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    <span class="nav-text">Tài khoản & Phân quyền</span>
+                <a class="nav-link <?php echo (isset($title) && strpos($title, 'Đồng Bộ') !== false) ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/sync" data-rail-label="Đồng bộ">
+                    <i class="fa-solid fa-arrows-rotate icon" style="font-size: 16px; margin-right: 8px;"></i>
+                    <span class="nav-text">Đồng bộ & Hiển thị</span>
                 </a>
+
+                <?php if (session::hasWebModule('users') || session::hasWebModule('roles')): ?>
+                    <a class="nav-link <?php echo (isset($title) && (strpos($title, 'Tài Khoản') !== false || strpos($title, 'Phân Quyền') !== false || strpos($title, 'Vai Trò') !== false)) ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/users" data-rail-label="Tài khoản">
+                        <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        <span class="nav-text">Tài khoản & Phân quyền</span>
+                    </a>
+                <?php endif; ?>
             </div>
         <?php endif; ?>
 

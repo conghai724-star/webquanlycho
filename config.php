@@ -25,6 +25,17 @@ if (!defined('XVN_CONFIG_LOADED')) {
 	define('DB_PASSWORD', ''); //database password
 	define('DB_HOST', '127.0.0.1:3307'); //sql server
 	define('DB_PORT', '3307');
+
+	//=============== Cấu hình Đồng bộ từ App Quản Lý (Hỗ trợ 2 Host riêng biệt) ==================//
+	// 1. Đồng bộ qua API Cầu nối (Khuyên dùng khi 2 web nằm ở 2 hosting/domain khác nhau)
+	define('APP_SYNC_API_URL', 'http://localhost/quanlycho.vn/sync_api.php');
+	define('APP_SYNC_SECRET_KEY', 'CHO_QN_SYNC_SECURE_KEY_2026_ABCXYZ');
+
+	// 2. Đồng bộ CSDL trực tiếp (Dự phòng khi 2 DB chung 1 máy chủ MySQL)
+	define('APP_DB_HOST', '127.0.0.1:3307');
+	define('APP_DB_NAME', 'quanlycho.vn');
+	define('APP_DB_USER', 'root');
+	define('APP_DB_PASSWORD', '');
 	/*** define mailer ***/
 	define('MAIL_PROTOCOL', 'SMTP');
 	define('MAIL_HOST', 'smtp.gmail.com');
